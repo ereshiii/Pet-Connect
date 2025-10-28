@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PWA Debug - PetConnect</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            line-height: 1.6;
+        }
+
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeeba;
+            color: #856404;
+        }
+
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .code {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>PetConnect PWA Debug Tool</h1>
+
+    <div id="status"></div>
+
+    <h2>Tests</h2>
+    <button onclick="checkHTTPS()">Check HTTPS</button>
+    <button onclick="checkManifest()">Check Manifest</button>
+    <button onclick="checkServiceWorker()">Check Service Worker</button>
+    <button onclick="checkInstallability()">Check Installability</button>
+    <button onclick="manualInstall()" id="installBtn" disabled>Install App</button>
+
+    <h2>Results</h2>
+    <div id="results"></div>
+
+    <script>
+        let deferredPrompt;
+        const statusDiv = document.getElementById('status');
+        const resultsDiv = document.getElementById('results');
+        const installBtn = document.getElementById('installBtn');
+
+        // Listen for beforeinstallprompt
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installBtn.disabled = false;
+            addResult('Install prompt detected!', 'success');
+        });
+
+        function addResult(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}:</strong> ${message}`;
+            resultsDiv.appendChild(div);
+        }
+
+        function checkHTTPS() {
+            if (location.protocol === 'https:') {
+                addResult('✅ HTTPS: Site is served over HTTPS', 'success');
+            } else {
+                addResult('❌ HTTPS: Site must be served over HTTPS for PWA features', 'error');
+            }
+        }
+
+        async function checkManifest() {
+            try {
+                // First check if link exists in head
+                const manifestLink = document.querySelector('link[rel="manifest"]');
+                const manifestHref = manifestLink ? manifestLink.href : null;
+
+                if (!manifestHref) {
+                    addResult('⚠️ Manifest: No manifest link found in HTML head, trying fallback...', 'warning');
+
+                    // Try fallback paths
+                    const fallbackPaths = ['/manifest.json', '/build/manifest.json', '/manifest.webmanifest'];
+                    let manifestFound = false;
+
+                    for (const path of fallbackPaths) {
+                        try {
+                            addResult(`🔍 Trying manifest at: ${path}`, 'info');
+                            const response = await fetch(path);
+                            if (response.ok) {
+                                const manifest = await response.json();
+                                addResult(`✅ Manifest: Found at ${path} (fallback)`, 'success');
+                                manifestFound = true;
+
+                                // Validate manifest content
+                                validateManifest(manifest, path);
+                                break;
+                            } else {
+                                addResult(`❌ ${path}: ${response.status} ${response.statusText}`, 'error');
+                            }
+                        } catch (fetchError) {
+                            addResult(`❌ ${path}: ${fetchError.message}`, 'error');
+                        }
+                    }
+
+                    if (!manifestFound) {
+                        addResult('❌ Manifest: No manifest found at any fallback location', 'error');
+                        addResult('💡 Check: 1) manifest.json exists in public/ 2) server serves it correctly 3) HTML includes manifest link', 'info');
+                    }
+                    return;
+                }
+
+                addResult(`� Manifest Link: ${manifestHref}`, 'info');
+
+                // Try to fetch the manifest
+                try {
+                    const response = await fetch(manifestHref);
+                    if (response.ok) {
+                        const manifest = await response.json();
+                        addResult('✅ Manifest: Found and valid JSON', 'success');
+                        validateManifest(manifest, manifestHref);
+                    } else {
+                        addResult(`❌ Manifest: Failed to load (${response.status} ${response.statusText})`, 'error');
+                        addResult(`🔍 URL: ${manifestHref}`, 'info');
+
+                        // Try direct path as fallback
+                        addResult('🔄 Trying direct /manifest.json fallback...', 'info');
+                        try {
+                            const fallbackResponse = await fetch('/manifest.json');
+                            if (fallbackResponse.ok) {
+                                const manifest = await fallbackResponse.json();
+                                addResult('✅ Manifest: Found at /manifest.json (direct fallback)', 'success');
+                                validateManifest(manifest, '/manifest.json');
+                            }
+                        } catch (fallbackError) {
+                            addResult(`❌ Fallback failed: ${fallbackError.message}`, 'error');
+                        }
+                    }
+                } catch (fetchError) {
+                    addResult(`❌ Manifest: Network error - ${fetchError.message}`, 'error');
+                }
+
+            } catch (error) {
+                addResult(`❌ Manifest: Unexpected error - ${error.message}`, 'error');
+            }
+        }
+
+        function validateManifest(manifest, url) {
+            // Check required fields
+            const required = ['name', 'short_name', 'start_url', 'display', 'icons'];
+            const missing = required.filter(field => !manifest[field]);
+
+            if (missing.length === 0) {
+                addResult('✅ Manifest: All required fields present', 'success');
+            } else {
+                addResult(`❌ Manifest: Missing fields: ${missing.join(', ')}`, 'error');
+            }
+
+            // Check icons
+            if (manifest.icons && manifest.icons.length > 0) {
+                addResult(`✅ Manifest: ${manifest.icons.length} icons defined`, 'success');
+
+                // Test first icon
+                const firstIcon = manifest.icons[0];
+                if (firstIcon.src) {
+                    testIcon(firstIcon.src);
+                }
+            } else {
+                addResult('❌ Manifest: No icons defined', 'error');
+            }
+
+            // Show manifest content
+            addResult(`<div class="code">${JSON.stringify(manifest, null, 2)}</div>`, 'info');
+        }
+
+        async function testIcon(iconSrc) {
+            try {
+                const iconUrl = iconSrc.startsWith('/') ? iconSrc : new URL(iconSrc, window.location.origin).href;
+                addResult(`🔍 Testing icon: ${iconUrl}`, 'info');
+
+                const iconResponse = await fetch(iconUrl, {method: 'HEAD'});
+                if (iconResponse.ok) {
+                    addResult('✅ Icons: First icon loads successfully', 'success');
+                } else {
+                    addResult(`❌ Icons: First icon returns ${iconResponse.status}`, 'error');
+                    addResult(`💡 Check: icon file exists at ${iconUrl}`, 'info');
+                }
+            } catch (iconError) {
+                addResult(`❌ Icons: Error loading icon - ${iconError.message}`, 'error');
+            }
+        }
+
+        async function checkServiceWorker() {
+            if ('serviceWorker' in navigator) {
+                addResult('✅ Service Worker: API supported', 'success');
+
+                try {
+                    // Check for existing registration
+                    const registration = await navigator.serviceWorker.getRegistration();
+                    if (registration) {
+                        addResult('✅ Service Worker: Registered successfully', 'success');
+                        addResult(`📍 Service Worker Scope: ${registration.scope}`, 'info');
+
+                        if (registration.active) {
+                            addResult('✅ Service Worker: Active and running', 'success');
+                            addResult(`📄 SW Script URL: ${registration.active.scriptURL}`, 'info');
+                        } else if (registration.installing) {
+                            addResult('🔄 Service Worker: Installing...', 'warning');
+                        } else if (registration.waiting) {
+                            addResult('⏳ Service Worker: Waiting to activate', 'warning');
+                        } else {
+                            addResult('⚠️ Service Worker: Registered but not active', 'warning');
+                        }
+
+                        // Test if SW script is accessible
+                        try {
+                            const swResponse = await fetch('/sw.js', {method: 'HEAD'});
+                            if (swResponse.ok) {
+                                addResult('✅ Service Worker: Script file accessible', 'success');
+                            } else {
+                                addResult(`❌ Service Worker: Script returns ${swResponse.status}`, 'error');
+                            }
+                        } catch (swError) {
+                            addResult(`❌ Service Worker: Script fetch error - ${swError.message}`, 'error');
+                        }
+
+                    } else {
+                        addResult('❌ Service Worker: Not registered', 'error');
+
+                        // Try to register it now for debugging
+                        addResult('🔄 Attempting to register service worker...', 'info');
+                        try {
+                            const newRegistration = await navigator.serviceWorker.register('/sw.js', {
+                                scope: '/'
+                            });
+                            addResult('✅ Service Worker: Registration successful!', 'success');
+                            addResult(`📍 New SW Scope: ${newRegistration.scope}`, 'info');
+                        } catch (regError) {
+                            addResult(`❌ Service Worker: Registration failed - ${regError.message}`, 'error');
+                            addResult('💡 Check: 1) /sw.js exists 2) HTTPS enabled 3) no JS errors in console', 'info');
+                        }
+                    }
+                } catch (error) {
+                    addResult(`❌ Service Worker: Error - ${error.message}`, 'error');
+                }
+            } else {
+                addResult('❌ Service Worker: Not supported in this browser', 'error');
+            }
+        }
+
+        function checkInstallability() {
+            // Check if already installed
+            if (window.matchMedia('(display-mode: standalone)').matches) {
+                addResult('ℹ️ App is already installed and running in standalone mode', 'info');
+                return;
+            }
+
+            // Check if install prompt is available
+            if (deferredPrompt) {
+                addResult('✅ Install: App is installable (prompt available)', 'success');
+            } else {
+                addResult('⚠️ Install: No install prompt available yet', 'warning');
+                addResult('This could mean: App is already installed, criteria not met, or prompt not triggered yet', 'info');
+            }
+
+            // Check PWA criteria
+            const criteria = [
+                {name: 'HTTPS', check: () => location.protocol === 'https:'},
+                {name: 'Manifest', check: () => !!document.querySelector('link[rel="manifest"]')},
+                {name: 'Service Worker', check: () => 'serviceWorker' in navigator},
+            ];
+
+            criteria.forEach(criterion => {
+                if (criterion.check()) {
+                    addResult(`✅ ${criterion.name}: OK`, 'success');
+                } else {
+                    addResult(`❌ ${criterion.name}: Failed`, 'error');
+                }
+            });
+        }
+
+        async function manualInstall() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const {outcome} = await deferredPrompt.userChoice;
+                addResult(`Install outcome: ${outcome}`, outcome === 'accepted' ? 'success' : 'warning');
+                deferredPrompt = null;
+                installBtn.disabled = true;
+            } else {
+                addResult('No install prompt available', 'error');
+            }
+        }
+
+        // Run initial checks
+        window.addEventListener('load', () => {
+            addResult('PWA Debug Tool loaded', 'info');
+
+            // Log current page info
+            addResult(`🌐 Current URL: ${window.location.href}`, 'info');
+            addResult(`🔒 Protocol: ${window.location.protocol}`, 'info');
+
+            // Check DOM readiness
+            const manifestLinks = document.querySelectorAll('link[rel="manifest"]');
+            addResult(`🔍 Found ${manifestLinks.length} manifest link(s) in DOM`, 'info');
+            manifestLinks.forEach((link, i) => {
+                addResult(`📋 Manifest ${i + 1}: ${link.href}`, 'info');
+            });
+
+            setTimeout(() => {
+                checkHTTPS();
+                checkManifest();
+                checkServiceWorker();
+                checkInstallability();
+            }, 1000);
+        });
+    </script>
+</body>
+
+</html>

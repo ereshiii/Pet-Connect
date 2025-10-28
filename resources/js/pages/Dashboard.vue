@@ -1,0 +1,334 @@
+<script setup lang="ts">
+import AppLayout from '@/layouts/AppLayout.vue';
+import { dashboard, pet, clinics, history } from '@/routes';
+import { type BreadcrumbItem } from '@/types';
+import { Head } from '@inertiajs/vue3';
+import { router } from '@inertiajs/vue3';
+import PlaceholderPattern from '@/components/PlaceholderPattern.vue';
+
+const breadcrumbs: BreadcrumbItem[] = [
+    {
+        title: 'Dashboard',
+        href: dashboard().url,
+    },
+];
+
+// Navigation functions
+const navigateToAddPet = () => {
+    router.visit(pet().url);
+};
+
+const navigateToBookAppointment = () => {
+    router.visit(clinics().url);
+};
+
+const navigateToHistory = () => {
+    router.visit(history().url);
+};
+
+const navigateToProfile = () => {
+    // Navigate to profile settings - using settings profile route
+    router.visit('/settings/profile');
+};
+</script>
+
+<template>
+    <Head title="Dashboard" />
+
+    <AppLayout :breadcrumbs="breadcrumbs">
+        <div
+            class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4"
+        >
+            <!-- Comprehensive Account Overview -->
+            <div class="bg-white dark:bg-gray-800 rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
+                <div class="p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Account Overview</h2>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Profile Section -->
+                        <div class="lg:col-span-1">
+                            <div class="text-center">
+                                <div class="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <span class="text-white text-2xl font-bold">JD</span>
+                                </div>
+                                <h3 class="font-semibold text-lg text-gray-900 dark:text-gray-100 mb-1">John Doe</h3>
+                                <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">@johndoe</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-500 mb-4">john.doe@email.com</p>
+                                
+                                <!-- Premium Badge -->
+                                <span class="inline-flex px-3 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full dark:bg-yellow-900 dark:text-yellow-200">
+                                    ⭐ Premium Member
+                                </span>
+                                
+                                <!-- Account Stats -->
+                                <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                                    <div class="grid grid-cols-3 gap-4 text-center">
+                                        <div>
+                                            <p class="text-lg font-semibold text-gray-900 dark:text-gray-100">3</p>
+                                            <p class="text-xs text-gray-600 dark:text-gray-400">Pets</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-lg font-semibold text-gray-900 dark:text-gray-100">12</p>
+                                            <p class="text-xs text-gray-600 dark:text-gray-400">Visits</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-lg font-semibold text-gray-900 dark:text-gray-100">5</p>
+                                            <p class="text-xs text-gray-600 dark:text-gray-400">Years</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Contact & Address Information -->
+                        <div class="lg:col-span-2">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <!-- Contact Information -->
+                                <div>
+                                    <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-3">Contact Information</h4>
+                                    <div class="space-y-3">
+                                        <div class="flex items-center">
+                                            <span class="text-gray-500 dark:text-gray-400 text-sm w-5">📧</span>
+                                            <span class="text-sm text-gray-900 dark:text-gray-100 ml-3">john.doe@email.com</span>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <span class="text-gray-500 dark:text-gray-400 text-sm w-5">📱</span>
+                                            <span class="text-sm text-gray-900 dark:text-gray-100 ml-3">+1 (555) 123-4567</span>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <span class="text-gray-500 dark:text-gray-400 text-sm w-5">📅</span>
+                                            <span class="text-sm text-gray-900 dark:text-gray-100 ml-3">Member since 2020</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Address Information -->
+                                <div>
+                                    <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-3">Address</h4>
+                                    <div class="flex items-start">
+                                        <span class="text-gray-500 dark:text-gray-400 text-sm w-5 mt-0.5">🏠</span>
+                                        <div class="ml-3">
+                                            <p class="text-sm text-gray-900 dark:text-gray-100">123 Pet Lover's Lane</p>
+                                            <p class="text-sm text-gray-900 dark:text-gray-100">Apartment 4B</p>
+                                            <p class="text-sm text-gray-600 dark:text-gray-400">Happy Valley, CA 90210</p>
+                                            <p class="text-sm text-gray-600 dark:text-gray-400">United States</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Emergency Contact -->
+                                <div>
+                                    <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-3">Emergency Contact</h4>
+                                    <div class="space-y-2">
+                                        <div class="flex items-center">
+                                            <span class="text-gray-500 dark:text-gray-400 text-sm w-5">👤</span>
+                                            <span class="text-sm text-gray-900 dark:text-gray-100 ml-3">Jane Doe (Spouse)</span>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <span class="text-gray-500 dark:text-gray-400 text-sm w-5">📞</span>
+                                            <span class="text-sm text-gray-900 dark:text-gray-100 ml-3">+1 (555) 987-6543</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Account Status -->
+                                <div>
+                                    <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-3">Account Status</h4>
+                                    <div class="space-y-2">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-sm text-gray-600 dark:text-gray-400">Subscription</span>
+                                            <span class="text-sm font-medium text-green-600 dark:text-green-400">Active</span>
+                                        </div>
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-sm text-gray-600 dark:text-gray-400">Next Billing</span>
+                                            <span class="text-sm text-gray-900 dark:text-gray-100">Nov 15, 2025</span>
+                                        </div>
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-sm text-gray-600 dark:text-gray-400">Profile Completion</span>
+                                            <span class="text-sm text-gray-900 dark:text-gray-100">95%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Quick Actions -->
+                            <div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-600">
+                                <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-3">Quick Actions</h4>
+                                <div class="flex flex-wrap gap-2">
+                                    <button @click="navigateToProfile" class="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-md hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800">
+                                        Update Profile
+                                    </button>
+                                    <button @click="navigateToAddPet" class="px-3 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-md hover:bg-green-200 dark:bg-green-900 dark:text-green-200 dark:hover:bg-green-800">
+                                        Add Pet
+                                    </button>
+                                    <button @click="navigateToBookAppointment" class="px-3 py-1 bg-purple-100 text-purple-800 text-xs font-medium rounded-md hover:bg-purple-200 dark:bg-purple-900 dark:text-purple-200 dark:hover:bg-purple-800">
+                                        Book Appointment
+                                    </button>
+                                    <button @click="navigateToHistory" class="px-3 py-1 bg-gray-100 text-gray-800 text-xs font-medium rounded-md hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
+                                        View History
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Footer -->
+                    <div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-600 text-center">
+                        <p class="text-xs text-gray-500 dark:text-gray-500">
+                            Profile last updated: Oct 15, 2025 • Account verified ✓
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div
+                class="relative min-h-[100vh] flex-1 rounded-xl border border-sidebar-border/70 md:min-h-min dark:border-sidebar-border bg-white dark:bg-gray-800"
+            >
+                <!-- Notification Summary -->
+                <div class="p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Notifications</h2>
+                        <div class="flex gap-2">
+                            <button class="text-blue-600 hover:text-blue-700 text-sm dark:text-blue-400 dark:hover:text-blue-300">
+                                Mark All Read
+                            </button>
+                            <button class="text-gray-600 hover:text-gray-700 text-sm dark:text-gray-400 dark:hover:text-gray-300">
+                                Settings
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <!-- Appointment Reminder -->
+                        <div class="flex items-start space-x-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-l-4 border-blue-500">
+                            <div class="flex-shrink-0">
+                                <span class="text-blue-600 dark:text-blue-400 text-lg">📅</span>
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center justify-between">
+                                    <h4 class="font-medium text-gray-900 dark:text-gray-100">Appointment Reminder</h4>
+                                    <span class="text-xs text-blue-600 dark:text-blue-400 font-medium">2 hours ago</span>
+                                </div>
+                                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                    Bella's annual checkup is scheduled for today at 2:30 PM with Dr. Sarah Johnson
+                                </p>
+                                <div class="flex gap-2 mt-2">
+                                    <button class="text-xs bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700">
+                                        View Details
+                                    </button>
+                                    <button class="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400">
+                                        Dismiss
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Vaccination Due -->
+                        <div class="flex items-start space-x-3 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border-l-4 border-yellow-500">
+                            <div class="flex-shrink-0">
+                                <span class="text-yellow-600 dark:text-yellow-400 text-lg">💉</span>
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center justify-between">
+                                    <h4 class="font-medium text-gray-900 dark:text-gray-100">Vaccination Due</h4>
+                                    <span class="text-xs text-yellow-600 dark:text-yellow-400 font-medium">1 day ago</span>
+                                </div>
+                                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                    Max's rabies vaccination is due next week. Schedule an appointment to keep him protected.
+                                </p>
+                                <div class="flex gap-2 mt-2">
+                                    <button class="text-xs bg-yellow-600 text-white px-3 py-1 rounded-md hover:bg-yellow-700">
+                                        Schedule Now
+                                    </button>
+                                    <button class="text-xs text-yellow-600 hover:text-yellow-700 dark:text-yellow-400">
+                                        Remind Later
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Treatment Complete -->
+                        <div class="flex items-start space-x-3 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border-l-4 border-green-500">
+                            <div class="flex-shrink-0">
+                                <span class="text-green-600 dark:text-green-400 text-lg">✅</span>
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center justify-between">
+                                    <h4 class="font-medium text-gray-900 dark:text-gray-100">Treatment Complete</h4>
+                                    <span class="text-xs text-green-600 dark:text-green-400 font-medium">3 days ago</span>
+                                </div>
+                                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                    Luna's dental cleaning was completed successfully. Follow-up care instructions have been sent to your email.
+                                </p>
+                                <div class="flex gap-2 mt-2">
+                                    <button class="text-xs text-green-600 hover:text-green-700 dark:text-green-400">
+                                        View Report
+                                    </button>
+                                    <button class="text-xs text-green-600 hover:text-green-700 dark:text-green-400">
+                                        Mark Read
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Prescription Refill -->
+                        <div class="flex items-start space-x-3 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border-l-4 border-purple-500">
+                            <div class="flex-shrink-0">
+                                <span class="text-purple-600 dark:text-purple-400 text-lg">💊</span>
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center justify-between">
+                                    <h4 class="font-medium text-gray-900 dark:text-gray-100">Prescription Refill</h4>
+                                    <span class="text-xs text-purple-600 dark:text-purple-400 font-medium">5 days ago</span>
+                                </div>
+                                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                    Bella's arthritis medication is ready for pickup at Happy Paws Veterinary Clinic.
+                                </p>
+                                <div class="flex gap-2 mt-2">
+                                    <button class="text-xs bg-purple-600 text-white px-3 py-1 rounded-md hover:bg-purple-700">
+                                        Get Directions
+                                    </button>
+                                    <button class="text-xs text-purple-600 hover:text-purple-700 dark:text-purple-400">
+                                        Mark Read
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- System Update -->
+                        <div class="flex items-start space-x-3 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border-l-4 border-gray-400">
+                            <div class="flex-shrink-0">
+                                <span class="text-gray-600 dark:text-gray-400 text-lg">🔔</span>
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center justify-between">
+                                    <h4 class="font-medium text-gray-900 dark:text-gray-100">System Update</h4>
+                                    <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">1 week ago</span>
+                                </div>
+                                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                    PetConnect has been updated with new features including enhanced appointment scheduling and pet health tracking.
+                                </p>
+                                <div class="flex gap-2 mt-2">
+                                    <button class="text-xs text-gray-600 hover:text-gray-700 dark:text-gray-400">
+                                        Learn More
+                                    </button>
+                                    <button class="text-xs text-gray-600 hover:text-gray-700 dark:text-gray-400">
+                                        Dismiss
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Load More -->
+                    <div class="flex justify-center mt-6">
+                        <button class="text-blue-600 hover:text-blue-700 text-sm font-medium dark:text-blue-400 dark:hover:text-blue-300">
+                            Load More Notifications
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </AppLayout>
+</template>
