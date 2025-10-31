@@ -9,6 +9,15 @@ import { login } from '@/routes';
 import { store } from '@/routes/register';
 import { Form, Head } from '@inertiajs/vue3';
 import { LoaderCircle } from 'lucide-vue-next';
+import { reactive } from 'vue';
+
+const form = reactive({
+    name: '',
+    email: '',
+    password: '',
+    password_confirmation: '',
+    account_type: '',
+});
 </script>
 
 <template>
@@ -20,6 +29,7 @@ import { LoaderCircle } from 'lucide-vue-next';
 
         <Form
             v-bind="store.form()"
+            :data="form"
             :reset-on-success="['password', 'password_confirmation']"
             v-slot="{ errors, processing }"
             class="flex flex-col gap-6"
@@ -29,6 +39,7 @@ import { LoaderCircle } from 'lucide-vue-next';
                     <Label for="name">Name</Label>
                     <Input
                         id="name"
+                        v-model="form.name"
                         type="text"
                         required
                         autofocus
@@ -44,6 +55,7 @@ import { LoaderCircle } from 'lucide-vue-next';
                     <Label for="email">Email address</Label>
                     <Input
                         id="email"
+                        v-model="form.email"
                         type="email"
                         required
                         :tabindex="3"
@@ -58,6 +70,7 @@ import { LoaderCircle } from 'lucide-vue-next';
                     <Label for="password">Password</Label>
                     <Input
                         id="password"
+                        v-model="form.password"
                         type="password"
                         required
                         :tabindex="3"
@@ -72,6 +85,7 @@ import { LoaderCircle } from 'lucide-vue-next';
                     <Label for="password_confirmation">Confirm password</Label>
                     <Input
                         id="password_confirmation"
+                        v-model="form.password_confirmation"
                         type="password"
                         required
                         :tabindex="4"
@@ -86,14 +100,15 @@ import { LoaderCircle } from 'lucide-vue-next';
                     <Label for="account_type">Account Type</Label>
                     <select
                         id="account_type"
+                        v-model="form.account_type"
                         name="account_type"
                         required
                         :tabindex="2"
                         class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 text-foreground"
                     >
                         <option value="" class="bg-background text-foreground">Select account type</option>
-                        <option value="pet_owner" class="bg-background text-foreground">Pet Owner</option>
-                        <option value="veterinarian" class="bg-background text-foreground">Veterinarian/Clinic</option>
+                        <option value="user" class="bg-background text-foreground">Pet Owner</option>
+                        <option value="clinic" class="bg-background text-foreground">Veterinarian/Clinic</option>
                     </select>
                     <InputError :message="errors.account_type" />
                 </div>

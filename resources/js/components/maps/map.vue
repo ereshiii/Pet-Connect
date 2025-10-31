@@ -65,7 +65,7 @@ const emit = defineEmits<{
 const mapContainer = ref<HTMLDivElement>();
 let map: L.Map | null = null;
 let userLocationMarker: L.Marker | null = null;
-const markers = ref<L.Marker[]>([]);
+const mapMarkers = ref<L.Marker[]>([]);
 const isLoading = ref(true);
 const error = ref<string | null>(null);
 
@@ -169,44 +169,80 @@ const addMarkers = () => {
     // Clear existing markers
     clearMarkers();
     
+    if (props.markers.length === 0) return;
+    
     props.markers.forEach((markerData) => {
-        const marker = L.marker([markerData.lat, markerData.lng], {
-            icon: createCustomIcon(markerData.type)
-        }).addTo(map!);
-        
-        // Create popup content
-        const popupContent = `
-            <div class="p-2">
-                <h3 class="font-semibold text-sm mb-1">${markerData.title}</h3>
-                ${markerData.description ? `<p class="text-xs text-gray-600">${markerData.description}</p>` : ''}
-            </div>
-        `;
-        
-        marker.bindPopup(popupContent);
-        
-        // Marker click event
-        marker.on('click', () => {
-            emit('markerClick', markerData);
-        });
-        
-        markers.value.push(marker);
+        try {
+            const marker = L.marker([markerData.lat, markerData.lng], {
+                icon: createCustomIcon(markerData.type)
+            }).addTo(map!);
+            
+            // Create popup content
+            const popupContent = `
+                <div class="p-2">
+                    <h3 class="font-semibold text-sm mb-1">${markerData.title}</h3>
+                    ${markerData.description ? `<p class="text-xs text-gray-600">${markerData.description}</p>` : ''}
+                </div>
+            `;
+            
+            marker.bindPopup(popupContent);
+            
+            // Marker click event
+            marker.on('click', () => {
+                emit('markerClick', markerData);
+            });
+            
+            mapMarkers.value.push(marker);
+        } catch (error) {
+            console.warn('Error adding marker:', error, markerData);
+        }
     });
     
-    // Fit bounds to show all markers
-    if (markers.value.length > 0) {
-        const group = new L.FeatureGroup(markers.value);
-        map!.fitBounds(group.getBounds().pad(0.1));
+    // Only fit bounds on initial load or when specifically requested
+    // Avoid automatic bounds fitting during filter changes to prevent jarring movements
+    const shouldFitBounds = isLoading.value || mapMarkers.value.length !== props.markers.length;
+    
+    if (mapMarkers.value.length > 0 && shouldFitBounds) {
+        setTimeout(() => {
+            try {
+                const group = new L.FeatureGroup(mapMarkers.value);
+                const bounds = group.getBounds();
+                
+                // More conservative bounds fitting
+                if (bounds.isValid()) {
+                    const distance = bounds.getNorthEast().distanceTo(bounds.getSouthWest());
+                    
+                    if (distance > 50) { // Only fit bounds if markers are spread out (more than 50 meters apart)
+                        map!.fitBounds(bounds.pad(0.1), { 
+                            maxZoom: 16,
+                            animate: true,
+                            duration: 0.5
+                        });
+                    } else if (mapMarkers.value.length === 1) {
+                        // For single marker, just center on it without changing zoom too much
+                        const currentZoom = map!.getZoom();
+                        const singleMarker = props.markers[0];
+                        map!.setView([singleMarker.lat, singleMarker.lng], Math.max(currentZoom, 14), {
+                            animate: true,
+                            duration: 0.5
+                        });
+                    }
+                }
+            } catch (error) {
+                console.warn('Error fitting bounds:', error);
+            }
+        }, 100); // Small delay to ensure DOM is ready
     }
 };
 
 // Clear all markers
 const clearMarkers = () => {
-    markers.value.forEach(marker => {
+    mapMarkers.value.forEach(marker => {
         if (map) {
             map.removeLayer(marker);
         }
     });
-    markers.value = [];
+    mapMarkers.value = [];
 };
 
 // Get user's current location
@@ -253,15 +289,43 @@ const getUserLocation = () => {
 };
 
 // Watch for prop changes
-watch(() => props.markers, () => {
-    if (map) {
-        addMarkers();
+let markerUpdateTimeout: NodeJS.Timeout | null = null;
+
+watch(() => props.markers, (newMarkers, oldMarkers) => {
+    if (!map) return;
+    
+    // Clear existing timeout
+    if (markerUpdateTimeout) {
+        clearTimeout(markerUpdateTimeout);
     }
+    
+    // Debounce marker updates to prevent rapid re-rendering
+    markerUpdateTimeout = setTimeout(() => {
+        if (newMarkers) {
+            // Check if markers actually changed by comparing length and key properties
+            const oldIds = oldMarkers?.map(m => `${m.id}-${m.lat}-${m.lng}`) || [];
+            const newIds = newMarkers.map(m => `${m.id}-${m.lat}-${m.lng}`);
+            
+            const markersChanged = oldIds.length !== newIds.length || 
+                                 !oldIds.every((id, index) => id === newIds[index]);
+            
+            if (markersChanged) {
+                console.log('Updating markers:', { oldCount: oldIds.length, newCount: newIds.length });
+                addMarkers();
+            }
+        }
+    }, 150); // 150ms debounce
 }, { deep: true });
 
 watch(() => props.center, (newCenter) => {
-    if (map) {
+    if (map && newCenter) {
         map.setView(newCenter, props.zoom);
+    }
+});
+
+watch(() => props.zoom, (newZoom) => {
+    if (map && newZoom) {
+        map.setZoom(newZoom);
     }
 });
 
@@ -272,6 +336,11 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+    // Clear any pending timeouts
+    if (markerUpdateTimeout) {
+        clearTimeout(markerUpdateTimeout);
+    }
+    
     if (map) {
         map.remove();
         map = null;
@@ -296,16 +365,16 @@ defineExpose({
             
             marker.bindPopup(popupContent);
             marker.on('click', () => emit('markerClick', markerData));
-            markers.value.push(marker);
+            mapMarkers.value.push(marker);
         }
     },
     removeMarker: (markerId: string | number) => {
-        const markerIndex = markers.value.findIndex(marker => 
+        const markerIndex = mapMarkers.value.findIndex(marker => 
             (marker as any).markerId === markerId
         );
         if (markerIndex !== -1 && map) {
-            map.removeLayer(markers.value[markerIndex]);
-            markers.value.splice(markerIndex, 1);
+            map.removeLayer(mapMarkers.value[markerIndex]);
+            mapMarkers.value.splice(markerIndex, 1);
         }
     },
     clearAllMarkers: clearMarkers,
@@ -314,10 +383,21 @@ defineExpose({
             map.setView([lat, lng], zoom || props.zoom);
         }
     },
-    fitBounds: () => {
-        if (map && markers.value.length > 0) {
-            const group = new L.FeatureGroup(markers.value);
-            map.fitBounds(group.getBounds().pad(0.1));
+    fitBounds: (options?: { padding?: number; maxZoom?: number; animate?: boolean }) => {
+        if (map && mapMarkers.value.length > 0) {
+            const group = new L.FeatureGroup(mapMarkers.value);
+            const bounds = group.getBounds();
+            
+            if (bounds.isValid()) {
+                const opts = {
+                    padding: [options?.padding || 20, options?.padding || 20],
+                    maxZoom: options?.maxZoom || 16,
+                    animate: options?.animate !== false,
+                    duration: 0.5
+                };
+                
+                map.fitBounds(bounds, opts);
+            }
         }
     }
 });

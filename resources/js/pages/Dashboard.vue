@@ -1,10 +1,45 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
-import { dashboard, pet, clinics, history } from '@/routes';
+import { dashboard, petsIndex, clinics, history } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
-import { Head } from '@inertiajs/vue3';
+import { Head, Link } from '@inertiajs/vue3';
 import { router } from '@inertiajs/vue3';
 import PlaceholderPattern from '@/components/PlaceholderPattern.vue';
+import { computed } from 'vue';
+
+interface User {
+    id: number;
+    name: string;
+    username?: string;
+    email: string;
+    phone?: string;
+    address_line_1?: string;
+    address_line_2?: string;
+    city?: string;
+    state?: string;
+    postal_code?: string;
+    country?: string;
+    emergency_contact_name?: string;
+    emergency_contact_relationship?: string;
+    emergency_contact_phone?: string;
+    date_of_birth?: string;
+    gender?: string;
+    bio?: string;
+    email_verified_at?: string;
+    created_at: string;
+    initials: string;
+    full_address?: string;
+    has_complete_address: boolean;
+    has_emergency_contact: boolean;
+    membership_years: number;
+    profile_completion_percentage: number;
+}
+
+interface Props {
+    user: User;
+}
+
+const props = defineProps<Props>();
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -15,7 +50,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 // Navigation functions
 const navigateToAddPet = () => {
-    router.visit(pet().url);
+    router.visit(petsIndex().url);
 };
 
 const navigateToBookAppointment = () => {
@@ -30,6 +65,16 @@ const navigateToProfile = () => {
     // Navigate to profile settings - using settings profile route
     router.visit('/settings/profile');
 };
+
+// Computed properties for formatted data
+const memberSinceFormatted = computed(() => {
+    const date = new Date(props.user.created_at);
+    return date.getFullYear();
+});
+
+const profileSettingsLink = '/settings/profile';
+const contactSettingsLink = '/settings/contact-information';
+const addressSettingsLink = '/settings/address';
 </script>
 
 <template>
@@ -51,31 +96,31 @@ const navigateToProfile = () => {
                         <div class="lg:col-span-1">
                             <div class="text-center">
                                 <div class="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                                    <span class="text-white text-2xl font-bold">JD</span>
+                                    <span class="text-white text-2xl font-bold">{{ user.initials }}</span>
                                 </div>
-                                <h3 class="font-semibold text-lg text-gray-900 dark:text-gray-100 mb-1">John Doe</h3>
-                                <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">@johndoe</p>
-                                <p class="text-xs text-gray-500 dark:text-gray-500 mb-4">john.doe@email.com</p>
-                                
-                                <!-- Premium Badge -->
-                                <span class="inline-flex px-3 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full dark:bg-yellow-900 dark:text-yellow-200">
-                                    ⭐ Premium Member
-                                </span>
+                                <h3 class="font-semibold text-lg text-gray-900 dark:text-gray-100 mb-1">{{ user.name }}</h3>
+                                <p v-if="user.username" class="text-sm text-gray-600 dark:text-gray-400 mb-1">@{{ user.username }}</p>
+                                <p v-else class="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                                    <Link :href="profileSettingsLink" class="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
+                                        Set username
+                                    </Link>
+                                </p>
+                                <p class="text-xs text-gray-500 dark:text-gray-500 mb-4">{{ user.email }}</p>
                                 
                                 <!-- Account Stats -->
                                 <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
                                     <div class="grid grid-cols-3 gap-4 text-center">
                                         <div>
-                                            <p class="text-lg font-semibold text-gray-900 dark:text-gray-100">3</p>
+                                            <p class="text-lg font-semibold text-gray-900 dark:text-gray-100">0</p>
                                             <p class="text-xs text-gray-600 dark:text-gray-400">Pets</p>
                                         </div>
                                         <div>
-                                            <p class="text-lg font-semibold text-gray-900 dark:text-gray-100">12</p>
+                                            <p class="text-lg font-semibold text-gray-900 dark:text-gray-100">0</p>
                                             <p class="text-xs text-gray-600 dark:text-gray-400">Visits</p>
                                         </div>
                                         <div>
-                                            <p class="text-lg font-semibold text-gray-900 dark:text-gray-100">5</p>
-                                            <p class="text-xs text-gray-600 dark:text-gray-400">Years</p>
+                                            <p class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ user.membership_years }}</p>
+                                            <p class="text-xs text-gray-600 dark:text-gray-400">{{ user.membership_years === 1 ? 'Year' : 'Years' }}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -91,15 +136,18 @@ const navigateToProfile = () => {
                                     <div class="space-y-3">
                                         <div class="flex items-center">
                                             <span class="text-gray-500 dark:text-gray-400 text-sm w-5">📧</span>
-                                            <span class="text-sm text-gray-900 dark:text-gray-100 ml-3">john.doe@email.com</span>
+                                            <span class="text-sm text-gray-900 dark:text-gray-100 ml-3">{{ user.email }}</span>
                                         </div>
                                         <div class="flex items-center">
                                             <span class="text-gray-500 dark:text-gray-400 text-sm w-5">📱</span>
-                                            <span class="text-sm text-gray-900 dark:text-gray-100 ml-3">+1 (555) 123-4567</span>
+                                            <span v-if="user.phone" class="text-sm text-gray-900 dark:text-gray-100 ml-3">{{ user.phone }}</span>
+                                            <Link v-else :href="contactSettingsLink" class="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 ml-3">
+                                                Add phone number
+                                            </Link>
                                         </div>
                                         <div class="flex items-center">
                                             <span class="text-gray-500 dark:text-gray-400 text-sm w-5">📅</span>
-                                            <span class="text-sm text-gray-900 dark:text-gray-100 ml-3">Member since 2020</span>
+                                            <span class="text-sm text-gray-900 dark:text-gray-100 ml-3">Member since {{ memberSinceFormatted }}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -107,29 +155,46 @@ const navigateToProfile = () => {
                                 <!-- Address Information -->
                                 <div>
                                     <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-3">Address</h4>
-                                    <div class="flex items-start">
+                                    <div v-if="user.has_complete_address" class="flex items-start">
                                         <span class="text-gray-500 dark:text-gray-400 text-sm w-5 mt-0.5">🏠</span>
                                         <div class="ml-3">
-                                            <p class="text-sm text-gray-900 dark:text-gray-100">123 Pet Lover's Lane</p>
-                                            <p class="text-sm text-gray-900 dark:text-gray-100">Apartment 4B</p>
-                                            <p class="text-sm text-gray-600 dark:text-gray-400">Happy Valley, CA 90210</p>
-                                            <p class="text-sm text-gray-600 dark:text-gray-400">United States</p>
+                                            <p class="text-sm text-gray-900 dark:text-gray-100">{{ user.address_line_1 }}</p>
+                                            <p v-if="user.address_line_2" class="text-sm text-gray-900 dark:text-gray-100">{{ user.address_line_2 }}</p>
+                                            <p class="text-sm text-gray-600 dark:text-gray-400">{{ user.city }}, {{ user.state }} {{ user.postal_code }}</p>
+                                            <p class="text-sm text-gray-600 dark:text-gray-400">{{ user.country }}</p>
                                         </div>
+                                    </div>
+                                    <div v-else class="flex items-center">
+                                        <span class="text-gray-500 dark:text-gray-400 text-sm w-5">🏠</span>
+                                        <Link :href="addressSettingsLink" class="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 ml-3">
+                                            Add address
+                                        </Link>
                                     </div>
                                 </div>
                                 
                                 <!-- Emergency Contact -->
                                 <div>
                                     <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-3">Emergency Contact</h4>
-                                    <div class="space-y-2">
+                                    <div v-if="user.has_emergency_contact" class="space-y-2">
                                         <div class="flex items-center">
                                             <span class="text-gray-500 dark:text-gray-400 text-sm w-5">👤</span>
-                                            <span class="text-sm text-gray-900 dark:text-gray-100 ml-3">Jane Doe (Spouse)</span>
+                                            <span class="text-sm text-gray-900 dark:text-gray-100 ml-3">
+                                                {{ user.emergency_contact_name }}
+                                                <span v-if="user.emergency_contact_relationship" class="text-gray-500 dark:text-gray-400">
+                                                    ({{ user.emergency_contact_relationship }})
+                                                </span>
+                                            </span>
                                         </div>
                                         <div class="flex items-center">
                                             <span class="text-gray-500 dark:text-gray-400 text-sm w-5">📞</span>
-                                            <span class="text-sm text-gray-900 dark:text-gray-100 ml-3">+1 (555) 987-6543</span>
+                                            <span class="text-sm text-gray-900 dark:text-gray-100 ml-3">{{ user.emergency_contact_phone }}</span>
                                         </div>
+                                    </div>
+                                    <div v-else class="flex items-center">
+                                        <span class="text-gray-500 dark:text-gray-400 text-sm w-5">👤</span>
+                                        <Link :href="contactSettingsLink" class="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 ml-3">
+                                            Add emergency contact
+                                        </Link>
                                     </div>
                                 </div>
                                 
@@ -138,16 +203,18 @@ const navigateToProfile = () => {
                                     <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-3">Account Status</h4>
                                     <div class="space-y-2">
                                         <div class="flex items-center justify-between">
-                                            <span class="text-sm text-gray-600 dark:text-gray-400">Subscription</span>
-                                            <span class="text-sm font-medium text-green-600 dark:text-green-400">Active</span>
+                                            <span class="text-sm text-gray-600 dark:text-gray-400">Email Verified</span>
+                                            <span class="text-sm font-medium text-green-600 dark:text-green-400">
+                                                {{ user.email_verified_at ? 'Yes' : 'No' }}
+                                            </span>
                                         </div>
                                         <div class="flex items-center justify-between">
-                                            <span class="text-sm text-gray-600 dark:text-gray-400">Next Billing</span>
-                                            <span class="text-sm text-gray-900 dark:text-gray-100">Nov 15, 2025</span>
+                                            <span class="text-sm text-gray-600 dark:text-gray-400">Account Type</span>
+                                            <span class="text-sm text-gray-900 dark:text-gray-100">Member</span>
                                         </div>
                                         <div class="flex items-center justify-between">
                                             <span class="text-sm text-gray-600 dark:text-gray-400">Profile Completion</span>
-                                            <span class="text-sm text-gray-900 dark:text-gray-100">95%</span>
+                                            <span class="text-sm text-gray-900 dark:text-gray-100">{{ user.profile_completion_percentage }}%</span>
                                         </div>
                                     </div>
                                 </div>
@@ -177,7 +244,9 @@ const navigateToProfile = () => {
                     <!-- Footer -->
                     <div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-600 text-center">
                         <p class="text-xs text-gray-500 dark:text-gray-500">
-                            Profile last updated: Oct 15, 2025 • Account verified ✓
+                            Account created: {{ new Date(user.created_at).toLocaleDateString() }} • 
+                            <span v-if="user.email_verified_at" class="text-green-600 dark:text-green-400">Email verified ✓</span>
+                            <span v-else class="text-yellow-600 dark:text-yellow-400">Email not verified</span>
                         </p>
                     </div>
                 </div>

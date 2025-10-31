@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PWA Icon Generator</title>
 </head>
+
 <body>
     <canvas id="canvas192" width="192" height="192"></canvas>
     <canvas id="canvas512" width="512" height="512"></canvas>
@@ -20,75 +22,75 @@
         function generateIcon(size) {
             const canvas = document.getElementById(`canvas${size}`);
             const ctx = canvas.getContext('2d');
-            
+
             // Clear canvas
             ctx.clearRect(0, 0, size, size);
-            
+
             // Create gradient background
             const gradient = ctx.createLinearGradient(0, 0, size, size);
             gradient.addColorStop(0, '#3b82f6');
             gradient.addColorStop(1, '#1e40af');
-            
+
             // Background circle
             ctx.fillStyle = gradient;
             ctx.beginPath();
-            ctx.arc(size/2, size/2, size/2 - 8, 0, 2 * Math.PI);
+            ctx.arc(size / 2, size / 2, size / 2 - 8, 0, 2 * Math.PI);
             ctx.fill();
-            
+
             // White border
             ctx.strokeStyle = '#ffffff';
             ctx.lineWidth = 8;
             ctx.stroke();
-            
+
             // Draw paw
             ctx.fillStyle = '#ffffff';
-            
+
             // Main pad
             ctx.beginPath();
-            ctx.ellipse(size/2, size * 0.55, size * 0.07, size * 0.09, 0, 0, 2 * Math.PI);
+            ctx.ellipse(size / 2, size * 0.55, size * 0.07, size * 0.09, 0, 0, 2 * Math.PI);
             ctx.fill();
-            
+
             // Toe pads
             const padSize = size * 0.04;
             ctx.beginPath();
             ctx.arc(size * 0.43, size * 0.43, padSize, 0, 2 * Math.PI);
             ctx.fill();
-            
+
             ctx.beginPath();
-            ctx.arc(size/2, size * 0.39, padSize * 1.1, 0, 2 * Math.PI);
+            ctx.arc(size / 2, size * 0.39, padSize * 1.1, 0, 2 * Math.PI);
             ctx.fill();
-            
+
             ctx.beginPath();
             ctx.arc(size * 0.57, size * 0.43, padSize, 0, 2 * Math.PI);
             ctx.fill();
-            
+
             ctx.beginPath();
             ctx.arc(size * 0.625, size * 0.49, padSize * 0.9, 0, 2 * Math.PI);
             ctx.fill();
-            
+
             // Heart
             ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
             drawHeart(ctx, size * 0.23, size * 0.31, size * 0.03);
-            
+
             // Medical cross
             ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
             const crossSize = size * 0.08;
             const crossX = size * 0.75;
             const crossY = size * 0.66;
-            
+
             // Vertical bar
-            ctx.fillRect(crossX - crossSize/8, crossY - crossSize/2, crossSize/4, crossSize);
+            ctx.fillRect(crossX - crossSize / 8, crossY - crossSize / 2, crossSize / 4, crossSize);
             // Horizontal bar
-            ctx.fillRect(crossX - crossSize/2, crossY - crossSize/8, crossSize, crossSize/4);
-            
+            ctx.fillRect(crossX - crossSize / 2, crossY - crossSize / 8, crossSize, crossSize / 4);
+
             // Text
             ctx.fillStyle = '#ffffff';
             ctx.font = `bold ${size * 0.08}px Arial, sans-serif`;
             ctx.textAlign = 'center';
-            ctx.fillText('PetConnect', size/2, size * 0.82);
-            
+            ctx.fillText('PetConnect', size / 2, size * 0.82);
+
             // Create download link
-            canvas.toBlob(function(blob) {
+            canvas.toBlob(function (blob) {
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
@@ -99,19 +101,20 @@
                 document.getElementById('downloads').appendChild(a);
             });
         }
-        
+
         function drawHeart(ctx, x, y, size) {
             ctx.beginPath();
-            ctx.moveTo(x, y + size/2);
-            ctx.bezierCurveTo(x, y, x - size/2, y, x - size/2, y + size/4);
-            ctx.bezierCurveTo(x - size/2, y + size/2, x, y + size, x, y + size);
-            ctx.bezierCurveTo(x, y + size, x + size/2, y + size/2, x + size/2, y + size/4);
-            ctx.bezierCurveTo(x + size/2, y, x, y, x, y + size/2);
+            ctx.moveTo(x, y + size / 2);
+            ctx.bezierCurveTo(x, y, x - size / 2, y, x - size / 2, y + size / 4);
+            ctx.bezierCurveTo(x - size / 2, y + size / 2, x, y + size, x, y + size);
+            ctx.bezierCurveTo(x, y + size, x + size / 2, y + size / 2, x + size / 2, y + size / 4);
+            ctx.bezierCurveTo(x + size / 2, y, x, y, x, y + size / 2);
             ctx.fill();
         }
-        
+
         // Auto-generate on page load
         window.onload = generateIcons;
     </script>
 </body>
+
 </html>

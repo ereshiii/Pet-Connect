@@ -34,6 +34,10 @@ export interface User {
     email_verified_at: string | null;
     created_at: string;
     updated_at: string;
+    account_type: 'user' | 'clinic' | 'admin';
+    is_admin: boolean;
+    is_clinic: boolean;
+    is_user: boolean;
 }
 
 export type BreadcrumbItemType = BreadcrumbItem;

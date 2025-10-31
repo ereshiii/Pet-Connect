@@ -1,105 +1,63 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
-import { schedule, appointmentDetails } from '@/routes';
+import { schedule, appointmentDetails, appointmentsUpdate } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
-import { Head, router } from '@inertiajs/vue3';
-import { ref, computed, onMounted } from 'vue';
+import { Head, router, useForm } from '@inertiajs/vue3';
+import { ref, computed, watch } from 'vue';
 
-// Props from the route
-const props = defineProps<{
-    appointmentId?: string | number;
-}>();
-
-interface AppointmentData {
+// Types
+interface Pet {
     id: number;
-    petName: string;
-    petType: string;
-    petBreed: string;
-    appointmentType: string;
-    clinicName: string;
-    doctorName: string;
-    currentDate: string;
-    currentTime: string;
-    duration: string;
-    status: string;
-    address: string;
-    phoneNumber: string;
-    confirmationNumber: string;
+    name: string;
+    type: string;
+    breed: string;
 }
 
-// Same appointment database as AppointmentDetails for consistency
-const appointmentDatabase: Record<number, AppointmentData> = {
-    1: {
-        id: 1,
-        petName: "Bella",
-        petType: "Dog",
-        petBreed: "Golden Retriever",
-        appointmentType: "Annual Checkup",
-        clinicName: "Happy Paws Veterinary",
-        doctorName: "Dr. Sarah Johnson",
-        currentDate: "October 27, 2025",
-        currentTime: "2:30 PM",
-        duration: "60 minutes",
-        status: "Confirmed",
-        address: "789 Elm Street, Westside",
-        phoneNumber: "(555) 123-4567",
-        confirmationNumber: "APT-2025-001"
-    },
-    2: {
-        id: 2,
-        petName: "Max",
-        petType: "Dog",
-        petBreed: "German Shepherd",
-        appointmentType: "Vaccination",
-        clinicName: "Animal Hospital Plus",
-        doctorName: "Dr. Michael Chen",
-        currentDate: "November 3, 2025",
-        currentTime: "10:00 AM",
-        duration: "30 minutes",
-        status: "Pending",
-        address: "456 Oak Avenue, Downtown",
-        phoneNumber: "(555) 987-6543",
-        confirmationNumber: "APT-2025-002"
-    },
-    3: {
-        id: 3,
-        petName: "Luna",
-        petType: "Cat",
-        petBreed: "Siamese",
-        appointmentType: "Dental Cleaning",
-        clinicName: "Pet Care Veterinary Clinic",
-        doctorName: "Dr. Emily Rodriguez",
-        currentDate: "November 10, 2025",
-        currentTime: "2:00 PM",
-        duration: "90 minutes",
-        status: "Scheduled",
-        address: "123 Main Street, City Center",
-        phoneNumber: "(555) 234-5678",
-        confirmationNumber: "APT-2025-003"
-    },
-    4: {
-        id: 4,
-        petName: "Charlie",
-        petType: "Dog",
-        petBreed: "Labrador Mix",
-        appointmentType: "Follow-up",
-        clinicName: "Happy Paws Veterinary",
-        doctorName: "Dr. Sarah Johnson",
-        currentDate: "November 15, 2025",
-        currentTime: "11:30 AM",
-        duration: "45 minutes",
-        status: "Confirmed",
-        address: "789 Elm Street, Westside",
-        phoneNumber: "(555) 123-4567",
-        confirmationNumber: "APT-2025-004"
-    }
-};
+interface Clinic {
+    id: number;
+    name: string;
+    address: string;
+    phone: string;
+    clinic_services: ClinicService[];
+}
 
-// Get appointment data based on ID
-const appointment = computed(() => {
-    const id = Number(props.appointmentId) || 1;
-    return appointmentDatabase[id] || appointmentDatabase[1];
-});
+interface ClinicService {
+    id: number;
+    name: string;
+    cost: number;
+    clinic_id: number;
+}
+
+interface User {
+    id: number;
+    name: string;
+}
+
+interface Appointment {
+    id: number;
+    pet: Pet;
+    clinic: Clinic;
+    service?: ClinicService;
+    veterinarian?: User;
+    scheduled_at: string;
+    duration_minutes: number;
+    type: string;
+    priority: string;
+    reason: string;
+    notes?: string;
+    special_instructions?: string;
+    status: string;
+}
+
+// Props from the route
+interface Props {
+    appointment: Appointment;
+    pets: Pet[];
+    clinics: Clinic[];
+    services: ClinicService[];
+}
+
+const props = defineProps<Props>();
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -108,7 +66,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
     {
         title: 'Appointment Details',
-        href: appointmentDetails(props.appointmentId || 1).url,
+        href: appointmentDetails(props.appointment.id).url,
     },
     {
         title: 'Reschedule',
@@ -116,53 +74,119 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-// Form data
-const selectedDate = ref('');
-const selectedTime = ref('');
-const selectedDoctor = ref(appointment.value.doctorName);
-const reason = ref('');
-const preferredContactMethod = ref('email');
+// Parse current appointment date and time
+const currentScheduledAt = new Date(props.appointment.scheduled_at);
 
-// Available time slots
-const timeSlots = ref([
+// Form setup using Inertia useForm
+const form = useForm({
+    pet_id: props.appointment.pet.id,
+    clinic_id: props.appointment.clinic.id,
+    service_id: props.appointment.service?.id || '',
+    veterinarian_id: props.appointment.veterinarian?.id || '',
+    preferred_date: currentScheduledAt.toISOString().split('T')[0],
+    preferred_time: currentScheduledAt.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+    }),
+    duration_minutes: props.appointment.duration_minutes,
+    type: props.appointment.type,
+    priority: props.appointment.priority,
+    reason: props.appointment.reason,
+    notes: props.appointment.notes || '',
+    special_instructions: props.appointment.special_instructions || '',
+    contact_phone: '', // User needs to provide this
+});
+
+// Reactive data
+const selectedClinic = ref<Clinic | null>(props.appointment.clinic);
+const availableServices = ref<ClinicService[]>(props.appointment.clinic.clinic_services || []);
+
+// Available time slots - working hours 9 AM to 5 PM
+const timeSlots = [
     '9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM',
-    '1:00 PM', '1:30 PM', '2:00 PM', '2:30 PM', '3:00 PM', '3:30 PM', '4:00 PM'
-]);
+    '12:00 PM', '12:30 PM', '1:00 PM', '1:30 PM', '2:00 PM', '2:30 PM',
+    '3:00 PM', '3:30 PM', '4:00 PM', '4:30 PM'
+];
 
-// Available doctors
-const doctors = ref([
-    'Dr. Sarah Johnson',
-    'Dr. Michael Chen', 
-    'Dr. Emily Rodriguez',
-    'Dr. David Kim',
-    'Dr. Lisa Martinez'
-]);
+// Appointment types
+const appointmentTypes = [
+    { value: 'consultation', label: 'Consultation' },
+    { value: 'vaccination', label: 'Vaccination' },
+    { value: 'surgery', label: 'Surgery Consultation' },
+    { value: 'emergency', label: 'Emergency' },
+    { value: 'follow_up', label: 'Follow-up' },
+    { value: 'grooming', label: 'Grooming' },
+    { value: 'other', label: 'Other' },
+];
 
-// Loading states
-const isSubmitting = ref(false);
-const availableSlots = ref<string[]>([]);
-const isLoadingSlots = ref(false);
+// Priority levels
+const priorityLevels = [
+    { value: 'low', label: 'Low' },
+    { value: 'normal', label: 'Normal' },
+    { value: 'high', label: 'High' },
+    { value: 'urgent', label: 'Urgent' },
+];
 
-// Form validation
-const errors = ref<Record<string, string>>({});
+// Duration options
+const durationOptions = [
+    { value: 15, label: '15 minutes' },
+    { value: 30, label: '30 minutes' },
+    { value: 45, label: '45 minutes' },
+    { value: 60, label: '1 hour' },
+    { value: 90, label: '1.5 hours' },
+    { value: 120, label: '2 hours' },
+];
 
-const validateForm = () => {
-    errors.value = {};
-    
-    if (!selectedDate.value) {
-        errors.value.date = 'Please select a date';
+// Computed properties
+const minDate = computed(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+});
+
+const maxDate = computed(() => {
+    const sixMonthsFromNow = new Date();
+    sixMonthsFromNow.setMonth(sixMonthsFromNow.getMonth() + 6);
+    return sixMonthsFromNow.toISOString().split('T')[0];
+});
+
+const selectedService = computed(() => {
+    return availableServices.value.find(service => service.id.toString() === form.service_id.toString());
+});
+
+const currentFormattedDate = computed(() => {
+    return currentScheduledAt.toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+});
+
+const currentFormattedTime = computed(() => {
+    return currentScheduledAt.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+    });
+});
+
+// Watch for clinic changes to update available services
+watch(() => form.clinic_id, (newClinicId) => {
+    if (newClinicId) {
+        const clinic = props.clinics.find(c => c.id.toString() === newClinicId.toString());
+        selectedClinic.value = clinic || null;
+        availableServices.value = clinic?.clinic_services || [];
+        // Reset service if it's not available in the new clinic
+        if (form.service_id && !availableServices.value.find(s => s.id.toString() === form.service_id.toString())) {
+            form.service_id = '';
+        }
+    } else {
+        selectedClinic.value = null;
+        availableServices.value = [];
+        form.service_id = '';
     }
-    
-    if (!selectedTime.value) {
-        errors.value.time = 'Please select a time';
-    }
-    
-    if (!selectedDoctor.value) {
-        errors.value.doctor = 'Please select a doctor';
-    }
-    
-    return Object.keys(errors.value).length === 0;
-};
+});
 
 // Methods
 const goBack = () => {
@@ -170,43 +194,19 @@ const goBack = () => {
 };
 
 const goToAppointmentDetails = () => {
-    router.visit(appointmentDetails(appointment.value.id).url);
+    router.visit(appointmentDetails(props.appointment.id).url);
 };
 
-const loadAvailableSlots = async () => {
-    if (!selectedDate.value) return;
-    
-    isLoadingSlots.value = true;
-    
-    // Simulate API call
-    setTimeout(() => {
-        // Filter out some slots to simulate real availability
-        availableSlots.value = timeSlots.value.filter((_, index) => 
-            Math.random() > 0.3 // Randomly make some slots unavailable
-        );
-        isLoadingSlots.value = false;
-    }, 500);
-};
-
-const submitReschedule = async () => {
-    if (!validateForm()) return;
-    
-    isSubmitting.value = true;
-    
-    try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // Show success message and redirect
-        alert(`Appointment successfully rescheduled for ${selectedDate.value} at ${selectedTime.value}`);
-        goToAppointmentDetails();
-        
-    } catch (error) {
-        console.error('Error rescheduling appointment:', error);
-        alert('There was an error rescheduling your appointment. Please try again.');
-    } finally {
-        isSubmitting.value = false;
-    }
+const submitReschedule = () => {
+    form.put(appointmentsUpdate(props.appointment.id).url, {
+        onSuccess: () => {
+            // Redirect to appointment details or schedule page
+            router.visit(appointmentDetails(props.appointment.id).url);
+        },
+        onError: (errors) => {
+            console.error('Reschedule errors:', errors);
+        }
+    });
 };
 
 const formatDate = (dateStr: string) => {
@@ -218,23 +218,6 @@ const formatDate = (dateStr: string) => {
         day: 'numeric' 
     });
 };
-
-// Watch for date changes to load available slots
-const watchDate = () => {
-    if (selectedDate.value) {
-        loadAvailableSlots();
-    }
-};
-
-onMounted(() => {
-    // Set minimum date to today
-    const today = new Date();
-    const minDate = today.toISOString().split('T')[0];
-    const dateInput = document.querySelector('input[type="date"]') as HTMLInputElement;
-    if (dateInput) {
-        dateInput.min = minDate;
-    }
-});
 </script>
 
 <template>
@@ -265,18 +248,24 @@ onMounted(() => {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                         <div>
                             <p class="text-blue-700 dark:text-blue-300">
-                                <span class="font-medium">Pet:</span> {{ appointment.petName }} ({{ appointment.petBreed }})
+                                <span class="font-medium">Pet:</span> {{ props.appointment.pet.name }} ({{ props.appointment.pet.type }} - {{ props.appointment.pet.breed }})
                             </p>
                             <p class="text-blue-700 dark:text-blue-300">
-                                <span class="font-medium">Type:</span> {{ appointment.appointmentType }}
+                                <span class="font-medium">Type:</span> {{ appointmentTypes.find(t => t.value === props.appointment.type)?.label }}
+                            </p>
+                            <p v-if="props.appointment.service" class="text-blue-700 dark:text-blue-300">
+                                <span class="font-medium">Service:</span> {{ props.appointment.service.name }} - ${{ props.appointment.service.cost }}
                             </p>
                         </div>
                         <div>
                             <p class="text-blue-700 dark:text-blue-300">
-                                <span class="font-medium">Date & Time:</span> {{ appointment.currentDate }} at {{ appointment.currentTime }}
+                                <span class="font-medium">Date & Time:</span> {{ currentFormattedDate }} at {{ currentFormattedTime }}
                             </p>
                             <p class="text-blue-700 dark:text-blue-300">
-                                <span class="font-medium">Doctor:</span> {{ appointment.doctorName }}
+                                <span class="font-medium">Clinic:</span> {{ props.appointment.clinic.name }}
+                            </p>
+                            <p v-if="props.appointment.veterinarian" class="text-blue-700 dark:text-blue-300">
+                                <span class="font-medium">Veterinarian:</span> {{ props.appointment.veterinarian.name }}
                             </p>
                         </div>
                     </div>
@@ -291,118 +280,158 @@ onMounted(() => {
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <!-- Left Column -->
                         <div class="space-y-4">
+                            <!-- Pet Selection -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Pet *
+                                </label>
+                                <select 
+                                    v-model="form.pet_id"
+                                    :class="[
+                                        'w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+                                        form.errors.pet_id ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600',
+                                        'dark:bg-gray-700 dark:text-gray-200'
+                                    ]"
+                                >
+                                    <option v-for="pet in props.pets" :key="pet.id" :value="pet.id">
+                                        {{ pet.name }} ({{ pet.type }} - {{ pet.breed }})
+                                    </option>
+                                </select>
+                                <p v-if="form.errors.pet_id" class="mt-1 text-sm text-red-600 dark:text-red-400">
+                                    {{ form.errors.pet_id }}
+                                </p>
+                            </div>
+
+                            <!-- Clinic Selection -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Clinic *
+                                </label>
+                                <select 
+                                    v-model="form.clinic_id"
+                                    :class="[
+                                        'w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+                                        form.errors.clinic_id ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600',
+                                        'dark:bg-gray-700 dark:text-gray-200'
+                                    ]"
+                                >
+                                    <option v-for="clinic in props.clinics" :key="clinic.id" :value="clinic.id">
+                                        {{ clinic.name }}
+                                    </option>
+                                </select>
+                                <p v-if="form.errors.clinic_id" class="mt-1 text-sm text-red-600 dark:text-red-400">
+                                    {{ form.errors.clinic_id }}
+                                </p>
+                            </div>
+
+                            <!-- Service Selection -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Service (Optional)
+                                </label>
+                                <select 
+                                    v-model="form.service_id"
+                                    :disabled="!selectedClinic"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 disabled:opacity-50"
+                                >
+                                    <option value="">No service selected</option>
+                                    <option v-for="service in availableServices" :key="service.id" :value="service.id">
+                                        {{ service.name }} - ${{ service.cost }}
+                                    </option>
+                                </select>
+                                <p v-if="form.errors.service_id" class="mt-1 text-sm text-red-600 dark:text-red-400">
+                                    {{ form.errors.service_id }}
+                                </p>
+                            </div>
+
+                            <!-- Appointment Type -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Appointment Type *
+                                </label>
+                                <select 
+                                    v-model="form.type"
+                                    :class="[
+                                        'w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+                                        form.errors.type ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600',
+                                        'dark:bg-gray-700 dark:text-gray-200'
+                                    ]"
+                                >
+                                    <option v-for="type in appointmentTypes" :key="type.value" :value="type.value">
+                                        {{ type.label }}
+                                    </option>
+                                </select>
+                                <p v-if="form.errors.type" class="mt-1 text-sm text-red-600 dark:text-red-400">
+                                    {{ form.errors.type }}
+                                </p>
+                            </div>
+
+                            <!-- Priority -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Priority *
+                                </label>
+                                <select 
+                                    v-model="form.priority"
+                                    :class="[
+                                        'w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+                                        form.errors.priority ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600',
+                                        'dark:bg-gray-700 dark:text-gray-200'
+                                    ]"
+                                >
+                                    <option v-for="priority in priorityLevels" :key="priority.value" :value="priority.value">
+                                        {{ priority.label }}
+                                    </option>
+                                </select>
+                                <p v-if="form.errors.priority" class="mt-1 text-sm text-red-600 dark:text-red-400">
+                                    {{ form.errors.priority }}
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Right Column -->
+                        <div class="space-y-4">
                             <!-- Date Selection -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                     New Date *
                                 </label>
                                 <input 
-                                    v-model="selectedDate"
-                                    @change="watchDate"
+                                    v-model="form.preferred_date"
                                     type="date" 
+                                    :min="minDate"
+                                    :max="maxDate"
                                     :class="[
                                         'w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
-                                        errors.date ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600',
+                                        form.errors.scheduled_at || form.errors.preferred_date ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600',
                                         'dark:bg-gray-700 dark:text-gray-200'
                                     ]"
                                 />
-                                <p v-if="errors.date" class="mt-1 text-sm text-red-600 dark:text-red-400">
-                                    {{ errors.date }}
+                                <p v-if="form.errors.scheduled_at || form.errors.preferred_date" class="mt-1 text-sm text-red-600 dark:text-red-400">
+                                    {{ form.errors.scheduled_at || form.errors.preferred_date }}
                                 </p>
-                                <p v-if="selectedDate" class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                                    {{ formatDate(selectedDate) }}
+                                <p v-if="form.preferred_date" class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                                    {{ formatDate(form.preferred_date) }}
                                 </p>
-                            </div>
-
-                            <!-- Doctor Selection -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Preferred Doctor *
-                                </label>
-                                <select 
-                                    v-model="selectedDoctor"
-                                    :class="[
-                                        'w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
-                                        errors.doctor ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600',
-                                        'dark:bg-gray-700 dark:text-gray-200'
-                                    ]"
-                                >
-                                    <option value="">Select a doctor</option>
-                                    <option v-for="doctor in doctors" :key="doctor" :value="doctor">
-                                        {{ doctor }}
-                                    </option>
-                                </select>
-                                <p v-if="errors.doctor" class="mt-1 text-sm text-red-600 dark:text-red-400">
-                                    {{ errors.doctor }}
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                    Appointments available Monday-Friday, 9 AM - 5 PM
                                 </p>
                             </div>
 
-                            <!-- Contact Method -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Preferred Contact Method
-                                </label>
-                                <div class="space-y-2">
-                                    <label class="flex items-center">
-                                        <input 
-                                            v-model="preferredContactMethod" 
-                                            type="radio" 
-                                            value="email" 
-                                            class="text-blue-600 focus:ring-blue-500"
-                                        />
-                                        <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Email</span>
-                                    </label>
-                                    <label class="flex items-center">
-                                        <input 
-                                            v-model="preferredContactMethod" 
-                                            type="radio" 
-                                            value="phone" 
-                                            class="text-blue-600 focus:ring-blue-500"
-                                        />
-                                        <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Phone</span>
-                                    </label>
-                                    <label class="flex items-center">
-                                        <input 
-                                            v-model="preferredContactMethod" 
-                                            type="radio" 
-                                            value="sms" 
-                                            class="text-blue-600 focus:ring-blue-500"
-                                        />
-                                        <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">SMS</span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Right Column -->
-                        <div class="space-y-4">
                             <!-- Time Selection -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Available Times *
+                                    New Time *
                                 </label>
-                                
-                                <div v-if="!selectedDate" class="text-sm text-gray-500 dark:text-gray-400 p-4 bg-gray-50 dark:bg-gray-700 rounded-md">
-                                    Please select a date first to see available times
-                                </div>
-                                
-                                <div v-else-if="isLoadingSlots" class="text-sm text-gray-500 dark:text-gray-400 p-4 bg-gray-50 dark:bg-gray-700 rounded-md">
-                                    Loading available times...
-                                </div>
-                                
-                                <div v-else-if="availableSlots.length === 0" class="text-sm text-gray-500 dark:text-gray-400 p-4 bg-gray-50 dark:bg-gray-700 rounded-md">
-                                    No available times for this date. Please select another date.
-                                </div>
-                                
-                                <div v-else class="grid grid-cols-3 gap-2">
+                                <div class="grid grid-cols-3 gap-2">
                                     <button
-                                        v-for="time in availableSlots"
+                                        v-for="time in timeSlots"
                                         :key="time"
                                         type="button"
-                                        @click="selectedTime = time"
+                                        @click="form.preferred_time = time"
                                         :class="[
                                             'px-3 py-2 text-sm border rounded-md transition-colors',
-                                            selectedTime === time 
+                                            form.preferred_time === time 
                                                 ? 'bg-blue-600 text-white border-blue-600' 
                                                 : 'border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700'
                                         ]"
@@ -410,35 +439,115 @@ onMounted(() => {
                                         {{ time }}
                                     </button>
                                 </div>
-                                
-                                <p v-if="errors.time" class="mt-1 text-sm text-red-600 dark:text-red-400">
-                                    {{ errors.time }}
+                                <p v-if="form.errors.scheduled_at || form.errors.preferred_time" class="mt-1 text-sm text-red-600 dark:text-red-400">
+                                    {{ form.errors.scheduled_at || form.errors.preferred_time }}
                                 </p>
                             </div>
 
-                            <!-- Reason -->
+                            <!-- Duration -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Reason for Rescheduling (Optional)
+                                    Duration
                                 </label>
-                                <textarea 
-                                    v-model="reason"
-                                    rows="4" 
+                                <select 
+                                    v-model="form.duration_minutes"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
-                                    placeholder="Let us know why you need to reschedule..."
-                                ></textarea>
+                                >
+                                    <option v-for="duration in durationOptions" :key="duration.value" :value="duration.value">
+                                        {{ duration.label }}
+                                    </option>
+                                </select>
+                                <p v-if="form.errors.duration_minutes" class="mt-1 text-sm text-red-600 dark:text-red-400">
+                                    {{ form.errors.duration_minutes }}
+                                </p>
+                            </div>
+
+                            <!-- Contact Phone -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Contact Phone *
+                                </label>
+                                <input 
+                                    v-model="form.contact_phone"
+                                    type="tel" 
+                                    :class="[
+                                        'w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+                                        form.errors.contact_phone ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600',
+                                        'dark:bg-gray-700 dark:text-gray-200'
+                                    ]"
+                                    placeholder="(555) 123-4567"
+                                />
+                                <p v-if="form.errors.contact_phone" class="mt-1 text-sm text-red-600 dark:text-red-400">
+                                    {{ form.errors.contact_phone }}
+                                </p>
                             </div>
                         </div>
                     </div>
 
+                    <!-- Reason for Rescheduling -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Reason for Visit *
+                        </label>
+                        <textarea 
+                            v-model="form.reason"
+                            rows="3"
+                            :class="[
+                                'w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+                                form.errors.reason ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600',
+                                'dark:bg-gray-700 dark:text-gray-200'
+                            ]"
+                            placeholder="Please describe the reason for your visit..."
+                        ></textarea>
+                        <p v-if="form.errors.reason" class="mt-1 text-sm text-red-600 dark:text-red-400">
+                            {{ form.errors.reason }}
+                        </p>
+                    </div>
+
+                    <!-- Additional Notes -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Additional Notes
+                            </label>
+                            <textarea 
+                                v-model="form.notes"
+                                rows="3" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+                                placeholder="Any additional information..."
+                            ></textarea>
+                            <p v-if="form.errors.notes" class="mt-1 text-sm text-red-600 dark:text-red-400">
+                                {{ form.errors.notes }}
+                            </p>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Special Instructions
+                            </label>
+                            <textarea 
+                                v-model="form.special_instructions"
+                                rows="3" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+                                placeholder="Any special handling instructions for your pet..."
+                            ></textarea>
+                            <p v-if="form.errors.special_instructions" class="mt-1 text-sm text-red-600 dark:text-red-400">
+                                {{ form.errors.special_instructions }}
+                            </p>
+                        </div>
+                    </div>
+
                     <!-- Summary -->
-                    <div v-if="selectedDate && selectedTime" class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-                        <h4 class="font-medium text-green-900 dark:text-green-100 mb-2">New Appointment Summary</h4>
-                        <div class="text-sm text-green-700 dark:text-green-300">
-                            <p><span class="font-medium">Date:</span> {{ formatDate(selectedDate) }}</p>
-                            <p><span class="font-medium">Time:</span> {{ selectedTime }}</p>
-                            <p><span class="font-medium">Doctor:</span> {{ selectedDoctor }}</p>
-                            <p><span class="font-medium">Duration:</span> {{ appointment.duration }}</p>
+                    <div v-if="form.preferred_date && form.preferred_time" class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                        <h4 class="font-medium text-green-900 dark:text-green-100 mb-2">Updated Appointment Summary</h4>
+                        <div class="text-sm text-green-700 dark:text-green-300 space-y-1">
+                            <p><span class="font-medium">Pet:</span> {{ props.appointment.pet.name }} ({{ props.appointment.pet.type }} - {{ props.appointment.pet.breed }})</p>
+                            <p><span class="font-medium">Clinic:</span> {{ selectedClinic?.name }}</p>
+                            <p v-if="selectedService"><span class="font-medium">Service:</span> {{ selectedService.name }} - ${{ selectedService.cost }}</p>
+                            <p><span class="font-medium">Type:</span> {{ appointmentTypes.find(t => t.value === form.type)?.label }}</p>
+                            <p><span class="font-medium">Priority:</span> {{ priorityLevels.find(p => p.value === form.priority)?.label }}</p>
+                            <p><span class="font-medium">Date & Time:</span> {{ formatDate(form.preferred_date) }} at {{ form.preferred_time }}</p>
+                            <p><span class="font-medium">Duration:</span> {{ durationOptions.find(d => d.value === form.duration_minutes)?.label }}</p>
                         </div>
                     </div>
 
@@ -446,20 +555,21 @@ onMounted(() => {
                     <div class="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-600">
                         <button 
                             type="submit"
-                            :disabled="isSubmitting"
+                            :disabled="form.processing"
                             :class="[
                                 'px-6 py-2 rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
-                                isSubmitting 
+                                form.processing 
                                     ? 'bg-gray-400 text-gray-700 cursor-not-allowed' 
                                     : 'bg-blue-600 text-white hover:bg-blue-700'
                             ]"
                         >
-                            {{ isSubmitting ? 'Rescheduling...' : 'Confirm Reschedule' }}
+                            {{ form.processing ? 'Rescheduling...' : 'Confirm Reschedule' }}
                         </button>
                         <button 
                             type="button"
                             @click="goBack"
-                            class="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm font-medium dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                            :disabled="form.processing"
+                            class="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm font-medium dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 disabled:opacity-50"
                         >
                             Cancel
                         </button>

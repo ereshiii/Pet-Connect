@@ -299,8 +299,8 @@ const handleEventClick = (event: CalendarEvent, e: Event) => {
 
 const getDateRange = (start: string, end: string): string[] => {
     const dates = [];
-    const startDate = parseDate(start);
-    const endDate = parseDate(end);
+    let startDate = parseDate(start);
+    let endDate = parseDate(end);
     
     if (startDate > endDate) {
         [startDate, endDate] = [endDate, startDate];

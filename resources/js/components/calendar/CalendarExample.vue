@@ -1,107 +1,153 @@
 <script setup lang="ts">
-import Calendar from './calendar.vue';
+import VueCalComponent from './VueCalComponent.vue';
 import { ref } from 'vue';
 
-// Example usage of the calendar component
+// Example usage of the new vue-cal calendar component
 const calendarRef = ref();
 
-// Sample events data
+// Sample events data in vue-cal format
 const sampleEvents = ref([
     {
         id: 1,
         title: 'Bella - Checkup',
-        date: '2025-10-27',
-        time: '2:30 PM',
-        type: 'appointment',
-        status: 'confirmed',
-        description: 'Annual health checkup'
+        start: new Date('2025-10-27T14:30:00'),
+        end: new Date('2025-10-27T15:00:00'),
+        content: 'Annual health checkup',
+        class: 'vuecal__event--confirmed',
+        background: false,
+        allDay: false,
+        deletable: true,
+        resizable: true,
+        editable: true,
     },
     {
         id: 2,
         title: 'Max - Vaccination',
-        date: '2025-11-03',
-        time: '10:00 AM',
-        type: 'appointment',
-        status: 'pending',
-        description: 'DHPP and Rabies shots'
+        start: new Date('2025-11-03T10:00:00'),
+        end: new Date('2025-11-03T10:30:00'),
+        content: 'DHPP and Rabies shots',
+        class: 'vuecal__event--pending',
+        background: false,
+        allDay: false,
+        deletable: true,
+        resizable: true,
+        editable: true,
     },
     {
         id: 3,
         title: 'Luna - Dental',
-        date: '2025-11-10',
-        time: '2:00 PM',
-        type: 'appointment',
-        status: 'confirmed',
-        description: 'Dental cleaning procedure'
+        start: new Date('2025-11-10T14:00:00'),
+        end: new Date('2025-11-10T15:30:00'),
+        content: 'Dental cleaning procedure',
+        class: 'vuecal__event--confirmed',
+        background: false,
+        allDay: false,
+        deletable: true,
+        resizable: true,
+        editable: true,
     },
     {
         id: 4,
         title: 'Staff Meeting',
-        date: '2025-10-30',
-        time: '9:00 AM',
-        type: 'event',
-        color: 'bg-purple-500',
-        description: 'Monthly veterinary staff meeting'
+        start: new Date('2025-10-30T09:00:00'),
+        end: new Date('2025-10-30T10:00:00'),
+        content: 'Monthly veterinary staff meeting',
+        class: 'vuecal__event--reminder',
+        background: false,
+        allDay: false,
+        deletable: false,
+        resizable: false,
+        editable: false,
     },
     {
         id: 5,
-        title: 'Holiday',
-        date: '2025-11-11',
-        type: 'holiday',
-        description: 'Veterans Day - Clinic Closed'
+        title: 'Holiday - Veterans Day',
+        start: new Date('2025-11-11'),
+        end: new Date('2025-11-11'),
+        content: 'Clinic Closed',
+        class: 'vuecal__event--holiday',
+        background: true,
+        allDay: true,
+        deletable: false,
+        resizable: false,
+        editable: false,
     },
     {
         id: 6,
-        title: 'Reminder',
-        date: '2025-11-15',
-        type: 'reminder',
-        description: 'Order monthly supplies'
+        title: 'Supply Order Reminder',
+        start: new Date('2025-11-15T09:00:00'),
+        end: new Date('2025-11-15T09:15:00'),
+        content: 'Order monthly supplies',
+        class: 'vuecal__event--reminder',
+        background: false,
+        allDay: false,
+        deletable: true,
+        resizable: false,
+        editable: true,
     }
 ]);
 
 // Calendar configuration
-const calendarConfig = ref({
-    showWeekNumbers: false,
-    showWeekends: true,
-    highlightToday: true,
-    highlightWeekends: true,
-    selectable: true,
-    selectMode: 'single',
-    showEvents: true,
-    maxEventsPerDay: 3,
-    size: 'medium',
-    theme: 'default',
-    minDate: '2025-10-01',
-    maxDate: '2026-12-31',
-    disabledDaysOfWeek: [], // Could disable Sundays: [0]
-});
+const currentView = ref('month');
+const selectedDate = ref(new Date());
 
 // Event handlers
-const handleDateSelect = (date: string) => {
-    console.log('Date selected:', date);
-};
-
-const handleEventClick = (event: any) => {
+const handleEventClick = (event: any, e: Event) => {
     console.log('Event clicked:', event);
     // You could open a modal, navigate to details, etc.
 };
 
-const handleMonthChange = (year: number, month: number) => {
-    console.log('Month changed:', year, month);
-    // Load events for new month, etc.
+const handleCellClick = (date: Date, e: Event) => {
+    console.log('Date selected:', date.toISOString().split('T')[0]);
+    selectedDate.value = date;
+};
+
+const handleViewChange = (view: any) => {
+    console.log('View changed:', view);
+    currentView.value = view.id;
+};
+
+const handleEventDrop = (event: any, e: Event) => {
+    console.log('Event moved:', event);
+};
+
+const handleEventResize = (event: any, e: Event) => {
+    console.log('Event resized:', event);
 };
 
 // Utility methods
-const clearSelection = () => {
-    calendarRef.value?.clearSelection();
-};
-
 const goToToday = () => {
     calendarRef.value?.goToToday();
 };
 
-const getSelectedDates = () => {
-    return calendarRef.value?.getSelectedDates() || [];
+const switchToWeek = () => {
+    calendarRef.value?.switchView('week');
+};
+
+const switchToMonth = () => {
+    calendarRef.value?.switchView('month');
+};
+
+const switchToDay = () => {
+    calendarRef.value?.switchView('day');
+};
+
+const addSampleEvent = () => {
+    const newEvent = {
+        id: Date.now(),
+        title: 'New Appointment',
+        start: new Date(),
+        end: new Date(Date.now() + 30 * 60000), // 30 minutes later
+        content: 'Sample new appointment',
+        class: 'vuecal__event--pending',
+        background: false,
+        allDay: false,
+        deletable: true,
+        resizable: true,
+        editable: true,
+    };
+    
+    sampleEvents.value.push(newEvent);
 };
 </script>
 
@@ -109,10 +155,10 @@ const getSelectedDates = () => {
     <div class="p-6 space-y-6">
         <div class="text-center">
             <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-                PetConnect Calendar Component
+                PetConnect Vue-Cal Calendar Component
             </h1>
             <p class="text-gray-600 dark:text-gray-400">
-                Reusable calendar component for appointments, events, and scheduling
+                Professional calendar component powered by Vue-Cal for appointments, events, and scheduling
             </p>
         </div>
 
@@ -122,101 +168,72 @@ const getSelectedDates = () => {
                     class="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm">
                 Go to Today
             </button>
-            <button @click="clearSelection" 
+            <button @click="switchToMonth" 
                     class="px-3 py-1 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm">
-                Clear Selection
+                Month View
             </button>
-            <button @click="console.log(getSelectedDates())" 
+            <button @click="switchToWeek" 
+                    class="px-3 py-1 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm">
+                Week View
+            </button>
+            <button @click="switchToDay" 
+                    class="px-3 py-1 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm">
+                Day View
+            </button>
+            <button @click="addSampleEvent" 
                     class="px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm">
-                Log Selected Dates
+                Add Event
             </button>
         </div>
 
-        <!-- Configuration Options -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Calendar Size
-                </label>
-                <select v-model="calendarConfig.size" 
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
-                    <option value="small">Small</option>
-                    <option value="medium">Medium</option>
-                    <option value="large">Large</option>
-                </select>
-            </div>
-            
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Theme
-                </label>
-                <select v-model="calendarConfig.theme" 
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
-                    <option value="default">Default</option>
-                    <option value="minimal">Minimal</option>
-                    <option value="professional">Professional</option>
-                </select>
-            </div>
-            
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Selection Mode
-                </label>
-                <select v-model="calendarConfig.selectMode" 
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
-                    <option value="single">Single Date</option>
-                    <option value="range">Date Range</option>
-                    <option value="multiple">Multiple Dates</option>
-                </select>
-            </div>
+        <!-- Current View Info -->
+        <div class="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <p class="text-sm text-gray-600 dark:text-gray-400">
+                Current View: <span class="font-medium">{{ currentView }}</span> | 
+                Events: <span class="font-medium">{{ sampleEvents.length }}</span> | 
+                Selected Date: <span class="font-medium">{{ selectedDate.toDateString() }}</span>
+            </p>
         </div>
 
         <!-- Calendar Component -->
-        <Calendar
-            ref="calendarRef"
-            :show-week-numbers="calendarConfig.showWeekNumbers"
-            :show-weekends="calendarConfig.showWeekends"
-            :highlight-today="calendarConfig.highlightToday"
-            :highlight-weekends="calendarConfig.highlightWeekends"
-            :selectable="calendarConfig.selectable"
-            :select-mode="calendarConfig.selectMode"
-            :show-events="calendarConfig.showEvents"
-            :max-events-per-day="calendarConfig.maxEventsPerDay"
-            :events="sampleEvents"
-            :size="calendarConfig.size"
-            :theme="calendarConfig.theme"
-            :min-date="calendarConfig.minDate"
-            :max-date="calendarConfig.maxDate"
-            :disabled-days-of-week="calendarConfig.disabledDaysOfWeek"
-            @date-select="handleDateSelect"
-            @event-click="handleEventClick"
-            @month-change="handleMonthChange"
-        >
-            <template #footer>
-                <div class="text-center text-sm text-gray-600 dark:text-gray-400">
-                    <p>Click dates to select • Double-click for details • Click events for more info</p>
-                </div>
-            </template>
-        </Calendar>
+        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+            <VueCalComponent
+                ref="calendarRef"
+                :events="sampleEvents"
+                :selected-date="selectedDate"
+                :active-view="currentView"
+                :editable="true"
+                :resizable="true"
+                :deletable="true"
+                :show-time-in-cells="true"
+                height="600px"
+                @event-click="handleEventClick"
+                @cell-click="handleCellClick"
+                @view-change="handleViewChange"
+                @event-drop="handleEventDrop"
+                @event-resize="handleEventResize"
+            />
+        </div>
 
         <!-- Usage Instructions -->
         <div class="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
             <h3 class="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-2">
-                How to Use This Calendar Component
+                Vue-Cal Calendar Features
             </h3>
             <div class="space-y-2 text-sm text-blue-700 dark:text-blue-300">
-                <p><strong>Basic Usage:</strong> Import and use with minimal props for simple date selection</p>
-                <p><strong>With Events:</strong> Pass an array of events to display appointments, reminders, etc.</p>
-                <p><strong>Customizable:</strong> Adjust size, theme, selection mode, and display options</p>
-                <p><strong>Accessible:</strong> Full keyboard navigation and screen reader support</p>
+                <p><strong>Multi-View:</strong> Month, Week, and Day views with smooth transitions</p>
+                <p><strong>Drag & Drop:</strong> Move events by dragging them to different dates/times</p>
+                <p><strong>Resizable Events:</strong> Resize events to change duration</p>
+                <p><strong>Interactive:</strong> Click events for details, click cells to create new events</p>
                 <p><strong>Responsive:</strong> Automatically adapts to different screen sizes</p>
+                <p><strong>Real-time Updates:</strong> Events update immediately when modified</p>
             </div>
         </div>
 
         <!-- Event Legend -->
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
             <div class="flex items-center gap-2">
-                <div class="w-3 h-3 bg-blue-500 rounded"></div>
+                <div class="w-3 h-3 bg-green-500 rounded"></div>
                 <span class="text-sm text-gray-700 dark:text-gray-300">Confirmed Appointment</span>
             </div>
             <div class="flex items-center gap-2">
@@ -224,17 +241,29 @@ const getSelectedDates = () => {
                 <span class="text-sm text-gray-700 dark:text-gray-300">Pending Appointment</span>
             </div>
             <div class="flex items-center gap-2">
-                <div class="w-3 h-3 bg-purple-500 rounded"></div>
-                <span class="text-sm text-gray-700 dark:text-gray-300">Event</span>
+                <div class="w-3 h-3 bg-gray-500 rounded"></div>
+                <span class="text-sm text-gray-700 dark:text-gray-300">Completed</span>
             </div>
             <div class="flex items-center gap-2">
                 <div class="w-3 h-3 bg-red-500 rounded"></div>
                 <span class="text-sm text-gray-700 dark:text-gray-300">Holiday</span>
             </div>
             <div class="flex items-center gap-2">
-                <div class="w-3 h-3 bg-orange-500 rounded"></div>
+                <div class="w-3 h-3 bg-purple-500 rounded"></div>
                 <span class="text-sm text-gray-700 dark:text-gray-300">Reminder</span>
             </div>
+        </div>
+
+        <!-- Tips -->
+        <div class="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+            <h4 class="font-medium text-yellow-800 dark:text-yellow-200 mb-2">Tips:</h4>
+            <ul class="text-sm text-yellow-700 dark:text-yellow-300 space-y-1">
+                <li>• Drag events to reschedule them</li>
+                <li>• Resize events by dragging the edges</li>
+                <li>• Click on empty cells to create new events</li>
+                <li>• Use the view buttons to switch between Month, Week, and Day views</li>
+                <li>• Double-click events for detailed information</li>
+            </ul>
         </div>
     </div>
 </template>

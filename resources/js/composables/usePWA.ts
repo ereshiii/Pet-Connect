@@ -26,6 +26,20 @@ export function usePWA() {
         state.value.isOffline = !navigator.onLine;
     };
 
+    const unregisterServiceWorker = async () => {
+        if ('serviceWorker' in navigator) {
+            try {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                for (const registration of registrations) {
+                    await registration.unregister();
+                    console.log('Service Worker unregistered:', registration);
+                }
+            } catch (error) {
+                console.error('Service Worker unregistration failed:', error);
+            }
+        }
+    };
+
     const registerServiceWorker = async () => {
         if ('serviceWorker' in navigator) {
             try {
@@ -66,7 +80,7 @@ export function usePWA() {
     onMounted(() => {
         checkInstallStatus();
         checkOnlineStatus();
-        registerServiceWorker();
+        registerServiceWorker(); // Re-enabled for proper PWA functionality
 
         // Listen for online/offline events
         window.addEventListener('online', checkOnlineStatus);
@@ -81,6 +95,7 @@ export function usePWA() {
         updateApp,
         dismissUpdate,
         checkInstallStatus,
-        checkOnlineStatus
+        checkOnlineStatus,
+        unregisterServiceWorker
     };
 }

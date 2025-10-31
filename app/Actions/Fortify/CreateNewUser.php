@@ -28,12 +28,19 @@ class CreateNewUser implements CreatesNewUsers
                 Rule::unique(User::class),
             ],
             'password' => $this->passwordRules(),
+            'account_type' => ['required', 'string', Rule::in(['user', 'clinic'])],
         ])->validate();
 
-        return User::create([
-            'name' => $input['name'],
+        // Create user without name first
+        $user = User::create([
             'email' => $input['email'],
             'password' => $input['password'],
+            'account_type' => $input['account_type'],
         ]);
+
+        // Now set the name, which will create the profile
+        $user->name = $input['name'];
+
+        return $user;
     }
 }

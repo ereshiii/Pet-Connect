@@ -7,25 +7,42 @@ import { edit as editAppearance } from '@/routes/appearance';
 import { edit as editProfile } from '@/routes/profile';
 import { show } from '@/routes/two-factor';
 import { edit as editPassword } from '@/routes/user-password';
+import { edit as editAddress } from '@/routes/address';
+import { edit as editContactInformation } from '@/routes/contact-information';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/vue3';
+import { User, Lock, Shield, Palette, MapPin, Phone } from 'lucide-vue-next';
 
 const sidebarNavItems: NavItem[] = [
     {
         title: 'Profile',
         href: editProfile(),
+        icon: User,
     },
     {
         title: 'Password',
         href: editPassword(),
+        icon: Lock,
     },
     {
         title: 'Two-Factor Auth',
         href: show(),
+        icon: Shield,
+    },
+    {
+        title: 'Address',
+        href: editAddress(),
+        icon: MapPin,
+    },
+    {
+        title: 'Contact Information',
+        href: editContactInformation(),
+        icon: Phone,
     },
     {
         title: 'Appearance',
         href: editAppearance(),
+        icon: Palette,
     },
 ];
 

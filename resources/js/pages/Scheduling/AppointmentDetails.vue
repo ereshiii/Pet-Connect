@@ -1,130 +1,84 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
-import { schedule, rescheduleAppointment } from '@/routes';
+import { schedule, appointmentDetails, rescheduleAppointment, appointmentCalendar } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
-import { Head, router } from '@inertiajs/vue3';
+import { Head, router, useForm } from '@inertiajs/vue3';
 import { ref, computed, onMounted } from 'vue';
 
-// Props from the route
-const props = defineProps<{
-    appointmentId?: string | number;
-}>();
-
-interface AppointmentData {
-    id: number;
-    petName: string;
-    petType: string;
-    petBreed: string;
-    petAge: string;
-    appointmentType: string;
-    clinicName: string;
-    doctorName: string;
-    date: string;
-    time: string;
-    duration: string;
-    status: string;
-    statusColor: string;
-    address: string;
-    phoneNumber: string;
-    notes: string;
-    services: string[];
-    estimatedCost: string;
-    confirmationNumber: string;
+// Props from the backend
+interface Props {
+    appointment: {
+        id: number;
+        confirmationNumber: string;
+        status: string;
+        statusDisplay: string;
+        date: string;
+        time: string;
+        duration: string;
+        type: string;
+        priority: string;
+        reason: string;
+        notes?: string;
+        specialInstructions?: string;
+        estimatedCost?: string;
+        actualCost?: string;
+        pet: {
+            id: number;
+            name: string;
+            type: string;
+            breed: string;
+            age: string;
+            weight?: number;
+        };
+        clinic: {
+            id: number;
+            name: string;
+            address: string;
+            phone: string;
+            email: string;
+        };
+        veterinarian?: {
+            id: number;
+            name: string;
+        };
+        service?: {
+            id: number;
+            name: string;
+            cost: number;
+            description: string;
+        };
+        owner: {
+            name: string;
+            email: string;
+            phone: string;
+            emergencyContact: {
+                name?: string;
+                phone?: string;
+            };
+        };
+    };
+    visitHistory: Array<{
+        date: string;
+        type: string;
+        doctor: string;
+        notes: string;
+        cost: string;
+    }>;
+    documents?: Array<{
+        name: string;
+        type: string;
+        date: string;
+        size: string;
+        url?: string;
+    }>;
 }
 
-// Sample appointment data - this would typically come from an API
-const appointmentDatabase: Record<number, AppointmentData> = {
-    1: {
-        id: 1,
-        petName: "Bella",
-        petType: "Dog",
-        petBreed: "Golden Retriever",
-        petAge: "3 years",
-        appointmentType: "Annual Checkup",
-        clinicName: "Happy Paws Veterinary",
-        doctorName: "Dr. Sarah Johnson",
-        date: "October 27, 2025",
-        time: "2:30 PM",
-        duration: "60 minutes",
-        status: "Confirmed",
-        statusColor: "text-green-600 dark:text-green-400",
-        address: "789 Elm Street, Westside",
-        phoneNumber: "(555) 123-4567",
-        notes: "Bella has been doing well since her last visit. Please check her weight and update vaccinations if needed.",
-        services: ["General Checkup", "Vaccination Update", "Weight Check", "Dental Examination"],
-        estimatedCost: "$120 - $150",
-        confirmationNumber: "APT-2025-001"
-    },
-    2: {
-        id: 2,
-        petName: "Max",
-        petType: "Dog",
-        petBreed: "German Shepherd",
-        petAge: "2 years",
-        appointmentType: "Vaccination",
-        clinicName: "Animal Hospital Plus",
-        doctorName: "Dr. Michael Chen",
-        date: "November 3, 2025",
-        time: "10:00 AM",
-        duration: "30 minutes",
-        status: "Pending",
-        statusColor: "text-yellow-600 dark:text-yellow-400",
-        address: "456 Oak Avenue, Downtown",
-        phoneNumber: "(555) 987-6543",
-        notes: "Max needs his annual vaccinations. Please bring vaccination record from previous vet.",
-        services: ["DHPP Vaccination", "Rabies Shot", "Health Check"],
-        estimatedCost: "$80 - $100",
-        confirmationNumber: "APT-2025-002"
-    },
-    3: {
-        id: 3,
-        petName: "Luna",
-        petType: "Cat",
-        petBreed: "Siamese",
-        petAge: "4 years",
-        appointmentType: "Dental Cleaning",
-        clinicName: "Pet Care Veterinary Clinic",
-        doctorName: "Dr. Emily Rodriguez",
-        date: "November 10, 2025",
-        time: "2:00 PM",
-        duration: "90 minutes",
-        status: "Scheduled",
-        statusColor: "text-blue-600 dark:text-blue-400",
-        address: "123 Main Street, City Center",
-        phoneNumber: "(555) 234-5678",
-        notes: "Luna will need pre-anesthetic bloodwork before the dental procedure. Please fast for 12 hours before appointment.",
-        services: ["Dental Cleaning", "Pre-anesthetic Bloodwork", "Dental X-rays", "Fluoride Treatment"],
-        estimatedCost: "$250 - $300",
-        confirmationNumber: "APT-2025-003"
-    },
-    4: {
-        id: 4,
-        petName: "Charlie",
-        petType: "Dog",
-        petBreed: "Labrador Mix",
-        petAge: "5 years",
-        appointmentType: "Follow-up",
-        clinicName: "Happy Paws Veterinary",
-        doctorName: "Dr. Sarah Johnson",
-        date: "November 15, 2025",
-        time: "11:30 AM",
-        duration: "45 minutes",
-        status: "Confirmed",
-        statusColor: "text-green-600 dark:text-green-400",
-        address: "789 Elm Street, Westside",
-        phoneNumber: "(555) 123-4567",
-        notes: "Follow-up visit to check on Charlie's recovery from surgery. Monitor wound healing and remove stitches if ready.",
-        services: ["Wound Check", "Stitch Removal", "Pain Assessment", "Recovery Evaluation"],
-        estimatedCost: "$60 - $80",
-        confirmationNumber: "APT-2025-004"
-    }
-};
+const props = defineProps<Props>();
 
-// Get appointment data based on ID
-const appointment = computed(() => {
-    const id = Number(props.appointmentId) || 1;
-    return appointmentDatabase[id] || appointmentDatabase[1];
-});
+// Debug logging to verify data reception
+console.log('AppointmentDetails loaded with appointment:', props.appointment);
+console.log('Appointment ID:', props.appointment?.id);
+console.log('Appointment Status:', props.appointment?.status);
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -133,7 +87,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
     {
         title: 'Appointment Details',
-        href: '#',
+        href: appointmentDetails(props.appointment.id).url,
     },
 ];
 
@@ -146,64 +100,120 @@ const tabs = [
     { id: 'documents', name: 'Documents', icon: '📄' }
 ];
 
-// Sample visit history
-const visitHistory = ref([
-    {
-        date: "August 15, 2025",
-        type: "Vaccination",
-        doctor: "Dr. Sarah Johnson",
-        notes: "Updated rabies and DHPP vaccines. Bella was very cooperative.",
-        cost: "$85"
-    },
-    {
-        date: "May 10, 2025",
-        type: "Routine Checkup",
-        doctor: "Dr. Michael Chen",
-        notes: "Excellent health. Recommended dental cleaning in 6 months.",
-        cost: "$95"
-    },
-    {
-        date: "February 22, 2025",
-        type: "Dental Cleaning",
-        doctor: "Dr. Sarah Johnson",
-        notes: "Professional cleaning completed. No issues found.",
-        cost: "$180"
-    }
-]);
-
-// Sample documents
-const documents = ref([
-    { name: "Vaccination Record", type: "PDF", date: "Aug 15, 2025", size: "156 KB" },
-    { name: "Lab Results", type: "PDF", date: "May 10, 2025", size: "89 KB" },
-    { name: "X-Ray Images", type: "Images", date: "Feb 22, 2025", size: "2.1 MB" }
-]);
-
 const goBack = () => {
-    window.history.back();
+    // Try to go back to schedule page, fallback to browser back
+    try {
+        router.visit(schedule().url);
+    } catch (error) {
+        window.history.back();
+    }
 };
 
 const goToReschedule = () => {
     // Navigate to reschedule page using Inertia
-    router.visit(rescheduleAppointment(appointment.value.id).url);
+    router.visit(rescheduleAppointment(props.appointment.id).url);
 };
 
 const cancelAppointment = () => {
-    // Handle cancel logic
-    console.log('Cancel appointment');
+    // Handle cancel logic with confirmation
+    if (confirm('Are you sure you want to cancel this appointment?')) {
+        router.delete(`/appointments/${props.appointment.id}`, {
+            onSuccess: () => {
+                router.visit(schedule().url);
+            },
+            onError: (errors) => {
+                console.error('Error canceling appointment:', errors);
+                alert('Failed to cancel appointment. Please try again.');
+            }
+        });
+    }
 };
 
 const downloadDocument = (doc: any) => {
     // Handle document download
     console.log('Download document:', doc.name);
+    // TODO: Implement actual document download
+};
+
+// Add a method to navigate back to calendar if user came from there
+const goToCalendar = () => {
+    router.visit(appointmentCalendar().url);
 };
 
 const callClinic = () => {
-    window.open(`tel:${appointment.value.phoneNumber}`);
+    const phone = props.appointment?.clinic?.phone || props.appointment?.owner?.phone || '';
+    if (phone) window.open(`tel:${phone}`);
 };
 
 const getDirections = () => {
-    const address = encodeURIComponent(appointment.value.address);
-    window.open(`https://maps.google.com/?q=${address}`, '_blank');
+    const address = encodeURIComponent(props.appointment?.clinic?.address || '');
+    if (address) window.open(`https://maps.google.com/?q=${address}`, '_blank');
+};
+
+// Returns status banner configuration based on appointment status
+const getStatusBanner = (status?: string) => {
+    switch (status) {
+        case 'confirmed': 
+            return { 
+                bgClass: 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800',
+                icon: '✅', 
+                iconColor: 'text-green-500',
+                titleColor: 'text-green-900 dark:text-green-100',
+                descColor: 'text-green-700 dark:text-green-300'
+            };
+        case 'scheduled': 
+            return { 
+                bgClass: 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800',
+                icon: '📅', 
+                iconColor: 'text-blue-500',
+                titleColor: 'text-blue-900 dark:text-blue-100',
+                descColor: 'text-blue-700 dark:text-blue-300'
+            };
+        case 'pending': 
+            return { 
+                bgClass: 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800',
+                icon: '⏳', 
+                iconColor: 'text-yellow-500',
+                titleColor: 'text-yellow-900 dark:text-yellow-100',
+                descColor: 'text-yellow-700 dark:text-yellow-300'
+            };
+        case 'cancelled': 
+            return { 
+                bgClass: 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800',
+                icon: '❌', 
+                iconColor: 'text-red-500',
+                titleColor: 'text-red-900 dark:text-red-100',
+                descColor: 'text-red-700 dark:text-red-300'
+            };
+        case 'completed': 
+            return { 
+                bgClass: 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800',
+                icon: '✅', 
+                iconColor: 'text-green-500',
+                titleColor: 'text-green-900 dark:text-green-100',
+                descColor: 'text-green-700 dark:text-green-300'
+            };
+        default: 
+            return { 
+                bgClass: 'bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-800',
+                icon: '📋', 
+                iconColor: 'text-gray-500',
+                titleColor: 'text-gray-900 dark:text-gray-100',
+                descColor: 'text-gray-700 dark:text-gray-300'
+            };
+    }
+};
+
+// Returns a text color class for status badges in this details view
+const getStatusColor = (status?: string) => {
+    switch (status) {
+        case 'confirmed': return 'text-green-600 dark:text-green-400';
+        case 'scheduled': return 'text-yellow-600 dark:text-yellow-400';
+        case 'in_progress': return 'text-orange-600 dark:text-orange-400';
+        case 'completed': return 'text-blue-600 dark:text-blue-400';
+        case 'cancelled': return 'text-red-600 dark:text-red-400';
+        default: return 'text-gray-600 dark:text-gray-400';
+    }
 };
 </script>
 
@@ -224,9 +234,14 @@ const getDirections = () => {
                     <div class="flex gap-2">
                         <button @click="goBack" 
                                 class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm font-medium dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
-                            Back
+                            ← Back to Schedule
+                        </button>
+                        <button @click="goToCalendar" 
+                                class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm font-medium dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
+                            📅 Calendar
                         </button>
                         <button @click="goToReschedule" 
+                                v-if="['scheduled', 'confirmed', 'pending'].includes(appointment.status)"
                                 class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium">
                             Reschedule
                         </button>
@@ -234,15 +249,28 @@ const getDirections = () => {
                 </div>
 
                 <!-- Status Banner -->
-                <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                <div :class="getStatusBanner(appointment.status).bgClass" class="rounded-lg p-4">
                     <div class="flex items-center">
-                        <span class="text-green-500 text-lg mr-2">✅</span>
+                        <span :class="getStatusBanner(appointment.status).iconColor" class="text-lg mr-2">
+                            {{ getStatusBanner(appointment.status).icon }}
+                        </span>
                         <div>
-                            <p class="font-medium text-green-900 dark:text-green-100">
-                                Appointment {{ appointment.status }}
+                            <p :class="getStatusBanner(appointment.status).titleColor" class="font-medium">
+                                Appointment {{ appointment.statusDisplay }}
                             </p>
-                            <p class="text-sm text-green-700 dark:text-green-300">
-                                Your appointment is scheduled for {{ appointment.date }} at {{ appointment.time }}
+                            <p :class="getStatusBanner(appointment.status).descColor" class="text-sm">
+                                <span v-if="appointment.status === 'cancelled'">
+                                    This appointment was cancelled
+                                </span>
+                                <span v-else-if="appointment.status === 'completed'">
+                                    This appointment was completed on {{ appointment.date }}
+                                </span>
+                                <span v-else-if="appointment.status === 'pending'">
+                                    Your appointment is pending approval and scheduled for {{ appointment.date }} at {{ appointment.time }}
+                                </span>
+                                <span v-else>
+                                    Your appointment is scheduled for {{ appointment.date }} at {{ appointment.time }}
+                                </span>
                             </p>
                         </div>
                     </div>
@@ -297,19 +325,25 @@ const getDirections = () => {
                                     <div class="flex justify-between">
                                         <span class="text-sm text-gray-600 dark:text-gray-400">Type:</span>
                                         <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                            {{ appointment.appointmentType }}
+                                            {{ appointment.type }}
                                         </span>
                                     </div>
                                     <div class="flex justify-between">
                                         <span class="text-sm text-gray-600 dark:text-gray-400">Status:</span>
-                                        <span :class="['text-sm font-medium', appointment.statusColor]">
-                                            {{ appointment.status }}
+                                        <span :class="['text-sm font-medium', getStatusColor(appointment.status)]">
+                                            {{ appointment.statusDisplay }}
                                         </span>
                                     </div>
-                                    <div class="flex justify-between">
+                                    <div class="flex justify-between" v-if="appointment.estimatedCost">
                                         <span class="text-sm text-gray-600 dark:text-gray-400">Estimated Cost:</span>
                                         <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
                                             {{ appointment.estimatedCost }}
+                                        </span>
+                                    </div>
+                                    <div class="flex justify-between" v-if="appointment.actualCost">
+                                        <span class="text-sm text-gray-600 dark:text-gray-400">Actual Cost:</span>
+                                        <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                            {{ appointment.actualCost }}
                                         </span>
                                     </div>
                                 </div>
@@ -318,9 +352,13 @@ const getDirections = () => {
                                 <div class="pt-4 border-t border-gray-200 dark:border-gray-600">
                                     <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">Services Included</h4>
                                     <div class="flex flex-wrap gap-2">
-                                        <span v-for="service in appointment.services" :key="service"
+                                        <span v-if="appointment.service" 
                                               class="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded dark:bg-blue-900 dark:text-blue-200">
-                                            {{ service }}
+                                            {{ appointment.service.name }}
+                                        </span>
+                                        <span v-else
+                                              class="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded dark:bg-blue-900 dark:text-blue-200">
+                                            {{ appointment.type }}
                                         </span>
                                     </div>
                                 </div>
@@ -334,13 +372,13 @@ const getDirections = () => {
                                 
                                 <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
                                     <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-2">
-                                        {{ appointment.clinicName }}
+                                        {{ appointment.clinic.name }}
                                     </h4>
                                     <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                                        {{ appointment.address }}
+                                        {{ appointment.clinic.address }}
                                     </p>
                                     <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                                        {{ appointment.phoneNumber }}
+                                        {{ appointment.clinic.phone }}
                                     </p>
                                     
                                     <div class="flex gap-2">
@@ -358,13 +396,13 @@ const getDirections = () => {
                                 <!-- Doctor Information -->
                                 <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
                                     <h4 class="font-medium text-blue-900 dark:text-blue-100 mb-2">
-                                        {{ appointment.doctorName }}
+                                        {{ appointment.veterinarian?.name || 'To Be Assigned' }}
                                     </h4>
                                     <p class="text-sm text-blue-700 dark:text-blue-300 mb-2">
                                         Veterinarian
                                     </p>
                                     <p class="text-xs text-blue-600 dark:text-blue-400">
-                                        Specializes in small animal care and preventive medicine
+                                        {{ appointment.veterinarian ? 'Specializes in small animal care and preventive medicine' : 'Veterinarian will be assigned closer to appointment date' }}
                                     </p>
                                 </div>
                             </div>
@@ -374,12 +412,25 @@ const getDirections = () => {
                         <div class="pt-4 border-t border-gray-200 dark:border-gray-600">
                             <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">Appointment Notes</h4>
                             <p class="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
-                                {{ appointment.notes }}
+                                {{ appointment.reason }}
                             </p>
+                            <div v-if="appointment.notes" class="mt-3">
+                                <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">Additional Notes</h4>
+                                <p class="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+                                    {{ appointment.notes }}
+                                </p>
+                            </div>
+                            <div v-if="appointment.specialInstructions" class="mt-3">
+                                <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">Special Instructions</h4>
+                                <p class="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+                                    {{ appointment.specialInstructions }}
+                                </p>
+                            </div>
                         </div>
 
                         <!-- Action Buttons -->
-                        <div class="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-600">
+                        <div class="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-600" 
+                             v-if="['scheduled', 'confirmed', 'pending'].includes(appointment.status)">
                             <button @click="goToReschedule"
                                     class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium">
                                 Reschedule Appointment
@@ -388,6 +439,23 @@ const getDirections = () => {
                                     class="px-4 py-2 border border-red-300 text-red-700 rounded-md hover:bg-red-50 text-sm font-medium dark:border-red-600 dark:text-red-400 dark:hover:bg-red-900/20">
                                 Cancel Appointment
                             </button>
+                        </div>
+                        
+                        <!-- Completed/Cancelled Status Info -->
+                        <div v-else-if="appointment.status === 'completed'" 
+                             class="flex items-center gap-2 pt-4 border-t border-gray-200 dark:border-gray-600">
+                            <span class="text-green-600 dark:text-green-400">✅</span>
+                            <span class="text-sm text-gray-600 dark:text-gray-400">
+                                This appointment has been completed.
+                            </span>
+                        </div>
+                        
+                        <div v-else-if="appointment.status === 'cancelled'" 
+                             class="flex items-center gap-2 pt-4 border-t border-gray-200 dark:border-gray-600">
+                            <span class="text-red-600 dark:text-red-400">❌</span>
+                            <span class="text-sm text-gray-600 dark:text-gray-400">
+                                This appointment has been cancelled.
+                            </span>
                         </div>
                     </div>
 
@@ -399,30 +467,50 @@ const getDirections = () => {
                                 <div class="space-y-3">
                                     <div class="flex justify-between">
                                         <span class="text-sm text-gray-600 dark:text-gray-400">Name:</span>
-                                        <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ appointment.petName }}</span>
+                                        <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ appointment.pet.name }}</span>
                                     </div>
                                     <div class="flex justify-between">
                                         <span class="text-sm text-gray-600 dark:text-gray-400">Type:</span>
-                                        <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ appointment.petType }}</span>
+                                        <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ appointment.pet.type }}</span>
                                     </div>
                                     <div class="flex justify-between">
                                         <span class="text-sm text-gray-600 dark:text-gray-400">Breed:</span>
-                                        <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ appointment.petBreed }}</span>
+                                        <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ appointment.pet.breed }}</span>
                                     </div>
                                     <div class="flex justify-between">
                                         <span class="text-sm text-gray-600 dark:text-gray-400">Age:</span>
-                                        <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ appointment.petAge }}</span>
+                                        <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ appointment.pet.age }}</span>
+                                    </div>
+                                    <div v-if="appointment.pet.weight" class="flex justify-between">
+                                        <span class="text-sm text-gray-600 dark:text-gray-400">Weight:</span>
+                                        <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ appointment.pet.weight }} lbs</span>
                                     </div>
                                 </div>
                             </div>
                             
                             <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
-                                <h3 class="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-4">Health Summary</h3>
+                                <h3 class="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-4">Owner Information</h3>
                                 <div class="space-y-2 text-sm">
-                                    <p class="text-blue-700 dark:text-blue-300">✅ Vaccinations up to date</p>
-                                    <p class="text-blue-700 dark:text-blue-300">✅ No known allergies</p>
-                                    <p class="text-blue-700 dark:text-blue-300">✅ Good overall health</p>
-                                    <p class="text-blue-700 dark:text-blue-300">⚠️ Due for dental cleaning</p>
+                                    <p class="text-blue-700 dark:text-blue-300">
+                                        <strong>Owner:</strong> {{ appointment.owner.name }}
+                                    </p>
+                                    <p class="text-blue-700 dark:text-blue-300">
+                                        <strong>Email:</strong> {{ appointment.owner.email }}
+                                    </p>
+                                    <p class="text-blue-700 dark:text-blue-300">
+                                        <strong>Phone:</strong> {{ appointment.owner.phone }}
+                                    </p>
+                                    <div v-if="appointment.owner.emergencyContact?.name" class="pt-2 border-t border-blue-200 dark:border-blue-700">
+                                        <p class="text-blue-700 dark:text-blue-300">
+                                            <strong>Emergency Contact:</strong>
+                                        </p>
+                                        <p class="text-blue-700 dark:text-blue-300">
+                                            {{ appointment.owner.emergencyContact.name }}
+                                        </p>
+                                        <p class="text-blue-700 dark:text-blue-300" v-if="appointment.owner.emergencyContact.phone">
+                                            {{ appointment.owner.emergencyContact.phone }}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -444,12 +532,15 @@ const getDirections = () => {
                                 <p class="text-sm text-gray-600 dark:text-gray-400">{{ visit.notes }}</p>
                             </div>
                         </div>
+                        <div v-if="visitHistory.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
+                            <p>No previous visits found for this pet.</p>
+                        </div>
                     </div>
 
                     <!-- Documents Tab -->
                     <div v-if="activeTab === 'documents'" class="space-y-4">
                         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Related Documents</h3>
-                        <div class="space-y-3">
+                        <div v-if="documents && documents.length > 0" class="space-y-3">
                             <div v-for="doc in documents" :key="doc.name"
                                  class="flex items-center justify-between bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
                                 <div class="flex items-center gap-3">
@@ -464,6 +555,11 @@ const getDirections = () => {
                                     Download
                                 </button>
                             </div>
+                        </div>
+                        <div v-else class="text-center py-8 text-gray-500 dark:text-gray-400">
+                            <div class="text-4xl mb-2">📄</div>
+                            <p class="text-lg font-medium mb-1">No Documents Available</p>
+                            <p class="text-sm">Documents from this appointment will appear here once available.</p>
                         </div>
                     </div>
                 </div>

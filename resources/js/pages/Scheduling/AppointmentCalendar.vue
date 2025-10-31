@@ -1,11 +1,35 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
-import Calendar from '@/components/calendar/calendar.vue';
-import { schedule, appointmentDetails, rescheduleAppointment, clinics } from '@/routes';
+import VueCalComponent from '@/components/calendar/VueCalComponent.vue';
+import { schedule, appointmentDetails, appointmentsShow, appointmentsEdit, appointmentsCreate } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
-import { Head, router } from '@inertiajs/vue3';
+import { Head, router, useForm } from '@inertiajs/vue3';
 import { ref, computed, onMounted } from 'vue';
-import type { CalendarEvent, AppointmentEvent } from '@/components/calendar/types';
+
+// Props from the backend
+interface Props {
+    appointments: any[];
+    stats: {
+        today: number;
+        thisWeek: number;
+        confirmed: number;
+        pending: number;
+        totalRevenue: number;
+    };
+    filters?: {
+        status?: string;
+        date_from?: string;
+        date_to?: string;
+        clinic_id?: string;
+        show_all?: boolean;
+    };
+    clinics?: Array<{
+        id: number;
+        name: string;
+    }>;
+}
+
+const props = defineProps<Props>();
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -18,167 +42,102 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-// Calendar component reference
-const calendarRef = ref();
-
-// Calendar configuration
-const calendarConfig = ref({
-    showWeekNumbers: false,
-    showWeekends: true,
-    highlightToday: true,
-    highlightWeekends: true,
-    selectable: true,
-    selectMode: 'single' as const,
-    showEvents: true,
-    maxEventsPerDay: 8,
-    size: 'medium' as const,
-    theme: 'professional' as const,
-    minDate: '2025-10-01',
-    maxDate: '2026-12-31',
-    disabledDaysOfWeek: [] as number[] // Could disable Sundays: [0]
-});
-
 // State management
+const calendarRef = ref();
 const selectedDate = ref<string | null>(null);
-const selectedEvent = ref<CalendarEvent | null>(null);
+const selectedEvent = ref<any | null>(null);
 const showEventModal = ref(false);
 const showNewAppointmentModal = ref(false);
 const viewMode = ref<'calendar' | 'list'>('calendar');
-const filterBy = ref<'all' | 'confirmed' | 'pending' | 'today' | 'week'>('all');
+const currentView = ref('month');
+const filterBy = ref<'all' | 'confirmed' | 'pending' | 'today' | 'week'>(
+    props.filters?.status === 'confirmed' ? 'confirmed' :
+    props.filters?.status === 'scheduled' ? 'pending' :
+    'all'
+);
 
-// Sample appointment data - this would typically come from an API
-const appointments = ref<AppointmentEvent[]>([
-    {
-        id: 1,
-        title: 'Bella - Annual Checkup',
-        date: '2025-10-27',
-        time: '2:30 PM',
-        type: 'appointment',
-        status: 'confirmed',
-        description: 'Annual health checkup and vaccinations',
-        petName: 'Bella',
-        petType: 'dog',
-        clinicName: 'Happy Paws Veterinary',
-        doctorName: 'Dr. Sarah Johnson',
-        duration: 60,
-        cost: 150,
-        services: ['General Checkup', 'Vaccination Update', 'Weight Check'],
-        confirmationNumber: 'APT-2025-001',
-        clientName: 'John Smith',
-        clientPhone: '(555) 123-4567',
-        clientEmail: 'john.smith@email.com',
-        color: 'bg-blue-500'
-    },
-    {
-        id: 2,
-        title: 'Max - Vaccination',
-        date: '2025-11-03',
-        time: '10:00 AM',
-        type: 'appointment',
-        status: 'pending',
-        description: 'Annual vaccination appointment',
-        petName: 'Max',
-        petType: 'dog',
-        clinicName: 'Animal Hospital Plus',
-        doctorName: 'Dr. Michael Chen',
-        duration: 30,
-        cost: 85,
-        services: ['DHPP Vaccination', 'Rabies Shot'],
-        confirmationNumber: 'APT-2025-002',
-        clientName: 'Sarah Wilson',
-        clientPhone: '(555) 987-6543',
-        clientEmail: 'sarah.wilson@email.com',
-        color: 'bg-yellow-500'
-    },
-    {
-        id: 3,
-        title: 'Luna - Dental Cleaning',
-        date: '2025-11-10',
-        time: '2:00 PM',
-        type: 'appointment',
-        status: 'confirmed',
-        description: 'Dental cleaning procedure with pre-anesthetic bloodwork',
-        petName: 'Luna',
-        petType: 'cat',
-        clinicName: 'Pet Care Veterinary Clinic',
-        doctorName: 'Dr. Emily Rodriguez',
-        duration: 90,
-        cost: 280,
-        services: ['Dental Cleaning', 'Pre-anesthetic Bloodwork', 'Dental X-rays'],
-        confirmationNumber: 'APT-2025-003',
-        clientName: 'Mike Johnson',
-        clientPhone: '(555) 234-5678',
-        clientEmail: 'mike.johnson@email.com',
-        color: 'bg-blue-500'
-    },
-    {
-        id: 4,
-        title: 'Charlie - Follow-up',
-        date: '2025-11-15',
-        time: '11:30 AM',
-        type: 'appointment',
-        status: 'confirmed',
-        description: 'Post-surgery follow-up visit',
-        petName: 'Charlie',
-        petType: 'dog',
-        clinicName: 'Happy Paws Veterinary',
-        doctorName: 'Dr. Sarah Johnson',
-        duration: 45,
-        cost: 75,
-        services: ['Wound Check', 'Stitch Removal', 'Recovery Evaluation'],
-        confirmationNumber: 'APT-2025-004',
-        clientName: 'Lisa Anderson',
-        clientPhone: '(555) 345-6789',
-        clientEmail: 'lisa.anderson@email.com',
-        color: 'bg-green-500'
-    },
-    {
-        id: 5,
-        title: 'Fluffy - Emergency',
-        date: '2025-10-28',
-        time: '9:00 AM',
-        type: 'appointment',
-        status: 'confirmed',
-        description: 'Emergency visit for possible poisoning',
-        petName: 'Fluffy',
-        petType: 'cat',
-        clinicName: 'Emergency Pet Hospital',
-        doctorName: 'Dr. David Kim',
-        duration: 120,
-        cost: 350,
-        services: ['Emergency Examination', 'Blood Tests', 'IV Fluids'],
-        confirmationNumber: 'APT-2025-005',
-        clientName: 'Emma Davis',
-        clientPhone: '(555) 456-7890',
-        clientEmail: 'emma.davis@email.com',
-        color: 'bg-red-500'
-    },
-    {
-        id: 6,
-        title: 'Reminder: Order Supplies',
-        date: '2025-10-30',
-        type: 'reminder',
-        description: 'Order monthly veterinary supplies',
-        color: 'bg-orange-500'
-    },
-    {
-        id: 7,
-        title: 'Staff Meeting',
-        date: '2025-11-01',
-        time: '12:00 PM',
-        type: 'event',
-        description: 'Monthly veterinary staff meeting',
-        color: 'bg-purple-500'
-    },
-    {
-        id: 8,
-        title: 'Holiday - Clinic Closed',
-        date: '2025-11-11',
-        type: 'holiday',
-        description: 'Veterans Day - Clinic will be closed',
-        color: 'bg-red-600'
+// Convert backend appointments to vue-cal format
+const calendarEvents = computed(() => {
+    // Accept either a plain array or a Laravel paginator object { data: [...] }
+    const raw = props.appointments as any;
+    let source: any[] = [];
+
+    if (Array.isArray(raw)) {
+        source = raw;
+    } else if (raw && Array.isArray(raw.data)) {
+        source = raw.data;
+    } else {
+        console.error('Appointments prop is not an array or paginator with data:', props.appointments);
+        return [];
     }
-]);
+
+    return source.map(appointment => {
+        // Add safety checks for required properties
+        if (!appointment) {
+            console.error('Invalid appointment object:', appointment);
+            return null;
+        }
+
+        // Ensure required relationships exist
+        const pet = appointment.pet || {};
+        const clinic = appointment.clinic || {};
+        const owner = appointment.owner || {};
+        const veterinarian = appointment.veterinarian || {};
+        const service = appointment.service || {};
+
+        // Parse the scheduled_at datetime
+        const scheduledDate = new Date(appointment.scheduled_at);
+        const endDate = new Date(scheduledDate.getTime() + (appointment.duration_minutes || 30) * 60000);
+
+        return {
+            id: appointment.id,
+            title: `${pet.name || 'Unknown Pet'} - ${service.name || appointment.type || 'Appointment'}`,
+            start: scheduledDate,
+            end: endDate,
+            content: `${owner.name || 'Unknown Client'} - ${appointment.reason || ''}`,
+            class: `vuecal__event--${appointment.status || 'scheduled'}`,
+            background: false,
+            allDay: false,
+            deletable: true,
+            resizable: true,
+            editable: true,
+            // Additional data for modal display
+            appointmentData: {
+                id: appointment.id,
+                date: appointment.scheduled_at ? appointment.scheduled_at.split(' ')[0] : new Date().toISOString().split('T')[0],
+                time: appointment.scheduled_at 
+                    ? new Date(appointment.scheduled_at).toLocaleTimeString('en-US', { 
+                        hour: 'numeric', 
+                        minute: '2-digit',
+                        hour12: true 
+                    })
+                    : 'TBA',
+                status: appointment.status || 'scheduled',
+                description: appointment.reason || '',
+                petName: pet.name || 'Unknown Pet',
+                petType: pet.type || 'Unknown',
+                clinicName: clinic.name || 'Unknown Clinic',
+                doctorName: veterinarian.name || 'TBA',
+                duration: appointment.duration_minutes || 30,
+                cost: appointment.estimated_cost || 0,
+                services: service.name ? [service.name] : [appointment.type || 'General'],
+                confirmationNumber: appointment.appointment_number || '',
+                clientName: owner.name || 'Unknown Client',
+                clientPhone: owner.phone || owner.email || '',
+                clientEmail: owner.email || '',
+            }
+        };
+    }).filter(appointment => appointment !== null); // Filter out any null appointments
+});
+
+// Appointment statistics from backend
+const appointmentStats = computed(() => ({
+    today: props.stats.today,
+    thisWeek: props.stats.thisWeek,
+    confirmed: props.stats.confirmed,
+    pending: props.stats.pending,
+    totalRevenue: props.stats.totalRevenue
+}));
 
 // Filtered appointments based on current filter
 const filteredAppointments = computed(() => {
@@ -189,64 +148,49 @@ const filteredAppointments = computed(() => {
 
     switch (filterBy.value) {
         case 'confirmed':
-            return appointments.value.filter(apt => apt.status === 'confirmed');
+            return calendarEvents.value.filter(event => event.appointmentData.status === 'confirmed');
         case 'pending':
-            return appointments.value.filter(apt => apt.status === 'pending');
+            return calendarEvents.value.filter(event => event.appointmentData.status === 'scheduled');
         case 'today':
-            return appointments.value.filter(apt => apt.date === today);
+            return calendarEvents.value.filter(event => event.appointmentData.date === today);
         case 'week':
-            return appointments.value.filter(apt => apt.date >= today && apt.date <= weekEnd);
+            return calendarEvents.value.filter(event => event.appointmentData.date >= today && event.appointmentData.date <= weekEnd);
         default:
-            return appointments.value;
+            return calendarEvents.value;
     }
 });
 
-// Statistics for the dashboard
-const appointmentStats = computed(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const thisWeek = appointments.value.filter(apt => {
-        const aptDate = new Date(apt.date);
-        const todayDate = new Date(today);
-        const weekStart = new Date(todayDate);
-        weekStart.setDate(todayDate.getDate() - todayDate.getDay());
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekStart.getDate() + 6);
-        return aptDate >= weekStart && aptDate <= weekEnd && apt.type === 'appointment';
+// Event handlers for vue-cal
+const onEventClick = (event: any, e: Event) => {
+    selectedEvent.value = event;
+    showEventModal.value = true;
+};
+
+const onCellClick = (date: Date, e: Event) => {
+    selectedDate.value = date.toISOString().split('T')[0];
+    const dayEvents = calendarEvents.value.filter(event => {
+        const eventDate = new Date(event.start).toISOString().split('T')[0];
+        return eventDate === selectedDate.value;
     });
-
-    return {
-        today: appointments.value.filter(apt => apt.date === today && apt.type === 'appointment').length,
-        thisWeek: thisWeek.length,
-        confirmed: appointments.value.filter(apt => apt.status === 'confirmed' && apt.type === 'appointment').length,
-        pending: appointments.value.filter(apt => apt.status === 'pending' && apt.type === 'appointment').length,
-        totalRevenue: appointments.value
-            .filter(apt => apt.status === 'confirmed' && apt.type === 'appointment')
-            .reduce((sum, apt) => sum + (apt.cost || 0), 0)
-    };
-});
-
-// Event handlers
-const handleDateSelect = (date: string) => {
-    selectedDate.value = date;
-    const dayEvents = appointments.value.filter(apt => apt.date === date);
     if (dayEvents.length === 0) {
         showNewAppointmentModal.value = true;
     }
 };
 
-const handleEventClick = (event: CalendarEvent) => {
-    selectedEvent.value = event;
-    showEventModal.value = true;
+const onEventDrop = (event: any, e: Event) => {
+    // Handle appointment reschedule via drag & drop
+    console.log('Event dropped:', event);
+    // You could implement automatic rescheduling here
 };
 
-const handleMonthChange = (year: number, month: number) => {
-    console.log('Month changed:', year, month);
-    // Load appointments for new month if needed
+const onEventResize = (event: any, e: Event) => {
+    // Handle appointment duration change
+    console.log('Event resized:', event);
+    // You could implement automatic duration update here
 };
 
-const handleDayDoubleClick = (date: string) => {
-    selectedDate.value = date;
-    showNewAppointmentModal.value = true;
+const onViewChange = (view: any) => {
+    currentView.value = view.id;
 };
 
 // Navigation methods
@@ -255,7 +199,12 @@ const goToAppointmentDetails = (appointmentId: string | number) => {
 };
 
 const goToReschedule = (appointmentId: string | number) => {
-    router.visit(rescheduleAppointment(appointmentId).url);
+    router.visit(appointmentsEdit(appointmentId).url);
+};
+
+const createNewAppointment = () => {
+    router.visit(appointmentsCreate().url + (selectedDate.value ? `?date=${selectedDate.value}` : ''));
+    closeModal();
 };
 
 const closeModal = () => {
@@ -264,19 +213,14 @@ const closeModal = () => {
     selectedEvent.value = null;
 };
 
-const createNewAppointment = () => {
-    // Navigate to clinics page for appointment booking
-    router.visit(clinics().url);
-    closeModal();
-};
-
 const toggleView = () => {
     viewMode.value = viewMode.value === 'calendar' ? 'list' : 'calendar';
 };
 
-const getStatusColor = (status?: string) => {
+const getStatusTextColor = (status?: string) => {
     switch (status) {
         case 'confirmed': return 'text-green-600 dark:text-green-400';
+        case 'scheduled': return 'text-yellow-600 dark:text-yellow-400';
         case 'pending': return 'text-yellow-600 dark:text-yellow-400';
         case 'cancelled': return 'text-red-600 dark:text-red-400';
         case 'completed': return 'text-blue-600 dark:text-blue-400';
@@ -284,87 +228,90 @@ const getStatusColor = (status?: string) => {
     }
 };
 
-const formatTime = (time?: string) => {
-    if (!time) return '';
-    return time;
-};
-
-const formatCurrency = (amount?: number) => {
-    if (!amount) return '$0';
-    return new Intl.NumberFormat('en-US', {
+const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-PH', {
         style: 'currency',
-        currency: 'USD'
+        currency: 'PHP'
     }).format(amount);
 };
-
-// Initialize calendar
-onMounted(() => {
-    // Set up any initial data loading
-});
 </script>
 
 <template>
     <Head title="Appointment Calendar" />
-
+    
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
-            <!-- Header Section -->
+            <!-- Header with Stats -->
             <div class="bg-white dark:bg-gray-800 rounded-xl border border-sidebar-border/70 dark:border-sidebar-border p-6">
-                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
                     <div>
-                        <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">Appointment Calendar</h1>
-                        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                            Manage and view all appointments in calendar format
+                        <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Appointment Calendar</h1>
+                        <p class="text-gray-600 dark:text-gray-400">
+                            Manage and view your clinic appointments
                         </p>
                     </div>
                     
-                    <div class="flex flex-wrap items-center gap-2">
-                        <!-- View Toggle -->
+                    <!-- View Toggle -->
+                    <div class="flex gap-2 mt-4 md:mt-0">
                         <button @click="toggleView" 
-                                class="px-3 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm font-medium dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
-                            {{ viewMode === 'calendar' ? '📋 List View' : '📅 Calendar View' }}
+                                :class="['px-4 py-2 rounded-md text-sm font-medium transition-colors',
+                                        viewMode === 'calendar' 
+                                            ? 'bg-blue-600 text-white' 
+                                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600']">
+                            {{ viewMode === 'calendar' ? '📅 Calendar' : '📅 Calendar' }}
                         </button>
-                        
-                        <!-- Filter Dropdown -->
-                        <select v-model="filterBy" 
-                                class="px-3 py-2 border border-gray-300 rounded-md text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
-                            <option value="all">All Appointments</option>
-                            <option value="today">Today</option>
-                            <option value="week">This Week</option>
-                            <option value="confirmed">Confirmed</option>
-                            <option value="pending">Pending</option>
-                        </select>
-                        
-                        <!-- New Appointment Button -->
-                        <button @click="showNewAppointmentModal = true" 
-                                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium">
-                            📅 New Appointment
+                        <button @click="toggleView" 
+                                :class="['px-4 py-2 rounded-md text-sm font-medium transition-colors',
+                                        viewMode === 'list' 
+                                            ? 'bg-blue-600 text-white' 
+                                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600']">
+                            {{ viewMode === 'list' ? '📋 List' : '📋 List' }}
                         </button>
                     </div>
                 </div>
-                
-                <!-- Statistics Row -->
-                <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mt-6">
-                    <div class="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                        <p class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ appointmentStats.today }}</p>
-                        <p class="text-xs text-blue-700 dark:text-blue-300">Today</p>
+
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                        <p class="text-sm font-medium text-blue-600 dark:text-blue-400">Today</p>
+                        <p class="text-2xl font-bold text-blue-700 dark:text-blue-300">{{ appointmentStats.today }}</p>
                     </div>
-                    <div class="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                        <p class="text-2xl font-bold text-green-600 dark:text-green-400">{{ appointmentStats.thisWeek }}</p>
-                        <p class="text-xs text-green-700 dark:text-green-300">This Week</p>
+                    <div class="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
+                        <p class="text-sm font-medium text-green-600 dark:text-green-400">This Week</p>
+                        <p class="text-2xl font-bold text-green-700 dark:text-green-300">{{ appointmentStats.thisWeek }}</p>
                     </div>
-                    <div class="text-center p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
-                        <p class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{{ appointmentStats.confirmed }}</p>
-                        <p class="text-xs text-emerald-700 dark:text-emerald-300">Confirmed</p>
+                    <div class="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg">
+                        <p class="text-sm font-medium text-yellow-600 dark:text-yellow-400">Confirmed</p>
+                        <p class="text-2xl font-bold text-yellow-700 dark:text-yellow-300">{{ appointmentStats.confirmed }}</p>
                     </div>
-                    <div class="text-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-                        <p class="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{{ appointmentStats.pending }}</p>
-                        <p class="text-xs text-yellow-700 dark:text-yellow-300">Pending</p>
+                    <div class="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg">
+                        <p class="text-sm font-medium text-orange-600 dark:text-orange-400">Pending</p>
+                        <p class="text-2xl font-bold text-orange-700 dark:text-orange-300">{{ appointmentStats.pending }}</p>
                     </div>
-                    <div class="text-center p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                        <p class="text-2xl font-bold text-purple-600 dark:text-purple-400">{{ formatCurrency(appointmentStats.totalRevenue) }}</p>
-                        <p class="text-xs text-purple-700 dark:text-purple-300">Revenue</p>
+                    <div class="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
+                        <p class="text-sm font-medium text-purple-600 dark:text-purple-400">Revenue</p>
+                        <p class="text-2xl font-bold text-purple-700 dark:text-purple-300">{{ formatCurrency(appointmentStats.totalRevenue) }}</p>
                     </div>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="bg-white dark:bg-gray-800 rounded-xl border border-sidebar-border/70 dark:border-sidebar-border p-4">
+                <div class="flex flex-wrap gap-2">
+                    <button v-for="filter in [
+                        { key: 'all', label: 'All Appointments' },
+                        { key: 'today', label: 'Today' },
+                        { key: 'week', label: 'This Week' },
+                        { key: 'confirmed', label: 'Confirmed' },
+                        { key: 'pending', label: 'Pending' }
+                    ]" :key="filter.key"
+                            @click="filterBy = filter.key"
+                            :class="['px-3 py-1 rounded-md text-sm font-medium transition-colors',
+                                    filterBy === filter.key 
+                                        ? 'bg-blue-600 text-white' 
+                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600']">
+                        {{ filter.label }}
+                    </button>
                 </div>
             </div>
 
@@ -372,64 +319,53 @@ onMounted(() => {
             <div class="bg-white dark:bg-gray-800 rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
                 <!-- Calendar View -->
                 <div v-if="viewMode === 'calendar'">
-                    <Calendar
+                    <VueCalComponent
                         ref="calendarRef"
-                        :show-week-numbers="calendarConfig.showWeekNumbers"
-                        :show-weekends="calendarConfig.showWeekends"
-                        :highlight-today="calendarConfig.highlightToday"
-                        :highlight-weekends="calendarConfig.highlightWeekends"
-                        :selectable="calendarConfig.selectable"
-                        :select-mode="calendarConfig.selectMode"
-                        :show-events="calendarConfig.showEvents"
-                        :max-events-per-day="calendarConfig.maxEventsPerDay"
                         :events="filteredAppointments"
-                        :size="calendarConfig.size"
-                        :theme="calendarConfig.theme"
-                        :min-date="calendarConfig.minDate"
-                        :max-date="calendarConfig.maxDate"
-                        :disabled-days-of-week="calendarConfig.disabledDaysOfWeek"
-                        @date-select="handleDateSelect"
-                        @event-click="handleEventClick"
-                        @month-change="handleMonthChange"
-                        @day-double-click="handleDayDoubleClick"
-                    >
-                        <template #footer>
-                            <div class="text-center text-sm text-gray-600 dark:text-gray-400">
-                                <p>Click dates to schedule • Click appointments for details</p>
-                            </div>
-                        </template>
-                    </Calendar>
+                        :selected-date="new Date()"
+                        :active-view="currentView"
+                        :hide-view-selector="false"
+                        :editable="true"
+                        :resizable="true"
+                        :deletable="false"
+                        :show-time-in-cells="true"
+                        @event-click="onEventClick"
+                        @cell-click="onCellClick"
+                        @event-drop="onEventDrop"
+                        @event-resize="onEventResize"
+                        @view-change="onViewChange"
+                    />
                 </div>
                 
                 <!-- List View -->
                 <div v-else class="p-6">
                     <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                        Appointment List ({{ filteredAppointments.filter(apt => apt.type === 'appointment').length }} appointments)
+                        Appointment List ({{ filteredAppointments.length }} appointments)
                     </h3>
                     
                     <div class="space-y-3">
-                        <div v-for="appointment in filteredAppointments.filter(apt => apt.type === 'appointment')" 
+                        <div v-for="appointment in filteredAppointments" 
                              :key="appointment.id"
                              class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
                             <div class="flex-1">
                                 <div class="flex items-center gap-3 mb-2">
                                     <h4 class="font-medium text-gray-900 dark:text-gray-100">
-                                        {{ appointment.petName }} - {{ appointment.title?.split(' - ')[1] }}
+                                        {{ appointment.appointmentData.petName }} - {{ appointment.title?.split(' - ')[1] }}
                                     </h4>
                                     <span :class="['px-2 py-1 text-xs font-medium rounded-full', 
-                                                  appointment.status === 'confirmed' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                                                  appointment.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                                                  appointment.appointmentData.status === 'confirmed' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                                                  appointment.appointmentData.status === 'scheduled' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
                                                   'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200']">
-                                        {{ appointment.status?.charAt(0).toUpperCase() + appointment.status?.slice(1) }}
+                                        {{ appointment.appointmentData.status?.charAt(0).toUpperCase() + appointment.appointmentData.status?.slice(1) }}
                                     </span>
                                 </div>
                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm text-gray-600 dark:text-gray-400">
-                                    <p>📅 {{ appointment.date }} at {{ appointment.time }}</p>
-                                    <p>👨‍⚕️ {{ appointment.doctorName }}</p>
-                                    <p>💰 {{ formatCurrency(appointment.cost) }}</p>
+                                    <p>📅 {{ appointment.appointmentData.date }} at {{ appointment.appointmentData.time }}</p>
+                                    <p>👨‍⚕️ {{ appointment.appointmentData.doctorName }}</p>
+                                    <p>💰 {{ formatCurrency(appointment.appointmentData.cost) }}</p>
                                 </div>
                                 <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                    📞 {{ appointment.clientName }} - {{ appointment.clientPhone }}
+                                    📞 {{ appointment.appointmentData.clientName }} - {{ appointment.appointmentData.clientPhone }}
                                 </p>
                             </div>
                             
@@ -445,7 +381,7 @@ onMounted(() => {
                             </div>
                         </div>
                         
-                        <div v-if="filteredAppointments.filter(apt => apt.type === 'appointment').length === 0" 
+                        <div v-if="filteredAppointments.length === 0" 
                              class="text-center py-8 text-gray-500 dark:text-gray-400">
                             <p>No appointments found for the selected filter.</p>
                             <button @click="filterBy = 'all'" 
@@ -476,30 +412,30 @@ onMounted(() => {
                     </button>
                 </div>
                 
-                <div v-if="selectedEvent.type === 'appointment'" class="space-y-3">
+                <div class="space-y-3">
                     <div class="grid grid-cols-2 gap-4 text-sm">
                         <div>
                             <p class="font-medium text-gray-700 dark:text-gray-300">Date & Time</p>
-                            <p class="text-gray-600 dark:text-gray-400">{{ selectedEvent.date }} at {{ selectedEvent.time }}</p>
+                            <p class="text-gray-600 dark:text-gray-400">{{ selectedEvent.appointmentData.date }} at {{ selectedEvent.appointmentData.time }}</p>
                         </div>
                         <div>
                             <p class="font-medium text-gray-700 dark:text-gray-300">Status</p>
-                            <p :class="getStatusColor(selectedEvent.status)">{{ selectedEvent.status?.charAt(0).toUpperCase() + selectedEvent.status?.slice(1) }}</p>
+                            <p :class="getStatusTextColor(selectedEvent.appointmentData.status)">{{ selectedEvent.appointmentData.status?.charAt(0).toUpperCase() + selectedEvent.appointmentData.status?.slice(1) }}</p>
                         </div>
                         <div>
                             <p class="font-medium text-gray-700 dark:text-gray-300">Pet</p>
-                            <p class="text-gray-600 dark:text-gray-400">{{ (selectedEvent as AppointmentEvent).petName }} ({{ (selectedEvent as AppointmentEvent).petType }})</p>
+                            <p class="text-gray-600 dark:text-gray-400">{{ selectedEvent.appointmentData.petName }} ({{ selectedEvent.appointmentData.petType }})</p>
                         </div>
                         <div>
                             <p class="font-medium text-gray-700 dark:text-gray-300">Doctor</p>
-                            <p class="text-gray-600 dark:text-gray-400">{{ (selectedEvent as AppointmentEvent).doctorName }}</p>
+                            <p class="text-gray-600 dark:text-gray-400">{{ selectedEvent.appointmentData.doctorName }}</p>
                         </div>
                     </div>
                     
                     <div class="pt-3 border-t border-gray-200 dark:border-gray-600">
                         <p class="font-medium text-gray-700 dark:text-gray-300 mb-2">Services</p>
                         <div class="flex flex-wrap gap-1">
-                            <span v-for="service in (selectedEvent as AppointmentEvent).services" 
+                            <span v-for="service in selectedEvent.appointmentData.services" 
                                   :key="service"
                                   class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded dark:bg-blue-900 dark:text-blue-200">
                                 {{ service }}
@@ -516,14 +452,6 @@ onMounted(() => {
                                 class="flex-1 border border-gray-300 text-gray-700 py-2 rounded-md hover:bg-gray-50 text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
                             Reschedule
                         </button>
-                    </div>
-                </div>
-                
-                <div v-else class="space-y-3">
-                    <p class="text-sm text-gray-600 dark:text-gray-400">{{ selectedEvent.description }}</p>
-                    <div class="text-sm">
-                        <p class="font-medium text-gray-700 dark:text-gray-300">Date</p>
-                        <p class="text-gray-600 dark:text-gray-400">{{ selectedEvent.date }}</p>
                     </div>
                 </div>
             </div>
@@ -548,19 +476,14 @@ onMounted(() => {
                 </div>
                 
                 <div class="space-y-4">
-                    <div>
-                        <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Selected Date</p>
-                        <p class="text-lg text-blue-600 dark:text-blue-400 font-semibold">{{ selectedDate }}</p>
-                    </div>
-                    
-                    <p class="text-sm text-gray-600 dark:text-gray-400">
-                        You will be redirected to the clinics page to book an appointment for the selected date.
+                    <p class="text-gray-600 dark:text-gray-400">
+                        Create a new appointment{{ selectedDate ? ` for ${selectedDate}` : '' }}.
                     </p>
                     
-                    <div class="flex gap-2 pt-4">
+                    <div class="flex gap-2">
                         <button @click="createNewAppointment" 
                                 class="flex-1 bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 text-sm">
-                            Go to Clinics
+                            Create Appointment
                         </button>
                         <button @click="closeModal" 
                                 class="flex-1 border border-gray-300 text-gray-700 py-2 rounded-md hover:bg-gray-50 text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
@@ -574,12 +497,5 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* Additional modal and transition styles */
-.modal-enter-active, .modal-leave-active {
-    transition: opacity 0.3s ease;
-}
-
-.modal-enter-from, .modal-leave-to {
-    opacity: 0;
-}
+/* Additional custom styles if needed */
 </style>

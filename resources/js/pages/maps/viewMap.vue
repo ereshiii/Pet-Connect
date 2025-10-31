@@ -1,11 +1,55 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
 import MapComponent from '@/components/maps/map.vue';
-import { viewMap, clinicDetails, booking } from '@/routes';
+import { viewMap, clinicDetails, booking, fullMapView } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/vue3';
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 
+// Props interface
+interface Clinic {
+    id: number;
+    name: string;
+    description?: string;
+    address: string;
+    phone: string;
+    email: string;
+    website?: string;
+    rating: number;
+    total_reviews: number;
+    stars: string;
+    status: string;
+    status_color: string;
+    is_featured: boolean;
+    is_open_24_7: boolean;
+    services: string[];
+    veterinarians: any[];
+    operating_hours: any;
+    latitude: number;
+    longitude: number;
+    type: 'clinic' | 'emergency';
+    created_at: string;
+}
+
+interface Props {
+    clinics: Clinic[];
+    mapCenter: [number, number];
+    filters?: {
+        search?: string;
+        service?: string;
+        rating?: string;
+        region?: string;
+        distance?: string;
+    };
+}
+
+const props = withDefaults(defineProps<Props>(), {
+    clinics: () => [],
+    mapCenter: () => [14.5995, 120.9842], // Default to Manila
+    filters: () => ({})
+});
+
+// Breadcrumbs
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Clinics',
@@ -17,74 +61,151 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-// Sample clinic data - this would typically come from props or API
-const clinicMarkers = ref([
-    {
-        id: 1,
-        lat: 40.7128,
-        lng: -74.0060,
-        title: "PetCare Veterinary Clinic",
-        description: "123 Main Street, City Center • ★★★★★ (4.8) • Open Now",
-        type: "clinic" as const
-    },
-    {
-        id: 2,
-        lat: 40.7589,
-        lng: -73.9851,
-        title: "Animal Hospital Plus",
-        description: "456 Oak Avenue, Downtown • ★★★★☆ (4.2) • Closed",
-        type: "clinic" as const
-    },
-    {
-        id: 3,
-        lat: 40.7282,
-        lng: -73.7949,
-        title: "Happy Paws Veterinary",
-        description: "789 Elm Street, Westside • ★★★★★ (4.9) • Open Now",
-        type: "clinic" as const
-    },
-    {
-        id: 4,
-        lat: 40.6892,
-        lng: -74.0445,
-        title: "Metro Animal Hospital",
-        description: "321 Pine Road, Central District • ★★★★☆ (4.3) • Open Now",
-        type: "clinic" as const
-    },
-    {
-        id: 5,
-        lat: 40.7505,
-        lng: -73.9934,
-        title: "Sunrise Pet Clinic",
-        description: "654 Maple Avenue, Eastside • ★★★★★ (4.7) • Closed",
-        type: "clinic" as const
-    },
-    {
-        id: 6,
-        lat: 40.7831,
-        lng: -73.9712,
-        title: "24/7 Emergency Vet",
-        description: "987 Cedar Lane, Hospital District • ★★★★☆ (4.1) • Open 24/7",
-        type: "emergency" as const
-    }
-]);
+// Convert clinic data to map markers
+const clinicMarkers = computed(() => {
+    return props.clinics.map(clinic => ({
+        id: clinic.id,
+        lat: clinic.latitude,
+        lng: clinic.longitude,
+        title: clinic.name,
+        description: `${clinic.address} • ${clinic.stars} (${Number(clinic.rating || 0).toFixed(1)}) • ${clinic.is_open_24_7 ? 'Open 24/7' : clinic.status}`,
+        type: clinic.type,
+        clinic: clinic // Store full clinic data for access
+    }));
+});
 
 // Map settings
-const mapCenter = ref<[number, number]>([40.7128, -74.0060]); // NYC coordinates
+const mapCenter = ref<[number, number]>(props.mapCenter);
 const mapZoom = ref(12);
 const selectedClinic = ref<any>(null);
 const showFilters = ref(true);
 
-// Filter states
-const serviceFilter = ref('');
-const ratingFilter = ref('');
-const categoryFilter = ref('');
-const distanceFilter = ref('');
+// Filter states (initialized from props)
+const searchFilter = ref(props.filters?.search || '');
+const serviceFilter = ref(props.filters?.service || '');
+const ratingFilter = ref(props.filters?.rating || '');
+const regionFilter = ref(props.filters?.region || '');
+const distanceFilter = ref(props.filters?.distance || '');
+
+// Distance calculation functions (consistent with Clinics.vue)
+const calculateDistance = (clinic: Clinic) => {
+    // Simplified distance calculation - in real app use user's location
+    // For now, we'll use a consistent pseudo-random distance based on clinic ID
+    const baseDistance = ((clinic.id * 7) % 50) + 0.5; // Generate consistent distance between 0.5-50.5 km
+    return baseDistance.toFixed(1);
+};
+
+const getDistanceValue = (clinic: Clinic) => {
+    // Return numeric distance for filtering
+    return parseFloat(calculateDistance(clinic));
+};
+
+// Filtered clinics based on search criteria
+const filteredClinics = computed(() => {
+    let filtered = props.clinics;
+
+    // Filter by search query
+    if (searchFilter.value) {
+        const query = searchFilter.value.toLowerCase();
+        filtered = filtered.filter(clinic => 
+            clinic.name.toLowerCase().includes(query) ||
+            clinic.address.toLowerCase().includes(query)
+        );
+    }
+
+    // Filter by service
+    if (serviceFilter.value) {
+        filtered = filtered.filter(clinic => 
+            clinic.services.some(service => 
+                service.toLowerCase().includes(serviceFilter.value.toLowerCase())
+            )
+        );
+    }
+
+    // Filter by rating
+    if (ratingFilter.value) {
+        const minRating = parseFloat(ratingFilter.value);
+        filtered = filtered.filter(clinic => Number(clinic.rating || 0) >= minRating);
+    }
+
+    // Filter by region - improved matching
+    if (regionFilter.value) {
+        const region = regionFilter.value.toLowerCase();
+        filtered = filtered.filter(clinic => {
+            const address = clinic.address.toLowerCase();
+            // Check for exact region match or common region abbreviations/variations
+            if (region === 'metro manila') {
+                return address.includes('metro manila') || 
+                       address.includes('manila') || 
+                       address.includes('quezon city') || 
+                       address.includes('makati') || 
+                       address.includes('taguig') || 
+                       address.includes('pasig') || 
+                       address.includes('mandaluyong') || 
+                       address.includes('san juan') || 
+                       address.includes('marikina') || 
+                       address.includes('pasay') || 
+                       address.includes('parañaque') || 
+                       address.includes('las piñas') || 
+                       address.includes('muntinlupa') || 
+                       address.includes('caloocan') || 
+                       address.includes('malabon') || 
+                       address.includes('navotas') || 
+                       address.includes('valenzuela');
+            } else if (region === 'calabarzon') {
+                return address.includes('calabarzon') || 
+                       address.includes('laguna') || 
+                       address.includes('cavite') || 
+                       address.includes('batangas') || 
+                       address.includes('rizal') || 
+                       address.includes('quezon');
+            } else if (region === 'central luzon') {
+                return address.includes('central luzon') || 
+                       address.includes('bulacan') || 
+                       address.includes('nueva ecija') || 
+                       address.includes('pampanga') || 
+                       address.includes('tarlac') || 
+                       address.includes('zambales') || 
+                       address.includes('bataan') || 
+                       address.includes('aurora');
+            } else {
+                // For other regions, use exact match
+                return address.includes(region);
+            }
+        });
+    }
+
+    // Filter by distance
+    if (distanceFilter.value) {
+        const maxDistance = parseFloat(distanceFilter.value);
+        filtered = filtered.filter(clinic => {
+            const clinicDistance = getDistanceValue(clinic);
+            return clinicDistance <= maxDistance;
+        });
+    }
+
+    return filtered;
+});
+
+// Filtered markers based on clinic filters
+const filteredMarkers = computed(() => {
+    return filteredClinics.value
+        .filter(clinic => clinic.latitude && clinic.longitude) // Filter out clinics without coordinates
+        .map(clinic => ({
+            id: clinic.id,
+            lat: parseFloat(clinic.latitude.toString()),
+            lng: parseFloat(clinic.longitude.toString()),
+            title: clinic.name,
+            description: `${clinic.address} • ${clinic.stars} (${Number(clinic.rating || 0).toFixed(1)}) • ${clinic.is_open_24_7 ? 'Open 24/7' : clinic.status}`,
+            type: clinic.is_open_24_7 ? 'emergency' : 'clinic', // Use emergency icon for 24/7 clinics
+            clinic: clinic
+        }));
+});
 
 // Map event handlers
 const handleMarkerClick = (marker: any) => {
-    selectedClinic.value = marker;
-    console.log('Clinic selected:', marker);
+    selectedClinic.value = marker.clinic || marker;
+    console.log('Clinic selected:', selectedClinic.value);
 };
 
 const handleMapReady = (map: any) => {
@@ -93,6 +214,8 @@ const handleMapReady = (map: any) => {
 
 const handleLocationFound = (position: GeolocationPosition) => {
     console.log('User location found:', position);
+    // Update map center to user location
+    mapCenter.value = [position.coords.latitude, position.coords.longitude];
 };
 
 const handleLocationError = (error: GeolocationPositionError) => {
@@ -101,19 +224,22 @@ const handleLocationError = (error: GeolocationPositionError) => {
 
 // Filter functions
 const applyFilters = () => {
-    // Implement filter logic here
-    console.log('Applying filters:', {
+    // Filters are automatically applied through computed properties
+    console.log('Filters applied:', {
+        search: searchFilter.value,
         service: serviceFilter.value,
         rating: ratingFilter.value,
-        category: categoryFilter.value,
-        distance: distanceFilter.value
+        region: regionFilter.value,
+        distance: distanceFilter.value,
+        resultCount: filteredClinics.value.length
     });
 };
 
 const clearFilters = () => {
+    searchFilter.value = '';
     serviceFilter.value = '';
     ratingFilter.value = '';
-    categoryFilter.value = '';
+    regionFilter.value = '';
     distanceFilter.value = '';
 };
 
@@ -122,7 +248,31 @@ const toggleFilters = () => {
 };
 
 const goBack = () => {
-    window.history.back();
+    router.visit('/clinics');
+};
+
+const goFullscreen = () => {
+    console.log('goFullscreen called with filters:', {
+        search: searchFilter.value,
+        service: serviceFilter.value,
+        rating: ratingFilter.value,
+        region: regionFilter.value,
+        distance: distanceFilter.value
+    });
+    
+    try {
+        router.visit(fullMapView().url, {
+            data: {
+                search: searchFilter.value,
+                service: serviceFilter.value,
+                rating: ratingFilter.value,
+                region: regionFilter.value,
+                distance: distanceFilter.value
+            }
+        });
+    } catch (error) {
+        console.error('Error navigating to fullscreen:', error);
+    }
 };
 
 // Navigation functions for selected clinic
@@ -131,7 +281,7 @@ const bookSelectedClinic = () => {
         router.visit(booking().url, {
             data: {
                 clinic_id: selectedClinic.value.id,
-                clinic_name: selectedClinic.value.title,
+                clinic_name: selectedClinic.value.name,
             },
             preserveScroll: true,
         });
@@ -143,6 +293,15 @@ const viewSelectedClinicDetails = () => {
         router.visit(clinicDetails(selectedClinic.value.id).url);
     }
 };
+
+// Helper function to get available services for filter dropdown
+const availableServices = computed(() => {
+    const services = new Set<string>();
+    props.clinics.forEach(clinic => {
+        clinic.services.forEach(service => services.add(service));
+    });
+    return Array.from(services).sort();
+});
 
 onMounted(() => {
     // Any initialization logic
@@ -158,12 +317,21 @@ onMounted(() => {
             <div class="flex items-center justify-between">
                 <div>
                     <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">Clinic Locations</h1>
-                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Find veterinary clinics near you</p>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        {{ props.clinics.length }} veterinary clinic{{ props.clinics.length !== 1 ? 's' : '' }} available
+                    </p>
                 </div>
                 <div class="flex gap-2">
                     <button @click="toggleFilters" 
                             class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
                         {{ showFilters ? 'Hide' : 'Show' }} Filters
+                    </button>
+                    <button @click="goFullscreen" 
+                            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
+                        </svg>
+                        Fullscreen
                     </button>
                     <button @click="goBack" 
                             class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm">
@@ -173,23 +341,57 @@ onMounted(() => {
             </div>
 
             <div class="flex flex-col lg:flex-row gap-4 h-full">
+                <!-- No Clinics Message -->
+                <div v-if="props.clinics.length === 0" class="flex items-center justify-center h-64 bg-white dark:bg-gray-800 rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
+                    <div class="text-center text-gray-500 dark:text-gray-400">
+                        <svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No Clinic Locations Available</h3>
+                        <p class="text-gray-600 dark:text-gray-400">
+                            No approved clinics with location data are currently available.
+                        </p>
+                    </div>
+                </div>
+
+                <template v-else>
                 <!-- Filters Panel -->
                 <div v-if="showFilters" 
                      class="lg:w-80 bg-white dark:bg-gray-800 rounded-xl border border-sidebar-border/70 dark:border-sidebar-border p-4">
                     <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Filters</h3>
                     
                     <div class="space-y-4">
+                        <!-- Search Filter -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Search</label>
+                            <input 
+                                v-model="searchFilter"
+                                type="text" 
+                                placeholder="Search clinics..."
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+                            />
+                        </div>
+
                         <!-- Service Filter -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Service</label>
                             <select v-model="serviceFilter" 
                                     class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
                                 <option value="">All services</option>
+                                <option value="consultation">Consultation</option>
                                 <option value="vaccination">Vaccination</option>
-                                <option value="dental">Dental Care</option>
                                 <option value="surgery">Surgery</option>
-                                <option value="emergency">Emergency Care</option>
+                                <option value="emergency">Emergency</option>
                                 <option value="grooming">Grooming</option>
+                                <option value="boarding">Boarding</option>
+                                <option value="wellness">Wellness</option>
+                                <option value="laboratory">Laboratory</option>
+                                <option value="marine">Marine Care</option>
+                                <option value="livestock">Livestock</option>
+                                <option value="aquatic">Aquatic</option>
+                                <option value="traditional care">Traditional Care</option>
+                                <option value="disaster response">Disaster Response</option>
                             </select>
                         </div>
 
@@ -206,16 +408,28 @@ onMounted(() => {
                             </select>
                         </div>
 
-                        <!-- Category Filter -->
+                        <!-- Region Filter -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Category</label>
-                            <select v-model="categoryFilter" 
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Region</label>
+                            <select v-model="regionFilter" 
                                     class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
-                                <option value="">All</option>
-                                <option value="general">General Practice</option>
-                                <option value="specialty">Specialty Clinic</option>
-                                <option value="emergency">Emergency Hospital</option>
-                                <option value="mobile">Mobile Vet</option>
+                                <option value="">All regions</option>
+                                <option value="Metro Manila">Metro Manila</option>
+                                <option value="Central Visayas">Central Visayas</option>
+                                <option value="Davao Region">Davao Region</option>
+                                <option value="Cordillera">Cordillera</option>
+                                <option value="Western Visayas">Western Visayas</option>
+                                <option value="Cagayan Valley">Cagayan Valley</option>
+                                <option value="MIMAROPA">MIMAROPA</option>
+                                <option value="CALABARZON">CALABARZON</option>
+                                <option value="Bicol Region">Bicol Region</option>
+                                <option value="Central Luzon">Central Luzon</option>
+                                <option value="Eastern Visayas">Eastern Visayas</option>
+                                <option value="Caraga">Caraga</option>
+                                <option value="Northern Mindanao">Northern Mindanao</option>
+                                <option value="BARMM">BARMM</option>
+                                <option value="SOCCSKSARGEN">SOCCSKSARGEN</option>
+                                <option value="Ilocos Region">Ilocos Region</option>
                             </select>
                         </div>
 
@@ -249,9 +463,20 @@ onMounted(() => {
                     <div v-if="selectedClinic" class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-600">
                         <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-2">Selected Clinic</h4>
                         <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
-                            <h5 class="font-semibold text-blue-900 dark:text-blue-100 text-sm">{{ selectedClinic.title }}</h5>
-                            <p class="text-blue-700 dark:text-blue-300 text-xs mt-1">{{ selectedClinic.description }}</p>
-                            <div class="flex gap-2 mt-2">
+                            <h5 class="font-semibold text-blue-900 dark:text-blue-100 text-sm">{{ selectedClinic.name }}</h5>
+                            <p class="text-blue-700 dark:text-blue-300 text-xs mt-1">📍 {{ selectedClinic.address }}</p>
+                            <div class="flex items-center mt-2 text-xs">
+                                <span class="text-yellow-500">{{ selectedClinic.stars }}</span>
+                                <span class="text-blue-700 dark:text-blue-300 ml-1">({{ Number(selectedClinic.rating || 0).toFixed(1) }})</span>
+                                <span class="text-blue-600 dark:text-blue-400 ml-2">{{ selectedClinic.total_reviews }} reviews</span>
+                            </div>
+                            <div class="flex items-center mt-1 text-xs">
+                                <span :class="selectedClinic.status_color">{{ selectedClinic.status }}</span>
+                                <span v-if="selectedClinic.is_open_24_7" class="ml-2 bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs dark:bg-green-900 dark:text-green-200">
+                                    24/7
+                                </span>
+                            </div>
+                            <div class="flex gap-2 mt-3">
                                 <button @click="bookSelectedClinic" 
                                         class="flex-1 bg-blue-600 text-white py-1 px-2 rounded text-xs hover:bg-blue-700">
                                     Book Appointment
@@ -260,6 +485,31 @@ onMounted(() => {
                                         class="flex-1 border border-blue-300 text-blue-700 py-1 px-2 rounded text-xs hover:bg-blue-100 dark:border-blue-600 dark:text-blue-300 dark:hover:bg-blue-800">
                                     View Details
                                 </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Filter Results Summary -->
+                    <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                        <div class="text-xs text-gray-600 dark:text-gray-400">
+                            <strong>{{ filteredClinics.length }}</strong> of <strong>{{ props.clinics.length }}</strong> clinics shown
+                        </div>
+                        <div v-if="searchFilter || serviceFilter || ratingFilter || regionFilter" class="mt-2 space-y-1">
+                            <div v-if="searchFilter" class="text-xs">
+                                <span class="text-gray-500">Search:</span> 
+                                <span class="font-medium">{{ searchFilter }}</span>
+                            </div>
+                            <div v-if="serviceFilter" class="text-xs">
+                                <span class="text-gray-500">Service:</span> 
+                                <span class="font-medium">{{ serviceFilter }}</span>
+                            </div>
+                            <div v-if="ratingFilter" class="text-xs">
+                                <span class="text-gray-500">Rating:</span> 
+                                <span class="font-medium">{{ ratingFilter }}+ stars</span>
+                            </div>
+                            <div v-if="regionFilter" class="text-xs">
+                                <span class="text-gray-500">Region:</span> 
+                                <span class="font-medium">{{ regionFilter }}</span>
                             </div>
                         </div>
                     </div>
@@ -272,7 +522,7 @@ onMounted(() => {
                         width="100%"
                         :center="mapCenter"
                         :zoom="mapZoom"
-                        :markers="clinicMarkers"
+                        :markers="filteredMarkers"
                         :show-user-location="true"
                         @marker-click="handleMarkerClick"
                         @map-ready="handleMapReady"
@@ -312,6 +562,7 @@ onMounted(() => {
                         </template>
                     </MapComponent>
                 </div>
+                </template>
             </div>
         </div>
     </AppLayout>

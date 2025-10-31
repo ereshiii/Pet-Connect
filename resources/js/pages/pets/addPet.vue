@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
-import { pet } from '@/routes';
+import { petsIndex, petsStore } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
-import { Head, router } from '@inertiajs/vue3';
+import { Head, router, useForm } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'My Pets',
-        href: pet().url,
+        href: petsIndex().url,
     },
     {
         title: 'Add New Pet',
@@ -17,17 +17,29 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 // Form state
-const form = ref({
+const form = useForm({
     name: '',
     species: 'dog',
+    breed_id: null,
+    gender: 'male',
+    birth_date: null,
+    weight: null,
+    size: null,
+    color: '',
+    markings: '',
+    microchip_number: '',
+    is_neutered: false,
+    special_needs: '',
+    notes: '',
+    profile_image: null,
+});
+
+// Legacy form fields for UI (will be mapped to proper fields)
+const uiForm = ref({
     breed: '',
     age: '',
     ageUnit: 'years',
-    gender: 'male',
-    weight: '',
     weightUnit: 'kg',
-    color: '',
-    microchipId: '',
     vaccinated: false,
     lastVaccinationDate: '',
     nextVaccinationDue: '',
@@ -38,7 +50,6 @@ const form = ref({
     specialConditions: '',
     emergencyContact: '',
     emergencyPhone: '',
-    notes: '',
 });
 
 const formErrors = ref<Record<string, string>>({});
@@ -70,8 +81,7 @@ const weightUnits = [
 const genderOptions = [
     { value: 'male', label: 'Male' },
     { value: 'female', label: 'Female' },
-    { value: 'neutered_male', label: 'Neutered Male' },
-    { value: 'spayed_female', label: 'Spayed Female' },
+    { value: 'unknown', label: 'Unknown' },
 ];
 
 // Popular breed suggestions based on species
@@ -98,7 +108,7 @@ const breedSuggestions = computed(() => {
         other: ['Mixed Breed', 'Unknown']
     };
     
-    return breeds[form.value.species] || ['Mixed Breed', 'Unknown'];
+    return breeds[form.species] || ['Mixed Breed', 'Unknown'];
 });
 
 // Computed
@@ -116,21 +126,21 @@ const maxBirthDate = computed(() => {
 const validateForm = () => {
     formErrors.value = {};
     
-    if (!form.value.name.trim()) {
+    if (!form.name.trim()) {
         formErrors.value.name = 'Pet name is required';
     }
     
-    if (!form.value.breed.trim()) {
+    if (!uiForm.value.breed.trim()) {
         formErrors.value.breed = 'Breed is required';
     }
     
-    if (!form.value.age) {
+    if (!uiForm.value.age) {
         formErrors.value.age = 'Age is required';
-    } else if (isNaN(Number(form.value.age)) || Number(form.value.age) <= 0) {
+    } else if (isNaN(Number(uiForm.value.age)) || Number(uiForm.value.age) <= 0) {
         formErrors.value.age = 'Please enter a valid age';
     }
     
-    if (form.value.weight && (isNaN(Number(form.value.weight)) || Number(form.value.weight) <= 0)) {
+    if (form.weight && (isNaN(Number(form.weight)) || Number(form.weight) <= 0)) {
         formErrors.value.weight = 'Please enter a valid weight';
     }
     
@@ -142,20 +152,93 @@ const submitForm = () => {
         return;
     }
     
-    // Here you would typically send the pet data to your backend
-    console.log('Pet registration submitted:', form.value);
+    // Convert UI form data to backend format
+    prepareFormData();
     
-    // For now, show a success message and redirect
-    alert(`${form.value.name} has been successfully registered!`);
-    router.visit(pet().url);
+    // Submit using Inertia
+    form.post(petsStore().url, {
+        onSuccess: () => {
+            // Redirect to pets index on success
+            router.visit(petsIndex().url);
+        },
+        onError: (errors) => {
+            // Handle validation errors from backend
+            formErrors.value = errors;
+        }
+    });
+};
+
+const prepareFormData = () => {
+    // Calculate birth_date from age
+    if (uiForm.value.age) {
+        const currentDate = new Date();
+        const ageInYears = uiForm.value.ageUnit === 'months' 
+            ? Number(uiForm.value.age) / 12 
+            : Number(uiForm.value.age);
+        
+        const birthDate = new Date(currentDate.getFullYear() - ageInYears, currentDate.getMonth(), currentDate.getDate());
+        form.birth_date = birthDate.toISOString().split('T')[0];
+    }
+    
+    // Handle breed - for now just store as free text in special_needs or notes
+    // In a real app, you'd want to look up breed_id from a breeds table
+    if (uiForm.value.breed) {
+        form.notes = form.notes ? `${form.notes}\nBreed: ${uiForm.value.breed}` : `Breed: ${uiForm.value.breed}`;
+    }
+    
+    // Convert weight with unit
+    if (form.weight && uiForm.value.weightUnit) {
+        let weightInKg = Number(form.weight);
+        if (uiForm.value.weightUnit === 'lbs') {
+            weightInKg = weightInKg * 0.453592; // Convert lbs to kg
+        } else if (uiForm.value.weightUnit === 'g') {
+            weightInKg = weightInKg / 1000; // Convert g to kg
+        }
+        form.weight = Math.round(weightInKg * 100) / 100; // Round to 2 decimal places
+    }
+    
+    // Handle medical information in special_needs
+    const medicalInfo = [];
+    if (uiForm.value.allergies) medicalInfo.push(`Allergies: ${uiForm.value.allergies}`);
+    if (uiForm.value.medications) medicalInfo.push(`Medications: ${uiForm.value.medications}`);
+    if (uiForm.value.specialConditions) medicalInfo.push(`Conditions: ${uiForm.value.specialConditions}`);
+    if (uiForm.value.emergencyContact) medicalInfo.push(`Emergency Contact: ${uiForm.value.emergencyContact} (${uiForm.value.emergencyPhone})`);
+    
+    if (medicalInfo.length > 0) {
+        form.special_needs = form.special_needs ? 
+            `${form.special_needs}\n\n${medicalInfo.join('\n')}` : 
+            medicalInfo.join('\n');
+    }
+    
+    // Handle vaccination info in notes
+    const vaccinationInfo = [];
+    if (uiForm.value.vaccinated) vaccinationInfo.push('Up to date with vaccinations');
+    if (uiForm.value.lastVaccinationDate) vaccinationInfo.push(`Last vaccination: ${uiForm.value.lastVaccinationDate}`);
+    if (uiForm.value.nextVaccinationDue) vaccinationInfo.push(`Next vaccination due: ${uiForm.value.nextVaccinationDue}`);
+    if (uiForm.value.lastCheckupDate) vaccinationInfo.push(`Last checkup: ${uiForm.value.lastCheckupDate}`);
+    if (uiForm.value.nextCheckupDate) vaccinationInfo.push(`Next checkup: ${uiForm.value.nextCheckupDate}`);
+    
+    if (vaccinationInfo.length > 0) {
+        form.notes = form.notes ? 
+            `${form.notes}\n\nVaccination/Medical History:\n${vaccinationInfo.join('\n')}` : 
+            `Vaccination/Medical History:\n${vaccinationInfo.join('\n')}`;
+    }
+    
+    // Handle markings (combine color and markings)
+    if (form.color) {
+        form.markings = form.color;
+    }
+    
+    // Handle microchip
+    form.microchip_number = form.microchip_number || null;
 };
 
 const cancelRegistration = () => {
-    router.visit(pet().url);
+    router.visit(petsIndex().url);
 };
 
 const selectBreed = (breed: string) => {
-    form.value.breed = breed;
+    uiForm.value.breed = breed;
 };
 </script>
 
@@ -190,10 +273,10 @@ const selectBreed = (breed: string) => {
                                     v-model="form.name"
                                     type="text" 
                                     :class="['w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-100',
-                                            formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600']"
+                                            formErrors.name || form.errors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600']"
                                     placeholder="Enter your pet's name"
                                 />
-                                <p v-if="formErrors.name" class="text-red-500 text-sm mt-1">{{ formErrors.name }}</p>
+                                <p v-if="formErrors.name || form.errors.name" class="text-red-500 text-sm mt-1">{{ formErrors.name || form.errors.name }}</p>
                             </div>
 
                             <!-- Species -->
@@ -209,6 +292,7 @@ const selectBreed = (breed: string) => {
                                         {{ species.label }}
                                     </option>
                                 </select>
+                                <p v-if="form.errors.species" class="text-red-500 text-sm mt-1">{{ form.errors.species }}</p>
                             </div>
 
                             <!-- Gender -->
@@ -224,15 +308,61 @@ const selectBreed = (breed: string) => {
                                         {{ gender.label }}
                                     </option>
                                 </select>
+                                <p v-if="form.errors.gender" class="text-red-500 text-sm mt-1">{{ form.errors.gender }}</p>
+                            </div>
+
+                            <!-- Neutered Status -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Neutered/Spayed
+                                </label>
+                                <div class="flex items-center pt-2">
+                                    <input 
+                                        v-model="form.is_neutered"
+                                        type="checkbox" 
+                                        class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded dark:border-gray-600"
+                                    />
+                                    <label class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                        Pet is neutered/spayed
+                                    </label>
+                                </div>
+                                <p v-if="form.errors.is_neutered" class="text-red-500 text-sm mt-1">{{ form.errors.is_neutered }}</p>
+                            </div>
+
+                            <!-- Age -->
+                            <div class="lg:col-span-1">
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Age *
+                                </label>
+                                <div class="flex gap-2">
+                                    <input 
+                                        v-model="uiForm.age"
+                                        type="number" 
+                                        min="0"
+                                        step="0.1"
+                                        :class="['flex-1 px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-100',
+                                                formErrors.age ? 'border-red-500' : 'border-gray-300 dark:border-gray-600']"
+                                        placeholder="Age"
+                                    />
+                                    <select 
+                                        v-model="uiForm.ageUnit"
+                                        class="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                    >
+                                        <option v-for="unit in ageUnits" :key="unit.value" :value="unit.value">
+                                            {{ unit.label }}
+                                        </option>
+                                    </select>
+                                </div>
+                                <p v-if="formErrors.age" class="text-red-500 text-sm mt-1">{{ formErrors.age }}</p>
                             </div>
 
                             <!-- Breed -->
-                            <div class="md:col-span-2">
+                            <div class="md:col-span-3 lg:col-span-3">
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                     Breed *
                                 </label>
                                 <input 
-                                    v-model="form.breed"
+                                    v-model="uiForm.breed"
                                     type="text" 
                                     :class="['w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-100',
                                             formErrors.breed ? 'border-red-500' : 'border-gray-300 dark:border-gray-600']"
@@ -257,33 +387,6 @@ const selectBreed = (breed: string) => {
                                 </div>
                             </div>
 
-                            <!-- Age -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Age *
-                                </label>
-                                <div class="flex gap-2">
-                                    <input 
-                                        v-model="form.age"
-                                        type="number" 
-                                        min="0"
-                                        step="0.1"
-                                        :class="['flex-1 px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-100',
-                                                formErrors.age ? 'border-red-500' : 'border-gray-300 dark:border-gray-600']"
-                                        placeholder="Age"
-                                    />
-                                    <select 
-                                        v-model="form.ageUnit"
-                                        class="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-                                    >
-                                        <option v-for="unit in ageUnits" :key="unit.value" :value="unit.value">
-                                            {{ unit.label }}
-                                        </option>
-                                    </select>
-                                </div>
-                                <p v-if="formErrors.age" class="text-red-500 text-sm mt-1">{{ formErrors.age }}</p>
-                            </div>
-
                             <!-- Color -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -295,6 +398,7 @@ const selectBreed = (breed: string) => {
                                     class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
                                     placeholder="e.g., Brown and white"
                                 />
+                                <p v-if="form.errors.color" class="text-red-500 text-sm mt-1">{{ form.errors.color }}</p>
                             </div>
 
                             <!-- Weight -->
@@ -309,11 +413,11 @@ const selectBreed = (breed: string) => {
                                         min="0"
                                         step="0.1"
                                         :class="['flex-1 px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-100',
-                                                formErrors.weight ? 'border-red-500' : 'border-gray-300 dark:border-gray-600']"
+                                                formErrors.weight || form.errors.weight ? 'border-red-500' : 'border-gray-300 dark:border-gray-600']"
                                         placeholder="Weight"
                                     />
                                     <select 
-                                        v-model="form.weightUnit"
+                                        v-model="uiForm.weightUnit"
                                         class="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
                                     >
                                         <option v-for="unit in weightUnits" :key="unit.value" :value="unit.value">
@@ -321,7 +425,7 @@ const selectBreed = (breed: string) => {
                                         </option>
                                     </select>
                                 </div>
-                                <p v-if="formErrors.weight" class="text-red-500 text-sm mt-1">{{ formErrors.weight }}</p>
+                                <p v-if="formErrors.weight || form.errors.weight" class="text-red-500 text-sm mt-1">{{ formErrors.weight || form.errors.weight }}</p>
                             </div>
 
                             <!-- Microchip ID -->
@@ -330,11 +434,12 @@ const selectBreed = (breed: string) => {
                                     Microchip ID
                                 </label>
                                 <input 
-                                    v-model="form.microchipId"
+                                    v-model="form.microchip_number"
                                     type="text" 
                                     class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
                                     placeholder="15-digit microchip number"
                                 />
+                                <p v-if="form.errors.microchip_number" class="text-red-500 text-sm mt-1">{{ form.errors.microchip_number }}</p>
                             </div>
                         </div>
                     </div>
@@ -348,7 +453,7 @@ const selectBreed = (breed: string) => {
                             <div class="md:col-span-2">
                                 <div class="flex items-center mb-4">
                                     <input 
-                                        v-model="form.vaccinated"
+                                        v-model="uiForm.vaccinated"
                                         type="checkbox" 
                                         class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded dark:border-gray-600"
                                     />
@@ -364,7 +469,7 @@ const selectBreed = (breed: string) => {
                                     Last Vaccination Date
                                 </label>
                                 <input 
-                                    v-model="form.lastVaccinationDate"
+                                    v-model="uiForm.lastVaccinationDate"
                                     type="date" 
                                     :max="maxBirthDate"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
@@ -377,7 +482,7 @@ const selectBreed = (breed: string) => {
                                     Next Vaccination Due
                                 </label>
                                 <input 
-                                    v-model="form.nextVaccinationDue"
+                                    v-model="uiForm.nextVaccinationDue"
                                     type="date" 
                                     :min="minDate"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
@@ -390,7 +495,7 @@ const selectBreed = (breed: string) => {
                                     Last Checkup Date
                                 </label>
                                 <input 
-                                    v-model="form.lastCheckupDate"
+                                    v-model="uiForm.lastCheckupDate"
                                     type="date" 
                                     :max="maxBirthDate"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
@@ -403,7 +508,7 @@ const selectBreed = (breed: string) => {
                                     Next Checkup Date
                                 </label>
                                 <input 
-                                    v-model="form.nextCheckupDate"
+                                    v-model="uiForm.nextCheckupDate"
                                     type="date" 
                                     :min="minDate"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
@@ -416,7 +521,7 @@ const selectBreed = (breed: string) => {
                                     Known Allergies
                                 </label>
                                 <textarea 
-                                    v-model="form.allergies"
+                                    v-model="uiForm.allergies"
                                     rows="2"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
                                     placeholder="List any known allergies (food, environmental, medications, etc.)"
@@ -429,7 +534,7 @@ const selectBreed = (breed: string) => {
                                     Current Medications
                                 </label>
                                 <textarea 
-                                    v-model="form.medications"
+                                    v-model="uiForm.medications"
                                     rows="2"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
                                     placeholder="List current medications, dosages, and frequency"
@@ -442,7 +547,7 @@ const selectBreed = (breed: string) => {
                                     Special Medical Conditions
                                 </label>
                                 <textarea 
-                                    v-model="form.specialConditions"
+                                    v-model="uiForm.specialConditions"
                                     rows="2"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
                                     placeholder="Any chronic conditions, disabilities, or special care requirements"
@@ -460,7 +565,7 @@ const selectBreed = (breed: string) => {
                                     Emergency Contact Name
                                 </label>
                                 <input 
-                                    v-model="form.emergencyContact"
+                                    v-model="uiForm.emergencyContact"
                                     type="text" 
                                     class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
                                     placeholder="Alternative contact person"
@@ -472,7 +577,7 @@ const selectBreed = (breed: string) => {
                                     Emergency Contact Phone
                                 </label>
                                 <input 
-                                    v-model="form.emergencyPhone"
+                                    v-model="uiForm.emergencyPhone"
                                     type="tel" 
                                     class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
                                     placeholder="(555) 123-4567"
@@ -494,6 +599,7 @@ const selectBreed = (breed: string) => {
                                 class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
                                 placeholder="Any additional information about your pet's behavior, preferences, or special instructions for veterinary care..."
                             ></textarea>
+                            <p v-if="form.errors.notes" class="text-red-500 text-sm mt-1">{{ form.errors.notes }}</p>
                         </div>
                     </div>
 
@@ -501,14 +607,23 @@ const selectBreed = (breed: string) => {
                     <div class="flex gap-4 pt-6 border-t border-gray-200 dark:border-gray-600">
                         <button 
                             type="submit"
-                            class="flex-1 bg-blue-600 text-white py-3 px-6 rounded-md hover:bg-blue-700 font-medium transition-colors"
+                            :disabled="form.processing"
+                            class="flex-1 bg-blue-600 text-white py-3 px-6 rounded-md hover:bg-blue-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            Register Pet
+                            <span v-if="form.processing" class="flex items-center justify-center">
+                                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Registering...
+                            </span>
+                            <span v-else>Register Pet</span>
                         </button>
                         <button 
                             type="button"
                             @click="cancelRegistration"
-                            class="flex-1 border border-gray-300 text-gray-700 py-3 px-6 rounded-md hover:bg-gray-50 font-medium transition-colors dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                            :disabled="form.processing"
+                            class="flex-1 border border-gray-300 text-gray-700 py-3 px-6 rounded-md hover:bg-gray-50 font-medium transition-colors dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Cancel
                         </button>

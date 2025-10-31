@@ -34,5 +34,8 @@ const showAvatar = computed(
         <span v-if="showEmail" class="truncate text-xs text-muted-foreground">{{
             user.email
         }}</span>
+        <span v-if="user.account_type" class="truncate text-xs font-medium" :class="user.account_type === 'clinic' ? 'text-blue-600 dark:text-blue-400' : user.account_type === 'admin' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'">
+            {{ user.account_type === 'clinic' ? 'Clinic Account' : user.account_type === 'admin' ? 'Admin Account' : 'User Account' }}
+        </span>
     </div>
 </template>
