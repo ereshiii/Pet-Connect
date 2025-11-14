@@ -142,7 +142,7 @@ class ClinicDashboardController extends Controller
             $patients[] = [
                 'id' => $pet->id,
                 'name' => $pet->name,
-                'species' => $pet->petType ? $pet->petType->name : 'Unknown',
+                'species' => $pet->type ? $pet->type->name : 'Unknown',
                 'lastVisit' => Carbon::parse($appointment->appointment_date)->format('Y-m-d'),
                 'ownerName' => $owner ? $owner->name : 'Unknown Owner',
                 'status' => $this->getPatientStatus($pet, $appointment),
@@ -180,17 +180,17 @@ class ClinicDashboardController extends Controller
             ];
         }
 
-        // Check for pending appointments
-        $pendingCount = Appointment::where('clinic_id', $clinicId)
+        // Check for scheduled appointments
+        $scheduledCount = Appointment::where('clinic_id', $clinicId)
             ->whereDate('appointment_date', Carbon::today())
-            ->where('status', 'pending')
+            ->where('status', 'scheduled')
             ->count();
 
-        if ($pendingCount > 0) {
+        if ($scheduledCount > 0) {
             $alerts[] = [
-                'id' => 'pending_' . time(),
+                'id' => 'scheduled_' . time(),
                 'type' => 'info',
-                'message' => $pendingCount . ' appointment' . ($pendingCount > 1 ? 's' : '') . ' waiting for confirmation',
+                'message' => $scheduledCount . ' appointment' . ($scheduledCount > 1 ? 's' : '') . ' waiting for confirmation',
                 'time' => '1 hour ago',
             ];
         }
@@ -232,7 +232,7 @@ class ClinicDashboardController extends Controller
     private function mapAppointmentStatus($status): string
     {
         $statusMap = [
-            'pending' => 'pending',
+            'scheduled' => 'scheduled',
             'confirmed' => 'confirmed',
             'in_progress' => 'confirmed',
             'completed' => 'completed',
@@ -240,7 +240,7 @@ class ClinicDashboardController extends Controller
             'no_show' => 'cancelled',
         ];
 
-        return $statusMap[$status] ?? 'pending';
+        return $statusMap[$status] ?? 'scheduled';
     }
 
     /**

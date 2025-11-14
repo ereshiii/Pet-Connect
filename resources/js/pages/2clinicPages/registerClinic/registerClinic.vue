@@ -58,8 +58,15 @@ const form = useForm({
     is_24_hours: false,
     
     // Step 4: Services
-    services: [] as string[],
-    other_services: '',
+    services: [] as Array<{
+        name: string;
+        category: string;
+        description: string;
+        base_price: number | null;
+        duration_minutes: number;
+        requires_appointment: boolean;
+        is_emergency_service: boolean;
+    }>,
     
     // Step 5: Veterinarians
     veterinarians: [{
@@ -93,7 +100,6 @@ onMounted(() => {
         form.operating_hours = reg.operating_hours || form.operating_hours;
         form.is_24_hours = reg.is_24_hours || false;
         form.services = reg.services || [];
-        form.other_services = reg.other_services || '';
         form.veterinarians = reg.veterinarians || [{name: '', license_number: '', specialization: ''}];
         form.additional_info = reg.additional_info || '';
     } else {
@@ -122,25 +128,38 @@ const philippineRegions = [
     'Bangsamoro Autonomous Region in Muslim Mindanao (BARMM)'
 ];
 
-const availableServices = [
-    'Consultation',
-    'Vaccination',
-    'Dental Care',
-    'Surgery',
-    'Emergency Care',
-    'Diagnostic Imaging',
-    'Laboratory Services',
-    'Pharmacy',
-    'Grooming',
-    'Boarding',
-    'Microchipping',
-    'Spay/Neuter',
-    'Behavioral Training',
-    'Nutritional Counseling',
-    'Wellness Exams',
-    'Deworming',
-    'Flea & Tick Treatment'
+const serviceCategories = {
+    'consultation': 'Consultation',
+    'vaccination': 'Vaccination',
+    'surgery': 'Surgery',
+    'dental': 'Dental Care',
+    'grooming': 'Grooming',
+    'boarding': 'Boarding',
+    'emergency': 'Emergency Care',
+    'diagnostic': 'Diagnostic Services',
+    'other': 'Other Services'
+};
+
+const commonServices = [
+    { name: 'General Consultation', category: 'consultation', suggested_price: 500, duration: 30 },
+    { name: 'Wellness Check-up', category: 'consultation', suggested_price: 400, duration: 20 },
+    { name: 'Rabies Vaccination', category: 'vaccination', suggested_price: 300, duration: 15 },
+    { name: 'Annual Vaccination Package', category: 'vaccination', suggested_price: 1200, duration: 30 },
+    { name: 'Spay/Neuter Surgery', category: 'surgery', suggested_price: 3000, duration: 120 },
+    { name: 'Dental Cleaning', category: 'dental', suggested_price: 1500, duration: 60 },
+    { name: 'Tooth Extraction', category: 'dental', suggested_price: 800, duration: 45 },
+    { name: 'Basic Grooming', category: 'grooming', suggested_price: 400, duration: 60 },
+    { name: 'Full Grooming Package', category: 'grooming', suggested_price: 800, duration: 120 },
+    { name: 'Overnight Boarding', category: 'boarding', suggested_price: 500, duration: 1440 },
+    { name: 'Emergency Consultation', category: 'emergency', suggested_price: 1000, duration: 30 },
+    { name: 'X-Ray Imaging', category: 'diagnostic', suggested_price: 800, duration: 30 },
+    { name: 'Blood Work Panel', category: 'diagnostic', suggested_price: 1200, duration: 20 },
+    { name: 'Microchipping', category: 'other', suggested_price: 600, duration: 15 },
+    { name: 'Deworming Treatment', category: 'other', suggested_price: 200, duration: 10 },
+    { name: 'Flea & Tick Treatment', category: 'other', suggested_price: 300, duration: 15 }
 ];
+
+
 
 const timeSlots = [
     '6:00 AM', '6:30 AM', '7:00 AM', '7:30 AM', '8:00 AM', '8:30 AM',
@@ -184,6 +203,37 @@ const toggleArrayItem = (array: string[], item: string) => {
     }
 };
 
+const addService = () => {
+    form.services.push({
+        name: '',
+        category: 'consultation',
+        description: '',
+        base_price: null,
+        duration_minutes: 30,
+        requires_appointment: true,
+        is_emergency_service: false
+    });
+};
+
+const removeService = (index: number) => {
+    form.services.splice(index, 1);
+};
+
+const addCommonService = (service: any) => {
+    const existingService = form.services.find(s => s.name === service.name);
+    if (!existingService) {
+        form.services.push({
+            name: service.name,
+            category: service.category,
+            description: '',
+            base_price: service.suggested_price,
+            duration_minutes: service.duration,
+            requires_appointment: true,
+            is_emergency_service: service.category === 'emergency'
+        });
+    }
+};
+
 const addVeterinarian = () => {
     form.veterinarians.push({
         name: '',
@@ -196,6 +246,44 @@ const removeVeterinarian = (index: number) => {
     if (form.veterinarians.length > 1) {
         form.veterinarians.splice(index, 1);
     }
+};
+
+const getDuplicateServiceWarning = (serviceName: string, currentIndex: number) => {
+    if (!serviceName || serviceName.trim() === '') return '';
+    
+    const duplicates = form.services.filter((service, index) => 
+        service.name.toLowerCase().trim() === serviceName.toLowerCase().trim() && index !== currentIndex
+    );
+    
+    if (duplicates.length > 0) {
+        return 'This service name is already used. Consider using a different name or removing the duplicate.';
+    }
+    
+    return '';
+};
+
+const getServiceCategories = () => {
+    const categories = [...new Set(form.services.map(service => service.category))];
+    return categories.filter(category => category && category.trim() !== '');
+};
+
+const getServicesByCategory = (category: string) => {
+    return form.services.filter(service => service.category === category);
+};
+
+const getServicePriceRange = () => {
+    const pricesWithValues = form.services
+        .map(service => service.base_price)
+        .filter(price => price !== null && price !== undefined && price > 0) as number[];
+    
+    if (pricesWithValues.length === 0) {
+        return { min: null, max: null };
+    }
+    
+    return {
+        min: Math.min(...pricesWithValues),
+        max: Math.max(...pricesWithValues)
+    };
 };
 
 // Handle location updates from the pin address component
@@ -612,37 +700,242 @@ const cancel = () => {
 
                     <!-- Step 4: Services -->
                     <div v-if="currentStep === 4" class="space-y-6">
-                        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Services Offered</h2>
+                        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Services & Pricing</h2>
                         
-                        <!-- Services Selection -->
-                        <div>
-                            <h3 class="text-md font-medium text-gray-900 dark:text-gray-100 mb-3">Select Services Offered</h3>
-                            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-                                <label v-for="service in availableServices" :key="service" class="flex items-center">
-                                    <input 
-                                        type="checkbox" 
-                                        :checked="form.services.includes(service)"
-                                        @change="toggleArrayItem(form.services, service)"
-                                        class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                                    />
-                                    <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">{{ service }}</span>
-                                </label>
+                        <!-- Quick Add Common Services -->
+                        <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 mb-6">
+                            <h3 class="text-md font-medium text-gray-900 dark:text-gray-100 mb-3">Quick Add Common Services</h3>
+                            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Click to add commonly offered veterinary services with suggested pricing</p>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                <button
+                                    v-for="service in commonServices"
+                                    :key="service.name"
+                                    @click="addCommonService(service)"
+                                    type="button"
+                                    :disabled="form.services.some(s => s.name === service.name)"
+                                    class="text-left p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <div class="font-medium text-sm">{{ service.name }}</div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">
+                                        {{ serviceCategories[service.category] }} • ₱{{ service.suggested_price?.toLocaleString() }} • {{ service.duration }}min
+                                    </div>
+                                </button>
                             </div>
                         </div>
 
-                        <!-- Other Services -->
+                        <!-- Custom Services -->
                         <div>
-                            <label for="other_services" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Other Services (Please specify)
-                            </label>
-                            <textarea 
-                                v-model="form.other_services" 
-                                id="other_services"
-                                rows="3"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-                                placeholder="List any additional services not mentioned above"
-                            ></textarea>
-                            <div v-if="form.errors.other_services" class="mt-1 text-sm text-red-600">{{ form.errors.other_services }}</div>
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-md font-medium text-gray-900 dark:text-gray-100">Your Services</h3>
+                                <button 
+                                    @click="addService"
+                                    type="button"
+                                    class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium text-sm transition-colors"
+                                >
+                                    + Add Custom Service
+                                </button>
+                            </div>
+
+                            <div v-if="form.services.length === 0" class="text-center py-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
+                                <div class="text-gray-500 dark:text-gray-400">
+                                    <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                    </svg>
+                                    <p class="text-lg font-medium mb-2">No services added yet</p>
+                                    <p class="text-sm">Add at least one service to continue. Use the quick add buttons above or create custom services.</p>
+                                </div>
+                            </div>
+
+                            <div v-if="form.services.length > 0 && form.services.length < 3" class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mb-4">
+                                <div class="flex items-start">
+                                    <svg class="h-5 w-5 text-amber-400 mt-0.5 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                                    </svg>
+                                    <div>
+                                        <h4 class="text-sm font-medium text-amber-800 dark:text-amber-200">Consider adding more services</h4>
+                                        <p class="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                                            Most successful clinics offer 3+ services. This helps attract more clients and showcase your expertise.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div v-else class="space-y-4">
+                                <div 
+                                    v-for="(service, index) in form.services" 
+                                    :key="index"
+                                    class="border border-gray-200 dark:border-gray-700 rounded-lg p-4"
+                                >
+                                    <div class="flex items-center justify-between mb-4">
+                                        <h4 class="font-medium text-gray-900 dark:text-gray-100">Service {{ index + 1 }}</h4>
+                                        <button 
+                                            @click="removeService(index)"
+                                            type="button"
+                                            class="text-red-600 hover:text-red-800 text-sm"
+                                        >
+                                            Remove
+                                        </button>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <!-- Service Name -->
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                Service Name *
+                                            </label>
+                                            <input 
+                                                v-model="service.name"
+                                                type="text" 
+                                                required
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                                placeholder="e.g., General Consultation"
+                                            />
+                                            <div v-if="form.errors[`services.${index}.name`]" class="mt-1 text-sm text-red-600">{{ form.errors[`services.${index}.name`] }}</div>
+                                            <div v-if="getDuplicateServiceWarning(service.name, index)" class="mt-1 text-sm text-amber-600">
+                                                ⚠️ {{ getDuplicateServiceWarning(service.name, index) }}
+                                            </div>
+                                        </div>
+
+                                        <!-- Category -->
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                Category *
+                                            </label>
+                                            <select 
+                                                v-model="service.category"
+                                                required
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                            >
+                                                <option v-for="(label, value) in serviceCategories" :key="value" :value="value">
+                                                    {{ label }}
+                                                </option>
+                                            </select>
+                                            <div v-if="form.errors[`services.${index}.category`]" class="mt-1 text-sm text-red-600">{{ form.errors[`services.${index}.category`] }}</div>
+                                        </div>
+
+                                        <!-- Base Price -->
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                Base Price (₱)
+                                            </label>
+                                            <input 
+                                                v-model.number="service.base_price"
+                                                type="number" 
+                                                step="0.01"
+                                                min="0"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                                placeholder="0.00"
+                                            />
+                                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Leave empty for "Price on request"</p>
+                                            <div v-if="form.errors[`services.${index}.base_price`]" class="mt-1 text-sm text-red-600">{{ form.errors[`services.${index}.base_price`] }}</div>
+                                        </div>
+
+                                        <!-- Duration -->
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                Duration (minutes)
+                                            </label>
+                                            <input 
+                                                v-model.number="service.duration_minutes"
+                                                type="number" 
+                                                min="1"
+                                                max="1440"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <!-- Description -->
+                                    <div class="mt-4">
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            Description
+                                        </label>
+                                        <textarea 
+                                            v-model="service.description"
+                                            rows="2"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                            placeholder="Describe what this service includes..."
+                                        ></textarea>
+                                    </div>
+
+                                    <!-- Service Options -->
+                                    <div class="mt-4 flex flex-wrap gap-4">
+                                        <label class="flex items-center">
+                                            <input 
+                                                v-model="service.requires_appointment"
+                                                type="checkbox"
+                                                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                            />
+                                            <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Requires appointment</span>
+                                        </label>
+
+                                        <label class="flex items-center">
+                                            <input 
+                                                v-model="service.is_emergency_service"
+                                                type="checkbox"
+                                                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                            />
+                                            <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Emergency service (24/7)</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Services Summary -->
+                        <div v-if="form.services.length > 0" class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                            <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-3">Services Overview</h4>
+                            
+                            <!-- Summary Stats -->
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                                <div class="text-center">
+                                    <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ form.services.length }}</div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">Total Services</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-2xl font-bold text-red-600 dark:text-red-400">{{ form.services.filter(s => s.is_emergency_service).length }}</div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">Emergency</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-2xl font-bold text-green-600 dark:text-green-400">{{ form.services.filter(s => !s.requires_appointment).length }}</div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">Walk-in</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-2xl font-bold text-purple-600 dark:text-purple-400">{{ getServiceCategories().length }}</div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">Categories</div>
+                                </div>
+                            </div>
+
+                            <!-- Price Range -->
+                            <div v-if="getServicePriceRange().min !== null" class="mb-4 p-3 bg-white dark:bg-gray-700 rounded-lg">
+                                <h5 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">Price Range</h5>
+                                <div class="text-sm text-gray-600 dark:text-gray-400">
+                                    <span v-if="getServicePriceRange().min === getServicePriceRange().max">
+                                        Fixed: ₱{{ getServicePriceRange().min?.toLocaleString() }}
+                                    </span>
+                                    <span v-else>
+                                        ₱{{ getServicePriceRange().min?.toLocaleString() }} - ₱{{ getServicePriceRange().max?.toLocaleString() }}
+                                    </span>
+                                    <span v-if="form.services.some(s => s.base_price === null || s.base_price === 0)" class="ml-2 text-amber-600">
+                                        (+ custom pricing)
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Categories Breakdown -->
+                            <div v-if="getServiceCategories().length > 1">
+                                <h5 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">By Category</h5>
+                                <div class="flex flex-wrap gap-2">
+                                    <span 
+                                        v-for="category in getServiceCategories()" 
+                                        :key="category"
+                                        class="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded-full"
+                                    >
+                                        {{ serviceCategories[category] }} ({{ getServicesByCategory(category).length }})
+                                    </span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -780,12 +1073,25 @@ const cancel = () => {
                                     <p><strong>Email:</strong> {{ form.email }}</p>
                                     <p><strong>Phone:</strong> {{ form.phone }}</p>
                                     <p><strong>Address:</strong> {{ form.street_address }}, {{ form.barangay }}, {{ form.city }}, {{ form.province }}</p>
+                                    <p><strong>Operating Hours:</strong> {{ form.is_24_hours ? '24 Hours' : 'Set Schedule' }}</p>
                                 </div>
                                 <div>
-                                    <p><strong>Services:</strong> {{ form.services.length }} selected</p>
+                                    <p><strong>Services:</strong> {{ form.services.length }} configured</p>
+                                    <p><strong>Emergency Services:</strong> {{ form.services.filter(s => s.is_emergency_service).length }}</p>
+                                    <p><strong>Walk-in Services:</strong> {{ form.services.filter(s => !s.requires_appointment).length }}</p>
                                     <p><strong>Veterinarians:</strong> {{ form.veterinarians.length }} listed</p>
-                                    <p><strong>Operating Hours:</strong> {{ form.is_24_hours ? '24 Hours' : 'Set Schedule' }}</p>
                                     <p><strong>Certification Files:</strong> {{ form.certification_proofs.length }} uploaded</p>
+                                </div>
+                            </div>
+
+                            <!-- Services List -->
+                            <div v-if="form.services.length > 0" class="mt-6">
+                                <h4 class="font-medium mb-3">Services Overview:</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                                    <div v-for="service in form.services" :key="service.name" class="flex justify-between items-center p-2 bg-white dark:bg-gray-600 rounded">
+                                        <span>{{ service.name }}</span>
+                                        <span class="text-gray-600 dark:text-gray-300">{{ service.base_price ? '₱' + service.base_price.toLocaleString() : 'Price on request' }}</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>

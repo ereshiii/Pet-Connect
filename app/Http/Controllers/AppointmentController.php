@@ -30,7 +30,7 @@ class AppointmentController extends Controller
             'owner:id,name,email,phone',
             'clinic:id,name,address,phone',
             'veterinarian:id,name',
-            'service:id,name,cost'
+            'service:id,name,base_price'
         ]);
 
         // Filter by user's appointments if they're not a clinic admin
@@ -72,7 +72,7 @@ class AppointmentController extends Controller
                 ->where('status', 'confirmed')
                 ->upcoming()
                 ->count(),
-            'pending' => Appointment::where('owner_id', $user->id)
+            'scheduled' => Appointment::where('owner_id', $user->id)
                 ->where('status', 'scheduled')
                 ->upcoming()
                 ->count(),
@@ -108,7 +108,7 @@ class AppointmentController extends Controller
             'pet:id,name,type,breed',
             'clinic:id,name,address,phone',
             'veterinarian:id,name',
-            'service:id,name,cost'
+            'service:id,name,base_price'
         ])
         ->where('owner_id', $user->id)
         ->whereDate('scheduled_at', $today)
@@ -119,7 +119,7 @@ class AppointmentController extends Controller
             'pet:id,name,type,breed',
             'clinic:id,name,address,phone',
             'veterinarian:id,name',
-            'service:id,name,cost'
+            'service:id,name,base_price'
         ])
         ->where('owner_id', $user->id)
         ->where('scheduled_at', '>', now())
@@ -222,7 +222,7 @@ class AppointmentController extends Controller
             'owner:id,name,email,phone',
             'clinic:id,name,address,phone',
             'veterinarian:id,name',
-            'service:id,name,cost'
+            'service:id,name,base_price'
         ]);
 
         // Filter by user's appointments if they're not a clinic admin
@@ -240,24 +240,45 @@ class AppointmentController extends Controller
             ->map(function ($appointment) {
                 return [
                     'id' => $appointment->id,
-                    'title' => ($appointment->pet->name ?? 'Unknown Pet') . ' - ' . $appointment->type,
-                    'date' => $appointment->scheduled_at->format('Y-m-d'),
-                    'time' => $appointment->scheduled_at->format('g:i A'),
-                    'type' => 'appointment',
+                    'appointment_number' => $appointment->appointment_number,
+                    'scheduled_at' => $appointment->scheduled_at->toISOString(),
+                    'duration_minutes' => $appointment->duration_minutes,
+                    'type' => $appointment->type,
+                    'priority' => $appointment->priority,
                     'status' => $appointment->status,
-                    'description' => $appointment->reason,
-                    'petName' => $appointment->pet->name ?? 'Unknown Pet',
-                    'petType' => $appointment->pet->type ?? 'Unknown',
-                    'clinicName' => $appointment->clinic->name ?? 'Unknown Clinic',
-                    'doctorName' => $appointment->veterinarian->name ?? 'TBA',
-                    'duration' => $appointment->duration_minutes,
-                    'cost' => $appointment->estimated_cost,
-                    'services' => [$appointment->service->name ?? $appointment->type],
-                    'confirmationNumber' => $appointment->appointment_number,
-                    'clientName' => $appointment->owner->name ?? 'Unknown Client',
-                    'clientPhone' => $appointment->owner->phone ?? '',
-                    'clientEmail' => $appointment->owner->email ?? '',
-                    'color' => $this->getStatusColor($appointment->status)
+                    'status_display' => $appointment->status_display,
+                    'reason' => $appointment->reason,
+                    'notes' => $appointment->notes,
+                    'special_instructions' => $appointment->special_instructions,
+                    'estimated_cost' => $appointment->estimated_cost,
+                    'actual_cost' => $appointment->actual_cost,
+                    'pet' => [
+                        'id' => $appointment->pet->id ?? null,
+                        'name' => $appointment->pet->name ?? 'Unknown Pet',
+                        'type' => $appointment->pet->type ?? 'Unknown',
+                        'breed' => $appointment->pet->breed ?? 'Unknown'
+                    ],
+                    'owner' => [
+                        'id' => $appointment->owner->id ?? null,
+                        'name' => $appointment->owner->name ?? 'Unknown Client',
+                        'email' => $appointment->owner->email ?? '',
+                        'phone' => $appointment->owner->phone ?? ''
+                    ],
+                    'clinic' => [
+                        'id' => $appointment->clinic->id ?? null,
+                        'name' => $appointment->clinic->name ?? 'Unknown Clinic',
+                        'address' => $appointment->clinic->address ?? '',
+                        'phone' => $appointment->clinic->phone ?? ''
+                    ],
+                    'veterinarian' => $appointment->veterinarian ? [
+                        'id' => $appointment->veterinarian->id,
+                        'name' => $appointment->veterinarian->name
+                    ] : null,
+                    'service' => $appointment->service ? [
+                        'id' => $appointment->service->id,
+                        'name' => $appointment->service->name,
+                        'base_price' => $appointment->service->base_price
+                    ] : null,
                 ];
             });
 
@@ -271,7 +292,7 @@ class AppointmentController extends Controller
                 ->where('status', 'confirmed')
                 ->upcoming()
                 ->count(),
-            'pending' => Appointment::where('owner_id', $user->id)
+            'scheduled' => Appointment::where('owner_id', $user->id)
                 ->where('status', 'scheduled')
                 ->upcoming()
                 ->count(),
@@ -313,12 +334,12 @@ class AppointmentController extends Controller
         
         return Inertia::render('Scheduling/Booking', [
             'pets' => Pet::where('owner_id', $user->id)->select('id', 'name', 'type', 'breed')->get(),
-            'clinics' => Clinic::with('clinicServices:id,clinic_id,name,cost')->get(),
+            'clinics' => Clinic::with('clinicServices:id,clinic_id,name,base_price')->get(),
             'clinicId' => $request->get('clinic_id'),
             'clinicName' => $request->get('clinic_name'),
             'selectedClinic' => $selectedClinic,
             'selectedDate' => $request->get('date'),
-            'services' => ClinicService::select('id', 'name', 'clinic_id', 'cost')->get(),
+            'services' => ClinicService::select('id', 'name', 'clinic_id', 'base_price')->get(),
             'user' => [
                 'name' => $user->name,
                 'email' => $user->email,
@@ -339,11 +360,24 @@ class AppointmentController extends Controller
             ->where('owner_id', Auth::id())
             ->firstOrFail();
 
+        // Check for appointment conflicts at the same time slot
+        $scheduledAt = Carbon::parse($validatedData['scheduled_at']);
+        $conflictingAppointment = Appointment::where('clinic_id', $validatedData['clinic_id'])
+            ->where('scheduled_at', $scheduledAt)
+            ->whereIn('status', ['scheduled', 'confirmed'])
+            ->first();
+
+        if ($conflictingAppointment) {
+            return back()->withErrors([
+                'scheduled_at' => 'This time slot is already booked. Please choose a different time.'
+            ])->withInput();
+        }
+
         // Get service cost if service is selected
         $estimatedCost = null;
         if ($validatedData['service_id']) {
             $service = ClinicService::find($validatedData['service_id']);
-            $estimatedCost = $service->cost;
+            $estimatedCost = $service->base_price;
         }
 
         $appointment = Appointment::create([
@@ -356,7 +390,7 @@ class AppointmentController extends Controller
             'duration_minutes' => $validatedData['duration_minutes'] ?? 30,
             'type' => $validatedData['type'],
             'priority' => $validatedData['priority'],
-            'status' => 'scheduled',
+            'status' => 'scheduled', // Start as scheduled for clinic to confirm
             'reason' => $validatedData['reason'],
             'notes' => $validatedData['notes'],
             'special_instructions' => $validatedData['special_instructions'],
@@ -434,7 +468,7 @@ class AppointmentController extends Controller
             'owner.profile:user_id,emergency_contact_name,emergency_contact_phone',
             'clinic:id,name,address,phone,email',
             'veterinarian:id,name',
-            'service:id,name,cost,description',
+            'service:id,name,base_price,description',
             'creator:id,name'
         ]);
 
@@ -495,7 +529,7 @@ class AppointmentController extends Controller
                 'service' => $appointment->service ? [
                     'id' => $appointment->service->id,
                     'name' => $appointment->service->name,
-                    'cost' => $appointment->service->cost,
+                    'cost' => $appointment->service->base_price,
                     'description' => $appointment->service->description
                 ] : null,
                 'owner' => [
@@ -547,8 +581,8 @@ class AppointmentController extends Controller
         return Inertia::render('Scheduling/RescheduleAppointment', [
             'appointment' => $appointment->load(['pet', 'clinic', 'service', 'veterinarian']),
             'pets' => Pet::where('owner_id', Auth::id())->select('id', 'name', 'type', 'breed')->get(),
-            'clinics' => Clinic::with('clinicServices:id,clinic_id,name,cost')->get(),
-            'services' => ClinicService::select('id', 'name', 'clinic_id', 'cost')->get(),
+            'clinics' => Clinic::with('clinicServices:id,clinic_id,name,base_price')->get(),
+            'services' => ClinicService::select('id', 'name', 'clinic_id', 'base_price')->get(),
             // 'veterinarians' => User::select('id', 'name')->where('role', 'veterinarian')->get()
         ]);
     }
@@ -560,10 +594,28 @@ class AppointmentController extends Controller
     {
         $validatedData = $request->validated();
 
+        // Check for appointment conflicts if scheduled_at is being changed
+        if (isset($validatedData['scheduled_at']) && 
+            $validatedData['scheduled_at'] !== $appointment->scheduled_at->toDateTimeString()) {
+            
+            $scheduledAt = Carbon::parse($validatedData['scheduled_at']);
+            $conflictingAppointment = Appointment::where('clinic_id', $validatedData['clinic_id'] ?? $appointment->clinic_id)
+                ->where('scheduled_at', $scheduledAt)
+                ->where('id', '!=', $appointment->id) // Exclude current appointment
+                ->whereIn('status', ['scheduled', 'confirmed'])
+                ->first();
+
+            if ($conflictingAppointment) {
+                return back()->withErrors([
+                    'scheduled_at' => 'This time slot is already booked. Please choose a different time.'
+                ])->withInput();
+            }
+        }
+
         // Update estimated cost if service changed
         if ($validatedData['service_id'] && $validatedData['service_id'] !== $appointment->service_id) {
             $service = ClinicService::find($validatedData['service_id']);
-            $validatedData['estimated_cost'] = $service->cost;
+            $validatedData['estimated_cost'] = $service->base_price;
         }
 
         $appointment->update($validatedData);
@@ -704,7 +756,7 @@ class AppointmentController extends Controller
             'pet:id,name,type,breed',
             'clinic:id,name,address,phone',
             'veterinarian:id,name',
-            'service:id,name,cost',
+            'service:id,name,base_price',
             'owner:id,name,email,phone'
         ])->where('owner_id', $user->id);
         

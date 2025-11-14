@@ -143,6 +143,29 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the user's favorited clinics.
+     */
+    public function favoriteClinics(): HasMany
+    {
+        return $this->hasMany(UserClinicFavorite::class);
+    }
+
+    /**
+     * Get the favorited clinic registrations through the pivot.
+     */
+    public function favoritedClinics(): HasMany
+    {
+        return $this->hasManyThrough(
+            ClinicRegistration::class,
+            UserClinicFavorite::class,
+            'user_id',
+            'id',
+            'id',
+            'clinic_registration_id'
+        );
+    }
+
+    /**
      * Get the user's notifications.
      */
     public function notifications(): HasMany

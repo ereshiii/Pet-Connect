@@ -38,7 +38,6 @@ interface Props {
         search?: string;
         service?: string;
         rating?: string;
-        region?: string;
         distance?: string;
     };
 }
@@ -48,6 +47,10 @@ const props = withDefaults(defineProps<Props>(), {
     mapCenter: () => [14.5995, 120.9842], // Default to Manila
     filters: () => ({})
 });
+
+// Debug: Log clinics data to understand what we're receiving
+console.log('Map view loaded with clinics:', props.clinics.length, 'clinics');
+console.log('Map view filters from server:', props.filters);
 
 // Breadcrumbs
 const breadcrumbs: BreadcrumbItem[] = [
@@ -80,12 +83,11 @@ const mapZoom = ref(12);
 const selectedClinic = ref<any>(null);
 const showFilters = ref(true);
 
-// Filter states (initialized from props)
-const searchFilter = ref(props.filters?.search || '');
-const serviceFilter = ref(props.filters?.service || '');
-const ratingFilter = ref(props.filters?.rating || '');
-const regionFilter = ref(props.filters?.region || '');
-const distanceFilter = ref(props.filters?.distance || '');
+// Filter states (always start with empty filters to show all clinics)
+const searchFilter = ref('');
+const serviceFilter = ref('');
+const ratingFilter = ref('');
+const distanceFilter = ref('');
 
 // Distance calculation functions (consistent with Clinics.vue)
 const calculateDistance = (clinic: Clinic) => {
@@ -102,89 +104,83 @@ const getDistanceValue = (clinic: Clinic) => {
 
 // Filtered clinics based on search criteria
 const filteredClinics = computed(() => {
-    let filtered = props.clinics;
-
-    // Filter by search query
-    if (searchFilter.value) {
-        const query = searchFilter.value.toLowerCase();
-        filtered = filtered.filter(clinic => 
-            clinic.name.toLowerCase().includes(query) ||
-            clinic.address.toLowerCase().includes(query)
-        );
-    }
-
-    // Filter by service
-    if (serviceFilter.value) {
-        filtered = filtered.filter(clinic => 
-            clinic.services.some(service => 
-                service.toLowerCase().includes(serviceFilter.value.toLowerCase())
-            )
-        );
-    }
-
-    // Filter by rating
-    if (ratingFilter.value) {
-        const minRating = parseFloat(ratingFilter.value);
-        filtered = filtered.filter(clinic => Number(clinic.rating || 0) >= minRating);
-    }
-
-    // Filter by region - improved matching
-    if (regionFilter.value) {
-        const region = regionFilter.value.toLowerCase();
-        filtered = filtered.filter(clinic => {
-            const address = clinic.address.toLowerCase();
-            // Check for exact region match or common region abbreviations/variations
-            if (region === 'metro manila') {
-                return address.includes('metro manila') || 
-                       address.includes('manila') || 
-                       address.includes('quezon city') || 
-                       address.includes('makati') || 
-                       address.includes('taguig') || 
-                       address.includes('pasig') || 
-                       address.includes('mandaluyong') || 
-                       address.includes('san juan') || 
-                       address.includes('marikina') || 
-                       address.includes('pasay') || 
-                       address.includes('parañaque') || 
-                       address.includes('las piñas') || 
-                       address.includes('muntinlupa') || 
-                       address.includes('caloocan') || 
-                       address.includes('malabon') || 
-                       address.includes('navotas') || 
-                       address.includes('valenzuela');
-            } else if (region === 'calabarzon') {
-                return address.includes('calabarzon') || 
-                       address.includes('laguna') || 
-                       address.includes('cavite') || 
-                       address.includes('batangas') || 
-                       address.includes('rizal') || 
-                       address.includes('quezon');
-            } else if (region === 'central luzon') {
-                return address.includes('central luzon') || 
-                       address.includes('bulacan') || 
-                       address.includes('nueva ecija') || 
-                       address.includes('pampanga') || 
-                       address.includes('tarlac') || 
-                       address.includes('zambales') || 
-                       address.includes('bataan') || 
-                       address.includes('aurora');
-            } else {
-                // For other regions, use exact match
-                return address.includes(region);
-            }
+    try {
+        let filtered = props.clinics;
+        
+        console.log('Starting with', filtered.length, 'clinics');
+        console.log('Current filters:', {
+            search: searchFilter.value,
+            service: serviceFilter.value,
+            rating: ratingFilter.value,
+            distance: distanceFilter.value
         });
-    }
 
-    // Filter by distance
-    if (distanceFilter.value) {
-        const maxDistance = parseFloat(distanceFilter.value);
-        filtered = filtered.filter(clinic => {
-            const clinicDistance = getDistanceValue(clinic);
-            return clinicDistance <= maxDistance;
-        });
-    }
+        // Filter by search query
+        if (searchFilter.value) {
+            const query = searchFilter.value.toLowerCase();
+            filtered = filtered.filter(clinic => 
+                clinic.name.toLowerCase().includes(query) ||
+                clinic.address.toLowerCase().includes(query)
+            );
+            console.log('After search filter:', filtered.length, 'clinics');
+        }
 
-    return filtered;
+        // Filter by service
+        if (serviceFilter.value) {
+            console.log('Applying service filter:', serviceFilter.value);
+            console.log('Sample clinic services:', filtered[0]?.services);
+            
+            filtered = filtered.filter(clinic => {
+                // Ensure services is an array
+                if (!clinic.services || !Array.isArray(clinic.services)) {
+                    console.warn('Clinic has invalid services data:', clinic.name, clinic.services);
+                    return false;
+                }
+                
+                const hasService = clinic.services.some(service => {
+                    if (typeof service !== 'string') {
+                        console.warn('Service is not a string:', service);
+                        return false;
+                    }
+                    
+                    // Try both exact match and partial match for better compatibility
+                    const serviceNormalized = service.toLowerCase().trim();
+                    const filterNormalized = serviceFilter.value.toLowerCase().trim();
+                    
+                    return serviceNormalized === filterNormalized || 
+                           serviceNormalized.includes(filterNormalized) ||
+                           filterNormalized.includes(serviceNormalized);
+                });
+                return hasService;
+            });
+            console.log('After service filter:', filtered.length, 'clinics');
+        }
+
+        // Filter by rating
+        if (ratingFilter.value) {
+            const minRating = parseFloat(ratingFilter.value);
+            filtered = filtered.filter(clinic => Number(clinic.rating || 0) >= minRating);
+            console.log('After rating filter:', filtered.length, 'clinics');
+        }
+
+        // Filter by distance
+        if (distanceFilter.value) {
+            const maxDistance = parseFloat(distanceFilter.value);
+            filtered = filtered.filter(clinic => {
+                const clinicDistance = getDistanceValue(clinic);
+                return clinicDistance <= maxDistance;
+            });
+            console.log('After distance filter:', filtered.length, 'clinics');
+        }
+
+        console.log('Final filtered clinics:', filtered.length);
+        return filtered;
+        
+    } catch (error) {
+        console.error('Error in filteredClinics computed:', error);
+        // Return original clinics if filtering fails
+        return props.clinics;
+    }
 });
 
 // Filtered markers based on clinic filters
@@ -197,7 +193,7 @@ const filteredMarkers = computed(() => {
             lng: parseFloat(clinic.longitude.toString()),
             title: clinic.name,
             description: `${clinic.address} • ${clinic.stars} (${Number(clinic.rating || 0).toFixed(1)}) • ${clinic.is_open_24_7 ? 'Open 24/7' : clinic.status}`,
-            type: clinic.is_open_24_7 ? 'emergency' : 'clinic', // Use emergency icon for 24/7 clinics
+            type: (clinic.is_open_24_7 ? 'emergency' : 'clinic') as 'clinic' | 'emergency', // Use emergency icon for 24/7 clinics
             clinic: clinic
         }));
 });
@@ -229,7 +225,6 @@ const applyFilters = () => {
         search: searchFilter.value,
         service: serviceFilter.value,
         rating: ratingFilter.value,
-        region: regionFilter.value,
         distance: distanceFilter.value,
         resultCount: filteredClinics.value.length
     });
@@ -239,7 +234,6 @@ const clearFilters = () => {
     searchFilter.value = '';
     serviceFilter.value = '';
     ratingFilter.value = '';
-    regionFilter.value = '';
     distanceFilter.value = '';
 };
 
@@ -256,7 +250,6 @@ const goFullscreen = () => {
         search: searchFilter.value,
         service: serviceFilter.value,
         rating: ratingFilter.value,
-        region: regionFilter.value,
         distance: distanceFilter.value
     });
     
@@ -266,7 +259,6 @@ const goFullscreen = () => {
                 search: searchFilter.value,
                 service: serviceFilter.value,
                 rating: ratingFilter.value,
-                region: regionFilter.value,
                 distance: distanceFilter.value
             }
         });
@@ -373,12 +365,12 @@ onMounted(() => {
                             />
                         </div>
 
-                        <!-- Service Filter -->
+                        <!-- Category Filter -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Service</label>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Category</label>
                             <select v-model="serviceFilter" 
                                     class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
-                                <option value="">All services</option>
+                                <option value="">All categories</option>
                                 <option value="consultation">Consultation</option>
                                 <option value="vaccination">Vaccination</option>
                                 <option value="surgery">Surgery</option>
@@ -405,31 +397,6 @@ onMounted(() => {
                                 <option value="4">4+ stars</option>
                                 <option value="3">3+ stars</option>
                                 <option value="2">2+ stars</option>
-                            </select>
-                        </div>
-
-                        <!-- Region Filter -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Region</label>
-                            <select v-model="regionFilter" 
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
-                                <option value="">All regions</option>
-                                <option value="Metro Manila">Metro Manila</option>
-                                <option value="Central Visayas">Central Visayas</option>
-                                <option value="Davao Region">Davao Region</option>
-                                <option value="Cordillera">Cordillera</option>
-                                <option value="Western Visayas">Western Visayas</option>
-                                <option value="Cagayan Valley">Cagayan Valley</option>
-                                <option value="MIMAROPA">MIMAROPA</option>
-                                <option value="CALABARZON">CALABARZON</option>
-                                <option value="Bicol Region">Bicol Region</option>
-                                <option value="Central Luzon">Central Luzon</option>
-                                <option value="Eastern Visayas">Eastern Visayas</option>
-                                <option value="Caraga">Caraga</option>
-                                <option value="Northern Mindanao">Northern Mindanao</option>
-                                <option value="BARMM">BARMM</option>
-                                <option value="SOCCSKSARGEN">SOCCSKSARGEN</option>
-                                <option value="Ilocos Region">Ilocos Region</option>
                             </select>
                         </div>
 
@@ -494,29 +461,25 @@ onMounted(() => {
                         <div class="text-xs text-gray-600 dark:text-gray-400">
                             <strong>{{ filteredClinics.length }}</strong> of <strong>{{ props.clinics.length }}</strong> clinics shown
                         </div>
-                        <div v-if="searchFilter || serviceFilter || ratingFilter || regionFilter" class="mt-2 space-y-1">
+                        <div v-if="searchFilter || serviceFilter || ratingFilter" class="mt-2 space-y-1">
                             <div v-if="searchFilter" class="text-xs">
                                 <span class="text-gray-500">Search:</span> 
                                 <span class="font-medium">{{ searchFilter }}</span>
                             </div>
                             <div v-if="serviceFilter" class="text-xs">
-                                <span class="text-gray-500">Service:</span> 
+                                <span class="text-gray-500">Category:</span> 
                                 <span class="font-medium">{{ serviceFilter }}</span>
                             </div>
                             <div v-if="ratingFilter" class="text-xs">
                                 <span class="text-gray-500">Rating:</span> 
                                 <span class="font-medium">{{ ratingFilter }}+ stars</span>
                             </div>
-                            <div v-if="regionFilter" class="text-xs">
-                                <span class="text-gray-500">Region:</span> 
-                                <span class="font-medium">{{ regionFilter }}</span>
-                            </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Map Container -->
-                <div class="flex-1 min-h-0">
+                <div class="flex-1 min-h-0 relative">
                     <MapComponent
                         height="100%"
                         width="100%"
@@ -561,6 +524,24 @@ onMounted(() => {
                             </div>
                         </template>
                     </MapComponent>
+                    
+                    <!-- No Results Overlay -->
+                    <div v-if="filteredClinics.length === 0 && (searchFilter || serviceFilter || ratingFilter || distanceFilter)" 
+                         class="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none">
+                        <div class="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-sm mx-4 text-center shadow-lg pointer-events-auto">
+                            <svg class="w-12 h-12 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.347 0-4.518-.826-6.207-2.209M12 21C8.686 21 6 18.314 6 15c0-3.314 2.686-6 6-6s6 2.686 6 6c0 3.314-2.686 6-6 6z"/>
+                            </svg>
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">No Clinics Found</h3>
+                            <p class="text-gray-600 dark:text-gray-400 mb-4">
+                                No clinics match your current filters. You can still navigate the map.
+                            </p>
+                            <button @click="clearFilters" 
+                                    class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm font-medium">
+                                Clear Filters
+                            </button>
+                        </div>
+                    </div>
                 </div>
                 </template>
             </div>

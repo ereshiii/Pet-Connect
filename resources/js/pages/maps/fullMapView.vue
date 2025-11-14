@@ -37,7 +37,6 @@ interface Props {
         search?: string;
         service?: string;
         rating?: string;
-        region?: string;
         distance?: string;
     };
 }
@@ -59,7 +58,6 @@ const showMiniFilters = ref(false);
 const searchFilter = ref(props.filters?.search || '');
 const serviceFilter = ref(props.filters?.service || '');
 const ratingFilter = ref(props.filters?.rating || '');
-const regionFilter = ref(props.filters?.region || '');
 const distanceFilter = ref(props.filters?.distance || '');
 
 // Distance calculation functions (consistent with Clinics.vue)
@@ -103,53 +101,6 @@ const filteredClinics = computed(() => {
         filtered = filtered.filter(clinic => Number(clinic.rating || 0) >= minRating);
     }
 
-    // Filter by region - improved matching
-    if (regionFilter.value) {
-        const region = regionFilter.value.toLowerCase();
-        filtered = filtered.filter(clinic => {
-            const address = clinic.address.toLowerCase();
-            // Check for exact region match or common region abbreviations/variations
-            if (region === 'metro manila') {
-                return address.includes('metro manila') || 
-                       address.includes('manila') || 
-                       address.includes('quezon city') || 
-                       address.includes('makati') || 
-                       address.includes('taguig') || 
-                       address.includes('pasig') || 
-                       address.includes('mandaluyong') || 
-                       address.includes('san juan') || 
-                       address.includes('marikina') || 
-                       address.includes('pasay') || 
-                       address.includes('parañaque') || 
-                       address.includes('las piñas') || 
-                       address.includes('muntinlupa') || 
-                       address.includes('caloocan') || 
-                       address.includes('malabon') || 
-                       address.includes('navotas') || 
-                       address.includes('valenzuela');
-            } else if (region === 'calabarzon') {
-                return address.includes('calabarzon') || 
-                       address.includes('laguna') || 
-                       address.includes('cavite') || 
-                       address.includes('batangas') || 
-                       address.includes('rizal') || 
-                       address.includes('quezon');
-            } else if (region === 'central luzon') {
-                return address.includes('central luzon') || 
-                       address.includes('bulacan') || 
-                       address.includes('nueva ecija') || 
-                       address.includes('pampanga') || 
-                       address.includes('tarlac') || 
-                       address.includes('zambales') || 
-                       address.includes('bataan') || 
-                       address.includes('aurora');
-            } else {
-                // For other regions, use exact match
-                return address.includes(region);
-            }
-        });
-    }
-
     // Filter by distance
     if (distanceFilter.value) {
         const maxDistance = parseFloat(distanceFilter.value);
@@ -172,7 +123,7 @@ const filteredMarkers = computed(() => {
             lng: parseFloat(clinic.longitude.toString()),
             title: clinic.name,
             description: `${clinic.address} • ${clinic.stars} (${Number(clinic.rating || 0).toFixed(1)}) • ${clinic.is_open_24_7 ? 'Open 24/7' : clinic.status}`,
-            type: clinic.is_open_24_7 ? 'emergency' : 'clinic', // Use emergency icon for 24/7 clinics
+            type: (clinic.is_open_24_7 ? 'emergency' : 'clinic') as 'clinic' | 'emergency', // Use emergency icon for 24/7 clinics
             clinic: clinic
         }));
 });
@@ -201,7 +152,6 @@ const applyFilters = () => {
     console.log('Fullscreen filters applied:', {
         service: serviceFilter.value,
         rating: ratingFilter.value,
-        region: regionFilter.value,
         distance: distanceFilter.value,
         resultCount: filteredClinics.value.length
     });
@@ -210,7 +160,6 @@ const applyFilters = () => {
 const clearFilters = () => {
     serviceFilter.value = '';
     ratingFilter.value = '';
-    regionFilter.value = '';
     distanceFilter.value = '';
 };
 
@@ -311,10 +260,9 @@ onUnmounted(() => {
                         <p class="text-sm text-gray-600 dark:text-gray-400">
                             {{ filteredClinics.length }} of {{ props.clinics.length }} clinics shown
                         </p>
-                        <div v-if="serviceFilter || ratingFilter || regionFilter" class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                            <span v-if="serviceFilter">Service: {{ serviceFilter }}</span>
+                        <div v-if="serviceFilter || ratingFilter" class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                            <span v-if="serviceFilter">Category: {{ serviceFilter }}</span>
                             <span v-if="ratingFilter" class="ml-2">Rating: {{ ratingFilter }}+</span>
-                            <span v-if="regionFilter" class="ml-2">Region: {{ regionFilter }}</span>
                         </div>
                     </div>
 
@@ -347,12 +295,12 @@ onUnmounted(() => {
                 </div>
                 
                 <div class="space-y-3">
-                    <!-- Service Filter -->
+                    <!-- Category Filter -->
                     <div>
-                        <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Service</label>
+                        <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Category</label>
                         <select v-model="serviceFilter" 
                                 class="w-full px-2 py-1 border border-gray-300 rounded text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
-                            <option value="">All services</option>
+                            <option value="">All categories</option>
                             <option value="consultation">Consultation</option>
                             <option value="vaccination">Vaccination</option>
                             <option value="surgery">Surgery</option>
@@ -379,31 +327,6 @@ onUnmounted(() => {
                             <option value="4">4+ stars</option>
                             <option value="3">3+ stars</option>
                             <option value="2">2+ stars</option>
-                        </select>
-                    </div>
-
-                    <!-- Region Filter -->
-                    <div>
-                        <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Region</label>
-                        <select v-model="regionFilter" 
-                                class="w-full px-2 py-1 border border-gray-300 rounded text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
-                            <option value="">All regions</option>
-                            <option value="Metro Manila">Metro Manila</option>
-                            <option value="Central Visayas">Central Visayas</option>
-                            <option value="Davao Region">Davao Region</option>
-                            <option value="Cordillera">Cordillera</option>
-                            <option value="Western Visayas">Western Visayas</option>
-                            <option value="Cagayan Valley">Cagayan Valley</option>
-                            <option value="MIMAROPA">MIMAROPA</option>
-                            <option value="CALABARZON">CALABARZON</option>
-                            <option value="Bicol Region">Bicol Region</option>
-                            <option value="Central Luzon">Central Luzon</option>
-                            <option value="Eastern Visayas">Eastern Visayas</option>
-                            <option value="Caraga">Caraga</option>
-                            <option value="Northern Mindanao">Northern Mindanao</option>
-                            <option value="BARMM">BARMM</option>
-                            <option value="SOCCSKSARGEN">SOCCSKSARGEN</option>
-                            <option value="Ilocos Region">Ilocos Region</option>
                         </select>
                     </div>
 
@@ -446,7 +369,7 @@ onUnmounted(() => {
                         </span>
                     </div>
                     <div class="text-xs text-gray-600 dark:text-gray-400 mt-2">
-                        <span class="font-medium">Services:</span>
+                        <span class="font-medium">Categories:</span>
                         {{ selectedClinic.services?.slice(0, 3).join(', ') }}
                         <span v-if="selectedClinic.services?.length > 3">...</span>
                     </div>

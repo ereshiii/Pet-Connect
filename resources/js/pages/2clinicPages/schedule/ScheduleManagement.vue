@@ -3,7 +3,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
 import { clinicDashboard, clinicScheduleManagement } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { 
     Calendar,
     Clock,
@@ -125,6 +125,13 @@ const viewMode = ref<'week' | 'day'>('week');
 const showOperatingHoursModal = ref(false);
 const showCreateSlotModal = ref(false);
 
+// Real-time update functionality
+const isAutoRefreshEnabled = ref(true);
+const refreshInterval = ref<number | null>(null);
+const lastUpdated = ref(new Date());
+const isRefreshing = ref(false);
+const newBookingAlert = ref(false);
+
 // Forms
 const operatingHoursForm = useForm({
     hours: Object.values(props.operatingHours).map(hour => ({
@@ -227,6 +234,118 @@ const getSlotColor = (slot: TimeSlot): string => {
     if (slot.is_available) return 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100 cursor-pointer';
     return 'bg-gray-50 text-gray-500 border-gray-200';
 };
+
+// Real-time update methods
+const refreshSchedule = async () => {
+    if (isRefreshing.value) return;
+    
+    isRefreshing.value = true;
+    
+    try {
+        router.reload({
+            only: ['appointments', 'availableSlots', 'stats'],
+            onSuccess: (page) => {
+                lastUpdated.value = new Date();
+                
+                // Check for new bookings by comparing slot availability
+                const newSlots = page.props.availableSlots as typeof props.availableSlots;
+                const currentSlots = props.availableSlots;
+                
+                // Simple check for changes in booked slots
+                let hasNewBookings = false;
+                for (const date in newSlots) {
+                    const newDaySlots = newSlots[date] || [];
+                    const currentDaySlots = currentSlots[date] || [];
+                    
+                    const newBookedCount = newDaySlots.filter(slot => slot.is_booked).length;
+                    const currentBookedCount = currentDaySlots.filter(slot => slot.is_booked).length;
+                    
+                    if (newBookedCount > currentBookedCount) {
+                        hasNewBookings = true;
+                        break;
+                    }
+                }
+                
+                if (hasNewBookings) {
+                    newBookingAlert.value = true;
+                    setTimeout(() => {
+                        newBookingAlert.value = false;
+                    }, 5000);
+                }
+            },
+            onError: (errors) => {
+                console.error('Failed to refresh schedule:', errors);
+            },
+            onFinish: () => {
+                isRefreshing.value = false;
+            }
+        });
+    } catch (error) {
+        console.error('Error refreshing schedule:', error);
+        isRefreshing.value = false;
+    }
+};
+
+const toggleAutoRefresh = () => {
+    isAutoRefreshEnabled.value = !isAutoRefreshEnabled.value;
+    
+    if (isAutoRefreshEnabled.value) {
+        startAutoRefresh();
+    } else {
+        stopAutoRefresh();
+    }
+};
+
+const startAutoRefresh = () => {
+    if (refreshInterval.value) {
+        clearInterval(refreshInterval.value);
+    }
+    
+    refreshInterval.value = window.setInterval(() => {
+        if (isAutoRefreshEnabled.value && !document.hidden) {
+            refreshSchedule();
+        }
+    }, 30000); // Refresh every 30 seconds
+};
+
+const stopAutoRefresh = () => {
+    if (refreshInterval.value) {
+        clearInterval(refreshInterval.value);
+        refreshInterval.value = null;
+    }
+};
+
+const manualRefresh = () => {
+    refreshSchedule();
+};
+
+// Lifecycle hooks for real-time updates
+onMounted(() => {
+    if (isAutoRefreshEnabled.value) {
+        startAutoRefresh();
+    }
+    
+    // Listen for visibility changes
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            stopAutoRefresh();
+        } else if (isAutoRefreshEnabled.value) {
+            startAutoRefresh();
+            refreshSchedule();
+        }
+    });
+    
+    // Listen for focus events
+    window.addEventListener('focus', () => {
+        if (isAutoRefreshEnabled.value) {
+            refreshSchedule();
+        }
+    });
+});
+
+onUnmounted(() => {
+    stopAutoRefresh();
+});
 </script>
 
 <template>
@@ -234,13 +353,55 @@ const getSlotColor = (slot: TimeSlot): string => {
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-6">
+            <!-- Real-time Update Alert -->
+            <div 
+                v-if="newBookingAlert" 
+                class="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg flex items-center justify-between animate-pulse dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-400"
+            >
+                <div class="flex items-center">
+                    <span class="text-lg mr-2">📅</span>
+                    <span class="font-medium">New appointment has been booked! Schedule updated.</span>
+                </div>
+                <button @click="newBookingAlert = false" class="text-blue-600 hover:text-blue-800">
+                    ✕
+                </button>
+            </div>
+
             <!-- Page Header -->
             <div class="flex items-center justify-between">
                 <div>
                     <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">Schedule Management</h1>
-                    <p class="text-gray-600 dark:text-gray-400">Manage clinic appointments and availability for {{ props.clinic.name }}</p>
+                    <p class="text-gray-600 dark:text-gray-400">
+                        Manage clinic appointments and availability for {{ props.clinic.name }} • 
+                        Last updated: {{ lastUpdated.toLocaleTimeString() }}
+                        <span class="ml-2" :class="isAutoRefreshEnabled ? 'text-green-600' : 'text-red-600'">
+                            {{ isAutoRefreshEnabled ? '🟢 Live updates enabled' : '🔴 Live updates paused' }}
+                        </span>
+                    </p>
                 </div>
                 <div class="flex gap-2">
+                    <!-- Real-time Controls -->
+                    <div class="flex items-center gap-2 text-sm">
+                        <label class="flex items-center cursor-pointer">
+                            <input 
+                                type="checkbox" 
+                                v-model="isAutoRefreshEnabled" 
+                                @change="toggleAutoRefresh"
+                                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span class="ml-2">Auto-refresh</span>
+                        </label>
+                    </div>
+                    
+                    <button 
+                        @click="manualRefresh" 
+                        :disabled="isRefreshing"
+                        class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50 text-sm disabled:opacity-50 dark:border-gray-600 dark:hover:bg-gray-700"
+                    >
+                        <span :class="{ 'animate-spin': isRefreshing }">🔄</span>
+                        {{ isRefreshing ? 'Refreshing...' : 'Refresh' }}
+                    </button>
+
                     <button 
                         @click="showOperatingHoursModal = true"
                         class="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700 text-sm font-medium"

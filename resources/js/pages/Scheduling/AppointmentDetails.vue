@@ -169,14 +169,6 @@ const getStatusBanner = (status?: string) => {
                 titleColor: 'text-blue-900 dark:text-blue-100',
                 descColor: 'text-blue-700 dark:text-blue-300'
             };
-        case 'pending': 
-            return { 
-                bgClass: 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800',
-                icon: '⏳', 
-                iconColor: 'text-yellow-500',
-                titleColor: 'text-yellow-900 dark:text-yellow-100',
-                descColor: 'text-yellow-700 dark:text-yellow-300'
-            };
         case 'cancelled': 
             return { 
                 bgClass: 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800',
@@ -241,7 +233,7 @@ const getStatusColor = (status?: string) => {
                             📅 Calendar
                         </button>
                         <button @click="goToReschedule" 
-                                v-if="['scheduled', 'confirmed', 'pending'].includes(appointment.status)"
+                                v-if="['scheduled', 'confirmed', 'scheduled'].includes(appointment.status)"
                                 class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium">
                             Reschedule
                         </button>
@@ -265,8 +257,8 @@ const getStatusColor = (status?: string) => {
                                 <span v-else-if="appointment.status === 'completed'">
                                     This appointment was completed on {{ appointment.date }}
                                 </span>
-                                <span v-else-if="appointment.status === 'pending'">
-                                    Your appointment is pending approval and scheduled for {{ appointment.date }} at {{ appointment.time }}
+                                <span v-else-if="appointment.status === 'scheduled'">
+                                    Your appointment is scheduled for {{ appointment.date }} at {{ appointment.time }}
                                 </span>
                                 <span v-else>
                                     Your appointment is scheduled for {{ appointment.date }} at {{ appointment.time }}
@@ -430,7 +422,7 @@ const getStatusColor = (status?: string) => {
 
                         <!-- Action Buttons -->
                         <div class="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-600" 
-                             v-if="['scheduled', 'confirmed', 'pending'].includes(appointment.status)">
+                             v-if="['scheduled', 'confirmed', 'scheduled'].includes(appointment.status)">
                             <button @click="goToReschedule"
                                     class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium">
                                 Reschedule Appointment

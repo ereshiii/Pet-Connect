@@ -3,25 +3,24 @@ import { ref, computed, watch, defineProps, defineEmits, withDefaults } from 'vu
 
 // Debounce utility function
 function debounce(func: Function, wait: number) {
-    let timeout: NodeJS.Timeout;
+    let timeout: number;
     return function executedFunction(...args: any[]) {
         const later = () => {
             clearTimeout(timeout);
             func(...args);
         };
         clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
+        timeout = setTimeout(later, wait) as unknown as number;
     };
 }
 
 // Filter interface
 interface FilterOptions {
     search?: string;
-    service?: string;
-    rating?: string;
-    region?: string;
-    distance?: string;
-    status?: string;
+    service?: string[];  // Changed to array for multiple selections
+    rating?: string[];   // Changed to array for multiple selections
+    distance?: string;   // Keep as single selection (radius)
+    status?: string[];   // Changed to array for multiple selections
 }
 
 interface Props {
@@ -80,9 +79,46 @@ const updateModelValue = debounce(() => {
     emit('update:modelValue', { ...localFilters.value });
 }, 150); // 150ms debounce for better performance
 
+// Handle checkbox changes for multi-select filters
+const handleServiceChange = (value: string, checked: boolean) => {
+    if (!localFilters.value.service) localFilters.value.service = [];
+    if (checked) {
+        if (!localFilters.value.service.includes(value)) {
+            localFilters.value.service.push(value);
+        }
+    } else {
+        localFilters.value.service = localFilters.value.service.filter(v => v !== value);
+    }
+    updateModelValue();
+};
+
+const handleRatingChange = (value: string, checked: boolean) => {
+    if (!localFilters.value.rating) localFilters.value.rating = [];
+    if (checked) {
+        if (!localFilters.value.rating.includes(value)) {
+            localFilters.value.rating.push(value);
+        }
+    } else {
+        localFilters.value.rating = localFilters.value.rating.filter(v => v !== value);
+    }
+    updateModelValue();
+};
+
+const handleStatusChange = (value: string, checked: boolean) => {
+    if (!localFilters.value.status) localFilters.value.status = [];
+    if (checked) {
+        if (!localFilters.value.status.includes(value)) {
+            localFilters.value.status.push(value);
+        }
+    } else {
+        localFilters.value.status = localFilters.value.status.filter(v => v !== value);
+    }
+    updateModelValue();
+};
+
 // Service options
 const serviceOptions = [
-    { value: '', label: 'All services' },
+    { value: '', label: 'All categories' },
     { value: 'consultation', label: 'Consultation' },
     { value: 'vaccination', label: 'Vaccination' },
     { value: 'surgery', label: 'Surgery' },
@@ -151,11 +187,10 @@ const statusOptions = [
 const clearFilters = () => {
     localFilters.value = {
         search: '',
-        service: '',
-        rating: '',
-        region: '',
+        service: [],
+        rating: [],
         distance: '',
-        status: '',
+        status: [],
     };
     updateModelValue();
     emit('clear');
@@ -181,7 +216,11 @@ const handleRequestLocation = () => {
 
 // Check if any filter is active
 const hasActiveFilters = computed(() => {
-    return Object.values(localFilters.value).some(value => value && value !== '');
+    return localFilters.value.search !== '' ||
+           (localFilters.value.service && localFilters.value.service.length > 0) ||
+           (localFilters.value.rating && localFilters.value.rating.length > 0) ||
+           localFilters.value.distance !== '' ||
+           (localFilters.value.status && localFilters.value.status.length > 0);
 });
 
 // Form styles
@@ -193,7 +232,7 @@ const labelClasses = "block text-sm font-medium text-gray-700 dark:text-gray-300
     <div class="bg-white rounded-xl border border-sidebar-border/70 dark:border-sidebar-border dark:bg-gray-800 p-4">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Filters</h3>
         
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mb-6">
+        <div class="space-y-6 mb-6">
             <!-- Search Filter -->
             <div v-if="showSearch">
                 <label :class="labelClasses">Search</label>
@@ -206,37 +245,43 @@ const labelClasses = "block text-sm font-medium text-gray-700 dark:text-gray-300
                 />
             </div>
 
-            <!-- Service Filter -->
+            <!-- Category Filter -->
             <div v-if="showService">
-                <label :class="labelClasses">Service</label>
-                <select v-model="localFilters.service" @change="updateModelValue" :class="inputClasses">
-                    <option v-for="option in serviceOptions" :key="option.value" :value="option.value">
-                        {{ option.label }}
-                    </option>
-                </select>
+                <label :class="labelClasses">Category</label>
+                <div class="space-y-2 max-h-48 overflow-y-auto">
+                    <label v-for="option in serviceOptions.filter(o => o.value !== '')" :key="option.value" 
+                           class="flex items-center space-x-2 cursor-pointer">
+                        <input 
+                            type="checkbox" 
+                            :value="option.value"
+                            :checked="localFilters.service?.includes(option.value) || false"
+                            @change="handleServiceChange(option.value, ($event.target as HTMLInputElement).checked)"
+                            class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700"
+                        />
+                        <span class="text-sm text-gray-700 dark:text-gray-300">{{ option.label }}</span>
+                    </label>
+                </div>
             </div>
 
             <!-- Rating Filter -->
             <div v-if="showRating">
                 <label :class="labelClasses">Minimum rating</label>
-                <select v-model="localFilters.rating" @change="updateModelValue" :class="inputClasses">
-                    <option v-for="option in ratingOptions" :key="option.value" :value="option.value">
-                        {{ option.label }}
-                    </option>
-                </select>
+                <div class="space-y-2">
+                    <label v-for="option in ratingOptions.filter(o => o.value !== '')" :key="option.value" 
+                           class="flex items-center space-x-2 cursor-pointer">
+                        <input 
+                            type="checkbox" 
+                            :value="option.value"
+                            :checked="localFilters.rating?.includes(option.value) || false"
+                            @change="handleRatingChange(option.value, ($event.target as HTMLInputElement).checked)"
+                            class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700"
+                        />
+                        <span class="text-sm text-gray-700 dark:text-gray-300">{{ option.label }}</span>
+                    </label>
+                </div>
             </div>
 
-            <!-- Region Filter -->
-            <div v-if="showRegion">
-                <label :class="labelClasses">Region</label>
-                <select v-model="localFilters.region" @change="updateModelValue" :class="inputClasses">
-                    <option v-for="option in regionOptions" :key="option.value" :value="option.value">
-                        {{ option.label }}
-                    </option>
-                </select>
-            </div>
-
-            <!-- Distance Filter -->
+            <!-- Distance Filter (Keep as dropdown for single selection) -->
             <div v-if="showDistance">
                 <label :class="labelClasses">Distance</label>
                 <select v-model="localFilters.distance" @change="updateModelValue" :class="inputClasses">
@@ -249,11 +294,19 @@ const labelClasses = "block text-sm font-medium text-gray-700 dark:text-gray-300
             <!-- Status Filter -->
             <div v-if="showStatus">
                 <label :class="labelClasses">Status</label>
-                <select v-model="localFilters.status" @change="updateModelValue" :class="inputClasses">
-                    <option v-for="option in statusOptions" :key="option.value" :value="option.value">
-                        {{ option.label }}
-                    </option>
-                </select>
+                <div class="space-y-2">
+                    <label v-for="option in statusOptions.filter(o => o.value !== '')" :key="option.value" 
+                           class="flex items-center space-x-2 cursor-pointer">
+                        <input 
+                            type="checkbox" 
+                            :value="option.value"
+                            :checked="localFilters.status?.includes(option.value) || false"
+                            @change="handleStatusChange(option.value, ($event.target as HTMLInputElement).checked)"
+                            class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700"
+                        />
+                        <span class="text-sm text-gray-700 dark:text-gray-300">{{ option.label }}</span>
+                    </label>
+                </div>
             </div>
         </div>
 
@@ -323,20 +376,17 @@ const labelClasses = "block text-sm font-medium text-gray-700 dark:text-gray-300
                 <span v-if="localFilters.search" class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100">
                     Search: {{ localFilters.search }}
                 </span>
-                <span v-if="localFilters.service" class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100">
-                    Service: {{ serviceOptions.find(s => s.value === localFilters.service)?.label }}
+                <span v-if="localFilters.service && localFilters.service.length > 0" class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100">
+                    Service: {{ localFilters.service.map(s => serviceOptions.find(opt => opt.value === s)?.label).filter(Boolean).join(', ') }}
                 </span>
-                <span v-if="localFilters.rating" class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100">
-                    Rating: {{ ratingOptions.find(r => r.value === localFilters.rating)?.label }}
-                </span>
-                <span v-if="localFilters.region" class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100">
-                    Region: {{ localFilters.region }}
+                <span v-if="localFilters.rating && localFilters.rating.length > 0" class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100">
+                    Rating: {{ localFilters.rating.map(r => ratingOptions.find(opt => opt.value === r)?.label).filter(Boolean).join(', ') }}
                 </span>
                 <span v-if="localFilters.distance" class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100">
                     Distance: {{ distanceOptions.find(d => d.value === localFilters.distance)?.label }}
                 </span>
-                <span v-if="localFilters.status" class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100">
-                    Status: {{ statusOptions.find(s => s.value === localFilters.status)?.label }}
+                <span v-if="localFilters.status && localFilters.status.length > 0" class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100">
+                    Status: {{ localFilters.status.map(s => statusOptions.find(opt => opt.value === s)?.label).filter(Boolean).join(', ') }}
                 </span>
             </div>
         </div>

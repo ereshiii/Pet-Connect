@@ -6,6 +6,7 @@ import { clinics as clinicsRoute, viewMap, clinicDetails, booking } from '@/rout
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/vue3';
 import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { Heart } from 'lucide-vue-next';
 
 // Props interface
 interface Clinic {
@@ -29,6 +30,7 @@ interface Clinic {
     latitude?: number;
     longitude?: number;
     created_at: string;
+    is_favorited?: boolean;
     
     // Enhanced fields
     operating_status?: {
@@ -51,11 +53,13 @@ interface Clinic {
 interface Props {
     clinics: Clinic[];
     featured_clinics: Clinic[];
+    user_favorites?: number[];
 }
 
 const props = withDefaults(defineProps<Props>(), {
     clinics: () => [],
     featured_clinics: () => [],
+    user_favorites: () => [],
 });
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -68,11 +72,10 @@ const breadcrumbs: BreadcrumbItem[] = [
 // Filter state using the reusable component interface
 const filters = ref({
     search: '',
-    service: '',
-    rating: '',
-    region: '',
+    service: [] as string[],
+    rating: [] as string[],
     distance: '',
-    status: '',
+    status: [] as string[],
 });
 
 // Location state
@@ -168,12 +171,11 @@ const reloadWithLocation = () => {
         data: {
             user_lat: userLocation.value.latitude,
             user_lng: userLocation.value.longitude,
-            search: searchQuery.value,
-            service: selectedService.value,
-            rating: selectedRating.value,
-            region: selectedRegion.value,
-            distance: selectedDistance.value,
-            status: selectedStatus.value
+            search: filters.value.search,
+            service: filters.value.service,
+            rating: filters.value.rating,
+            distance: filters.value.distance,
+            status: filters.value.status
         },
         preserveState: false, // Don't preserve state to ensure fresh load
         preserveScroll: true
@@ -229,93 +231,25 @@ const filteredClinics = computed(() => {
         );
     }
 
-    // Filter by service
-    if (filters.value.service) {
+    // Filter by service (now handles multiple selections)
+    if (filters.value.service.length > 0) {
         filtered = filtered.filter(clinic => 
-            clinic.services.some(service => 
-                service.toLowerCase().includes(filters.value.service!.toLowerCase())
+            filters.value.service.some(selectedService =>
+                clinic.services.some(service => 
+                    service.toLowerCase().includes(selectedService.toLowerCase())
+                )
             )
         );
     }
 
-    // Filter by rating
-    if (filters.value.rating) {
-        const minRating = parseFloat(filters.value.rating);
-        filtered = filtered.filter(clinic => Number(clinic.rating || 0) >= minRating);
-    }
-
-    // Filter by region - improved matching
-    if (filters.value.region) {
-        const region = filters.value.region.toLowerCase();
+    // Filter by rating (now handles multiple selections)
+    if (filters.value.rating.length > 0) {
         filtered = filtered.filter(clinic => {
-            const address = clinic.address.toLowerCase();
-            
-            // Define region mappings with their provinces/cities
-            const regionMappings: { [key: string]: string[] } = {
-                'metro manila': [
-                    'metro manila', 'manila', 'quezon city', 'makati', 'taguig', 'pasig', 
-                    'mandaluyong', 'san juan', 'marikina', 'pasay', 'parañaque', 'las piñas', 
-                    'muntinlupa', 'caloocan', 'malabon', 'navotas', 'valenzuela'
-                ],
-                'calabarzon': [
-                    'calabarzon', 'cavite', 'laguna', 'batangas', 'rizal', 'quezon province'
-                ],
-                'central luzon': [
-                    'central luzon', 'bulacan', 'nueva ecija', 'pampanga', 'tarlac', 
-                    'zambales', 'bataan', 'aurora'
-                ],
-                'central visayas': [
-                    'central visayas', 'cebu', 'bohol', 'negros oriental', 'siquijor'
-                ],
-                'davao region': [
-                    'davao region', 'davao del norte', 'davao del sur', 'davao oriental', 
-                    'davao de oro', 'davao city'
-                ],
-                'cordillera': [
-                    'cordillera', 'abra', 'apayao', 'benguet', 'ifugao', 'kalinga', 
-                    'mountain province', 'baguio'
-                ],
-                'western visayas': [
-                    'western visayas', 'aklan', 'antique', 'capiz', 'guimaras', 
-                    'iloilo', 'negros occidental'
-                ],
-                'cagayan valley': [
-                    'cagayan valley', 'batanes', 'cagayan', 'isabela', 'nueva vizcaya', 'quirino'
-                ],
-                'mimaropa': [
-                    'mimaropa', 'marinduque', 'occidental mindoro', 'oriental mindoro', 
-                    'palawan', 'romblon'
-                ],
-                'bicol region': [
-                    'bicol region', 'albay', 'camarines norte', 'camarines sur', 
-                    'catanduanes', 'masbate', 'sorsogon'
-                ],
-                'eastern visayas': [
-                    'eastern visayas', 'biliran', 'eastern samar', 'leyte', 
-                    'northern samar', 'samar', 'southern leyte'
-                ],
-                'caraga': [
-                    'caraga', 'agusan del norte', 'agusan del sur', 'dinagat islands', 
-                    'surigao del norte', 'surigao del sur'
-                ],
-                'northern mindanao': [
-                    'northern mindanao', 'bukidnon', 'camiguin', 'lanao del norte', 
-                    'misamis occidental', 'misamis oriental'
-                ],
-                'barmm': [
-                    'barmm', 'basilan', 'lanao del sur', 'maguindanao', 'sulu', 'tawi-tawi'
-                ],
-                'soccsksargen': [
-                    'soccsksargen', 'cotabato', 'sarangani', 'south cotabato', 'sultan kudarat'
-                ],
-                'ilocos region': [
-                    'ilocos region', 'ilocos norte', 'ilocos sur', 'la union', 'pangasinan'
-                ]
-            };
-
-            // Check if address matches any of the region's provinces/cities
-            const regionProvinces = regionMappings[region] || [region];
-            return regionProvinces.some(province => address.includes(province.toLowerCase()));
+            const clinicRating = Number(clinic.rating || 0);
+            return filters.value.rating.some(selectedRating => {
+                const minRating = parseFloat(selectedRating);
+                return clinicRating >= minRating;
+            });
         });
     }
 
@@ -328,19 +262,21 @@ const filteredClinics = computed(() => {
         });
     }
 
-    // Filter by status
-    if (filters.value.status) {
+    // Filter by status (now handles multiple selections)
+    if (filters.value.status.length > 0) {
         filtered = filtered.filter(clinic => {
-            switch (filters.value.status) {
-                case 'open':
-                    return clinic.operating_status?.is_open || clinic.is_open;
-                case 'closed':
-                    return !(clinic.operating_status?.is_open || clinic.is_open);
-                case '24_7':
-                    return clinic.is_open_24_7;
-                default:
-                    return true;
-            }
+            return filters.value.status.some(selectedStatus => {
+                switch (selectedStatus) {
+                    case 'open':
+                        return clinic.operating_status?.is_open || clinic.is_open;
+                    case 'closed':
+                        return !(clinic.operating_status?.is_open || clinic.is_open);
+                    case '24_7':
+                        return clinic.is_open_24_7;
+                    default:
+                        return true;
+                }
+            });
         });
     }
 
@@ -372,6 +308,43 @@ const bookAppointment = (clinic: Clinic) => {
     });
 };
 
+// Favorite functionality
+const favoritingClinics = ref<Set<number>>(new Set());
+
+const isClinicFavorited = (clinicId: number): boolean => {
+    return props.user_favorites.includes(clinicId);
+};
+
+const toggleFavorite = async (clinic: Clinic) => {
+    if (favoritingClinics.value.has(clinic.id)) return;
+    
+    favoritingClinics.value.add(clinic.id);
+    
+    try {
+        const isFavorited = isClinicFavorited(clinic.id);
+        
+        if (isFavorited) {
+            // Remove from favorites
+            await router.delete(`/user/favorited-clinics/${clinic.id}`, {
+                preserveScroll: true,
+                preserveState: true,
+            });
+        } else {
+            // Add to favorites
+            await router.post('/user/favorited-clinics', {
+                clinic_id: clinic.id,
+            }, {
+                preserveScroll: true,
+                preserveState: true,
+            });
+        }
+    } catch (error) {
+        console.error('Error toggling favorite:', error);
+    } finally {
+        favoritingClinics.value.delete(clinic.id);
+    }
+};
+
 // Carousel navigation functions
 const nextSlide = () => {
     currentSlide.value = (currentSlide.value + 1) % featuredClinics.value.length;
@@ -388,7 +361,7 @@ const goToSlide = (index: number) => {
 // Auto-scroll functionality
 const startAutoScroll = () => {
     if (featuredClinics.value.length > 1) {
-        intervalId = setInterval(nextSlide, 4000); // Change slide every 4 seconds
+        intervalId = setInterval(nextSlide, 4000) as unknown as number; // Change slide every 4 seconds
     }
 };
 
@@ -403,11 +376,10 @@ const stopAutoScroll = () => {
 const resetFilters = () => {
     filters.value = {
         search: '',
-        service: '',
-        rating: '',
-        region: '',
+        service: [],
+        rating: [],
         distance: '',
-        status: '',
+        status: [],
     };
 };
 
@@ -427,8 +399,12 @@ const clearFilters = () => {
 
 // Navigate to map view with current filters
 const viewOnMap = () => {
+    // Navigate to map view without any filter parameters to show all clinics
+    // The map view has its own independent filtering system
     router.visit(viewMap().url, {
-        data: filters.value
+        replace: true, // Replace current history entry to avoid back-button issues
+        preserveState: false, // Don't preserve any state from current page
+        preserveScroll: false // Reset scroll position
     });
 };
 
@@ -511,6 +487,7 @@ const getDistanceValue = (clinic: Clinic) => {
                     v-model="filters"
                     :showViewOnMapButton="true"
                     :showLocationStatus="true"
+                    :showRegion="false"
                     :hasUserLocation="!!userLocation"
                     :resultCount="filteredClinics.length"
                     @clear="clearFilters"
@@ -691,7 +668,25 @@ const getDistanceValue = (clinic: Clinic) => {
                     <div v-if="filteredClinics.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         <div v-for="(clinic, index) in filteredClinics" 
                              :key="clinic.id"
-                             class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600 hover:shadow-lg transition-shadow">
+                             class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600 hover:shadow-lg transition-shadow relative">
+                            <!-- Favorite Button -->
+                            <button
+                                @click.stop="toggleFavorite(clinic)"
+                                :disabled="favoritingClinics.has(clinic.id)"
+                                class="absolute top-3 right-3 z-10 p-2 rounded-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200 dark:border-gray-600 hover:bg-white dark:hover:bg-gray-800 transition-all group"
+                                :class="{ 'opacity-50 cursor-not-allowed': favoritingClinics.has(clinic.id) }"
+                            >
+                                <Heart 
+                                    class="h-4 w-4 transition-all duration-200 group-hover:scale-110"
+                                    :class="[
+                                        isClinicFavorited(clinic.id) 
+                                            ? 'text-red-500 fill-red-500' 
+                                            : 'text-gray-400 hover:text-red-500',
+                                        { 'animate-pulse': favoritingClinics.has(clinic.id) }
+                                    ]"
+                                />
+                            </button>
+                            
                             <!-- Clinic Image Placeholder -->
                             <div :class="['w-full h-40 rounded-lg mb-4 flex items-center justify-center', getRandomColor(index).bg]">
                                 <span :class="['text-sm font-medium', getRandomColor(index).text]">{{ clinic.name }}</span>

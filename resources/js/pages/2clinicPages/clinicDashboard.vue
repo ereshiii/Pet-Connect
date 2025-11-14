@@ -80,8 +80,8 @@ const getStatusColor = (status: string) => {
     switch (status) {
         case 'confirmed':
             return 'text-green-600 bg-green-100 dark:text-green-400 dark:bg-green-900/20';
-        case 'pending':
-            return 'text-yellow-600 bg-yellow-100 dark:text-yellow-400 dark:bg-yellow-900/20';
+        case 'scheduled':
+            return 'text-yellow-600 dark:text-yellow-400';
         case 'urgent':
             return 'text-red-600 bg-red-100 dark:text-red-400 dark:bg-red-900/20';
         default:

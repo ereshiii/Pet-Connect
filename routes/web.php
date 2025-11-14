@@ -5,12 +5,15 @@ use Inertia\Inertia;
 use Laravel\Fortify\Features;
 use App\Http\Controllers\ClinicController;
 use App\Http\Controllers\ClinicDashboardController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ClinicAppointmentsController;
 use App\Http\Controllers\ClinicPatientsController;
 use App\Http\Controllers\ClinicScheduleController;
 use App\Http\Controllers\ClinicServicesController;
+use App\Http\Controllers\ClinicStaffController;
 use App\Http\Controllers\ClinicBillingController;
 use App\Http\Controllers\ClinicReportsController;
+use App\Http\Controllers\ClinicHistoryController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -36,35 +39,8 @@ Route::get('dashboard', function () {
         }
     }
     
-    return Inertia::render('Dashboard', [
-        'user' => $user ? [
-            'id' => $user->id,
-            'name' => $user->name,
-            'username' => $user->username,
-            'email' => $user->email,
-            'phone' => $user->phone,
-            'address_line_1' => $user->address_line_1,
-            'address_line_2' => $user->address_line_2,
-            'city' => $user->city,
-            'state' => $user->state,
-            'postal_code' => $user->postal_code,
-            'country' => $user->country,
-            'emergency_contact_name' => $user->emergency_contact_name,
-            'emergency_contact_relationship' => $user->emergency_contact_relationship,
-            'emergency_contact_phone' => $user->emergency_contact_phone,
-            'date_of_birth' => $user->date_of_birth,
-            'gender' => $user->gender,
-            'bio' => $user->bio,
-            'email_verified_at' => $user->email_verified_at,
-            'created_at' => $user->created_at,
-            'initials' => $user->getInitials(),
-            'full_address' => $user->getFullAddress(),
-            'has_complete_address' => $user->hasCompleteAddress(),
-            'has_emergency_contact' => $user->hasEmergencyContact(),
-            'membership_years' => $user->getMembershipYears(),
-            'profile_completion_percentage' => $user->getProfileCompletionPercentage(),
-        ] : null,
-    ]);
+    // For regular users, use the Dashboard controller
+    return app(DashboardController::class)->index(request());
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::get('schedule', [App\Http\Controllers\AppointmentController::class, 'schedule'])
@@ -143,7 +119,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
             'operating_hours' => 'required|array',
             'is_24_hours' => 'boolean',
             'services' => 'required|array',
-            'other_services' => 'nullable|string',
+            'services.*.name' => 'required|string|max:255',
+            'services.*.category' => 'required|string|in:consultation,vaccination,surgery,dental,grooming,boarding,emergency,diagnostic,other',
+            'services.*.description' => 'nullable|string|max:1000',
+            'services.*.base_price' => 'nullable|numeric|min:0|max:999999.99',
+            'services.*.duration_minutes' => 'nullable|integer|min:1|max:1440',
+            'services.*.requires_appointment' => 'boolean',
+            'services.*.is_emergency_service' => 'boolean',
             'veterinarians' => 'required|array',
             'certification_proofs.*' => 'nullable|file|mimes:pdf,jpg,jpeg,png,gif|max:10240', // 10MB max
             'additional_info' => 'nullable|string',
@@ -231,8 +213,15 @@ Route::prefix('clinic')->middleware(['auth', 'verified', 'clinic'])->group(funct
     Route::get('appointments/{id}', [ClinicAppointmentsController::class, 'show'])->name('clinicAppointmentDetails');
     Route::patch('appointments/{id}/status', [ClinicAppointmentsController::class, 'updateStatus'])->name('clinicAppointments.updateStatus');
     
+    Route::get('history', [ClinicHistoryController::class, 'index'])->name('clinicHistory');
+    
     Route::get('patients', [ClinicPatientsController::class, 'index'])->name('clinicPatients');
+    Route::get('patients/add', [ClinicPatientsController::class, 'create'])->name('clinicPatients.add');
+    Route::post('patients', [ClinicPatientsController::class, 'store'])->name('clinicPatients.store');
     Route::get('patient/{id}', [ClinicPatientsController::class, 'show'])->name('clinicPatientRecord');
+    Route::get('patient/{id}/edit', [ClinicPatientsController::class, 'edit'])->name('clinicPatientRecord.edit');
+    Route::get('patient/{id}/history', [ClinicPatientsController::class, 'history'])->name('clinicPatientRecord.history');
+    Route::patch('patient/{id}', [ClinicPatientsController::class, 'update'])->name('clinicPatientRecord.update');
     
     Route::get('schedule-management', [ClinicScheduleController::class, 'index'])->name('clinicScheduleManagement');
     Route::patch('schedule/operating-hours', [ClinicScheduleController::class, 'updateOperatingHours'])->name('clinicSchedule.updateOperatingHours');
@@ -260,9 +249,11 @@ Route::prefix('clinic')->middleware(['auth', 'verified', 'clinic'])->group(funct
         return Inertia::render('2clinicPages/inventory/InventoryManagement');
     })->name('clinicInventory');
     
-    Route::get('staff', function () {
-        return Inertia::render('2clinicPages/staff/StaffManagement');
-    })->name('clinicStaff');
+    Route::get('staff', [ClinicStaffController::class, 'index'])->name('clinicStaff');
+    Route::post('staff', [ClinicStaffController::class, 'store'])->name('clinicStaff.store');
+    Route::patch('staff/{id}', [ClinicStaffController::class, 'update'])->name('clinicStaff.update');
+    Route::delete('staff/{id}', [ClinicStaffController::class, 'destroy'])->name('clinicStaff.destroy');
+    Route::patch('staff/{id}/toggle-status', [ClinicStaffController::class, 'toggleStatus'])->name('clinicStaff.toggleStatus');
 });
 
 Route::get('clinic/{id}', [App\Http\Controllers\ClinicController::class, 'show'])->middleware(['auth', 'verified'])->name('clinicDetails');
@@ -824,6 +815,13 @@ Route::post('/switch-account-type', function () {
     
     return back();
 })->middleware(['auth', 'verified']);
+
+// User Favorites Routes
+Route::middleware(['auth', 'verified'])->prefix('user')->group(function () {
+    Route::get('/favorited-clinics', [App\Http\Controllers\UserFavoriteController::class, 'index'])->name('user.favorites.index');
+    Route::post('/favorited-clinics', [App\Http\Controllers\UserFavoriteController::class, 'store'])->name('user.favorites.store');
+    Route::delete('/favorited-clinics/{clinic}', [App\Http\Controllers\UserFavoriteController::class, 'destroy'])->name('user.favorites.destroy');
+});
 
 require __DIR__.'/settings.php';
 

@@ -31,7 +31,16 @@ class ClinicServicesController extends Controller
             abort(404, 'Clinic registration not found.');
         }
 
-        $clinicId = $clinicRegistration->id;
+        // Get the actual clinic record
+        $clinic = $clinicRegistration->clinic;
+        if (!$clinic) {
+            abort(404, 'Clinic not found. Registration may not be approved yet.');
+        }
+
+        $clinicId = $clinic->id;
+
+        // Initialize services from registration if first time
+        $this->initializeServicesFromRegistration($clinicRegistration);
 
         // Get filter parameters
         $category = $request->get('category', 'all');
@@ -63,13 +72,13 @@ class ClinicServicesController extends Controller
             });
         }
 
-        // Get paginated results
+        // Get results (simplified - no pagination for now)  
         $services = $query->orderBy('category')
             ->orderBy('name')
-            ->paginate($perPage, ['*'], 'page', $page);
+            ->get();
 
         // Transform services data
-        $transformedServices = $services->through(function ($service) use ($clinicId) {
+        $transformedServices = $services->map(function ($service) use ($clinicId) {
             $usage = $this->getServiceUsage($service->id, $clinicId);
             
             return [
@@ -98,7 +107,15 @@ class ClinicServicesController extends Controller
         $categories = $this->getServiceCategories();
 
         return Inertia::render('2clinicPages/services/ServicesList', [
-            'services' => $transformedServices,
+            'services' => [
+                'data' => $transformedServices,
+                'links' => [], // Mock pagination links
+                'meta' => [
+                    'total' => $transformedServices->count(),
+                    'per_page' => $perPage,
+                    'current_page' => $page,
+                ],
+            ],
             'stats' => $stats,
             'categories' => $categories,
             'filters' => [
@@ -107,8 +124,8 @@ class ClinicServicesController extends Controller
                 'search' => $search,
             ],
             'clinic' => [
-                'id' => $clinicRegistration->id,
-                'name' => $clinicRegistration->clinic_name,
+                'id' => $clinic->id,
+                'name' => $clinic->name,
             ],
         ]);
     }
@@ -126,6 +143,12 @@ class ClinicServicesController extends Controller
 
         $clinicRegistration = $user->clinicRegistration;
 
+        // Get the actual clinic record
+        $clinic = $clinicRegistration->clinic;
+        if (!$clinic) {
+            abort(404, 'Clinic not found. Registration may not be approved yet.');
+        }
+
         $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
@@ -138,7 +161,7 @@ class ClinicServicesController extends Controller
         ]);
 
         $service = ClinicService::create([
-            'clinic_id' => $clinicRegistration->id,
+            'clinic_id' => $clinic->id,
             'name' => $request->name,
             'description' => $request->description,
             'category' => $request->category,
@@ -165,8 +188,14 @@ class ClinicServicesController extends Controller
 
         $clinicRegistration = $user->clinicRegistration;
         
+        // Get the actual clinic record
+        $clinic = $clinicRegistration->clinic;
+        if (!$clinic) {
+            abort(404, 'Clinic not found. Registration may not be approved yet.');
+        }
+        
         $service = ClinicService::where('id', $id)
-            ->where('clinic_id', $clinicRegistration->id)
+            ->where('clinic_id', $clinic->id)
             ->firstOrFail();
 
         $request->validate([
@@ -207,8 +236,14 @@ class ClinicServicesController extends Controller
 
         $clinicRegistration = $user->clinicRegistration;
         
+        // Get the actual clinic record
+        $clinic = $clinicRegistration->clinic;
+        if (!$clinic) {
+            abort(404, 'Clinic not found. Registration may not be approved yet.');
+        }
+        
         $service = ClinicService::where('id', $id)
-            ->where('clinic_id', $clinicRegistration->id)
+            ->where('clinic_id', $clinic->id)
             ->firstOrFail();
 
         // Check if service is being used in appointments
@@ -238,8 +273,14 @@ class ClinicServicesController extends Controller
 
         $clinicRegistration = $user->clinicRegistration;
         
+        // Get the actual clinic record
+        $clinic = $clinicRegistration->clinic;
+        if (!$clinic) {
+            abort(404, 'Clinic not found. Registration may not be approved yet.');
+        }
+        
         $service = ClinicService::where('id', $id)
-            ->where('clinic_id', $clinicRegistration->id)
+            ->where('clinic_id', $clinic->id)
             ->firstOrFail();
 
         $service->update([
@@ -264,8 +305,14 @@ class ClinicServicesController extends Controller
 
         $clinicRegistration = $user->clinicRegistration;
         
+        // Get the actual clinic record
+        $clinic = $clinicRegistration->clinic;
+        if (!$clinic) {
+            abort(404, 'Clinic not found. Registration may not be approved yet.');
+        }
+        
         $originalService = ClinicService::where('id', $id)
-            ->where('clinic_id', $clinicRegistration->id)
+            ->where('clinic_id', $clinic->id)
             ->firstOrFail();
 
         $duplicatedService = $originalService->replicate();
@@ -354,6 +401,177 @@ class ClinicServicesController extends Controller
             'total_revenue' => $totalRevenue,
             'formatted_revenue' => '₱' . number_format($totalRevenue, 2),
         ];
+    }
+
+    /**
+     * Initialize services from registration data if no services exist.
+     */
+    private function initializeServicesFromRegistration(ClinicRegistration $clinicRegistration)
+    {
+        $clinic = $clinicRegistration->clinic;
+        if (!$clinic) {
+            return;
+        }
+
+        // Check if services already exist
+        if (ClinicService::where('clinic_id', $clinic->id)->exists()) {
+            return;
+        }
+
+        // Create services from registration data
+        if (!empty($clinicRegistration->services)) {
+            foreach ($clinicRegistration->services as $serviceData) {
+                if (empty($serviceData['name'])) continue;
+
+                // Map service category
+                $category = $this->mapServiceCategory($serviceData['name']);
+                
+                // Extract price if available
+                $price = null;
+                if (!empty($serviceData['price'])) {
+                    $price = is_numeric($serviceData['price']) ? $serviceData['price'] : null;
+                }
+
+                // Estimate duration based on service name
+                $duration = $this->estimateServiceDuration($serviceData['name'], $category);
+
+                ClinicService::create([
+                    'clinic_id' => $clinic->id,
+                    'name' => $serviceData['name'],
+                    'description' => $serviceData['description'] ?? '',
+                    'category' => $category,
+                    'base_price' => $price,
+                    'duration_minutes' => $duration,
+                    'is_active' => true,
+                    'requires_appointment' => $this->requiresAppointment($category),
+                    'is_emergency_service' => $this->isEmergencyService($serviceData['name']),
+                ]);
+            }
+        }
+
+        // Add default basic services if no services were in registration
+        if (empty($clinicRegistration->services)) {
+            $this->createDefaultServices($clinic->id);
+        }
+    }
+
+    /**
+     * Map service name to appropriate category.
+     */
+    private function mapServiceCategory(string $serviceName): string
+    {
+        $serviceName = strtolower($serviceName);
+        
+        if (str_contains($serviceName, 'consultation') || str_contains($serviceName, 'checkup') || str_contains($serviceName, 'exam')) {
+            return 'consultation';
+        } elseif (str_contains($serviceName, 'vaccination') || str_contains($serviceName, 'vaccine')) {
+            return 'vaccination';
+        } elseif (str_contains($serviceName, 'surgery') || str_contains($serviceName, 'operation') || str_contains($serviceName, 'spay') || str_contains($serviceName, 'neuter')) {
+            return 'surgery';
+        } elseif (str_contains($serviceName, 'dental') || str_contains($serviceName, 'teeth') || str_contains($serviceName, 'cleaning')) {
+            return 'dental';
+        } elseif (str_contains($serviceName, 'grooming') || str_contains($serviceName, 'bath') || str_contains($serviceName, 'nail')) {
+            return 'grooming';
+        } elseif (str_contains($serviceName, 'boarding') || str_contains($serviceName, 'overnight')) {
+            return 'boarding';
+        } elseif (str_contains($serviceName, 'emergency') || str_contains($serviceName, 'urgent')) {
+            return 'emergency';
+        } elseif (str_contains($serviceName, 'diagnostic') || str_contains($serviceName, 'test') || str_contains($serviceName, 'x-ray') || str_contains($serviceName, 'blood')) {
+            return 'diagnostic';
+        }
+        
+        return 'other';
+    }
+
+    /**
+     * Estimate service duration based on category and name.
+     */
+    private function estimateServiceDuration(string $serviceName, string $category): int
+    {
+        $serviceName = strtolower($serviceName);
+        
+        switch ($category) {
+            case 'consultation':
+                return 30;
+            case 'vaccination':
+                return 15;
+            case 'surgery':
+                if (str_contains($serviceName, 'major') || str_contains($serviceName, 'spay') || str_contains($serviceName, 'neuter')) {
+                    return 120;
+                }
+                return 60;
+            case 'dental':
+                return 45;
+            case 'grooming':
+                if (str_contains($serviceName, 'full') || str_contains($serviceName, 'complete')) {
+                    return 90;
+                }
+                return 45;
+            case 'boarding':
+                return 1440; // 24 hours
+            case 'emergency':
+                return 60;
+            case 'diagnostic':
+                return 30;
+            default:
+                return 30;
+        }
+    }
+
+    /**
+     * Check if service requires appointment.
+     */
+    private function requiresAppointment(string $category): bool
+    {
+        return in_array($category, ['surgery', 'dental', 'grooming', 'boarding']);
+    }
+
+    /**
+     * Check if service is emergency service.
+     */
+    private function isEmergencyService(string $serviceName): bool
+    {
+        $serviceName = strtolower($serviceName);
+        return str_contains($serviceName, 'emergency') || str_contains($serviceName, 'urgent');
+    }
+
+    /**
+     * Create default services for new clinics.
+     */
+    private function createDefaultServices(int $clinicId)
+    {
+        $defaultServices = [
+            [
+                'name' => 'General Consultation',
+                'description' => 'Basic veterinary consultation and examination',
+                'category' => 'consultation',
+                'base_price' => 500,
+                'duration_minutes' => 30,
+            ],
+            [
+                'name' => 'Vaccination',
+                'description' => 'Pet vaccination services',
+                'category' => 'vaccination',
+                'base_price' => 800,
+                'duration_minutes' => 15,
+            ],
+            [
+                'name' => 'Basic Grooming',
+                'description' => 'Basic pet grooming and hygiene',
+                'category' => 'grooming',
+                'base_price' => 300,
+                'duration_minutes' => 45,
+            ],
+        ];
+
+        foreach ($defaultServices as $serviceData) {
+            ClinicService::create(array_merge($serviceData, [
+                'clinic_id' => $clinicId,
+                'is_active' => true,
+                'requires_appointment' => true,
+                'is_emergency_service' => false,
+            ]));
+        }
     }
 
     /**

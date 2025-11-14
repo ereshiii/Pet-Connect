@@ -37,13 +37,13 @@ class ClinicAppointmentsController extends Controller
 
         // Get filter parameters
         $status = $request->get('status', 'all');
-        $date = $request->get('date', 'today');
+        $date = $request->get('date', 'upcoming'); // Changed from 'today' to 'upcoming'
         $search = $request->get('search', '');
         $page = $request->get('page', 1);
         $perPage = 15;
 
         // Build query
-        $query = Appointment::with(['pet.owner', 'pet.petType', 'service'])
+        $query = Appointment::with(['pet.owner', 'pet.type', 'pet.breed', 'service'])
             ->where('clinic_id', $clinicId);
 
         // Apply date filter
@@ -53,6 +53,10 @@ class ClinicAppointmentsController extends Controller
                 break;
             case 'tomorrow':
                 $query->whereDate('scheduled_at', Carbon::tomorrow());
+                break;
+            case 'upcoming':
+                // Show all future appointments (from today onwards)
+                $query->whereDate('scheduled_at', '>=', Carbon::today());
                 break;
             case 'this_week':
                 $query->whereBetween('scheduled_at', [
@@ -70,6 +74,9 @@ class ClinicAppointmentsController extends Controller
                 $query->whereMonth('scheduled_at', Carbon::now()->month)
                       ->whereYear('scheduled_at', Carbon::now()->year);
                 break;
+            case 'all':
+                // Show all appointments (past and future)
+                break;
         }
 
         // Apply status filter
@@ -86,15 +93,15 @@ class ClinicAppointmentsController extends Controller
             });
         }
 
-        // Get paginated results
+        // Get results (simplified - no pagination for now)
         $appointments = $query->orderBy('scheduled_at')
-            ->paginate($perPage, ['*'], 'page', $page);
+            ->get();
 
         // Get statistics
         $stats = $this->getAppointmentStats($clinicId, $date);
 
         // Transform appointments data
-        $transformedAppointments = $appointments->through(function ($appointment) {
+        $transformedAppointments = $appointments->map(function ($appointment) {
             // Skip if appointment is null
             if (!$appointment) {
                 return null;
@@ -111,8 +118,8 @@ class ClinicAppointmentsController extends Controller
                 'formatted_time' => Carbon::parse($appointment->scheduled_at)->format('g:i A'),
                 'status' => $appointment->status,
                 'status_display' => $this->getStatusDisplay($appointment->status),
-                'appointment_type' => $appointment->appointment_type ?? 'regular',
-                'service_type' => $appointment->appointment_type ?? 'regular', // Vue expects service_type
+                'appointment_type' => $appointment->type ?? 'regular',
+                'service_type' => $appointment->type ?? 'regular', // Vue expects service_type
                 'notes' => $appointment->notes,
                 'fee' => $appointment->actual_cost,
                 'formatted_fee' => $appointment->actual_cost ? '₱' . number_format($appointment->actual_cost, 2) : null,
@@ -140,14 +147,15 @@ class ClinicAppointmentsController extends Controller
                 ] : null,
                 'created_at' => $appointment->created_at,
             ];
-        })->filter(); // Remove null values from the collection
+        })->filter()->values(); // Remove null values and reset keys
 
         return Inertia::render('2clinicPages/appointments/AppointmentsList', [
             'appointments' => $transformedAppointments,
             'stats' => [
                 'today_appointments' => $stats['total'] ?? 0,
-                'pending_appointments' => $stats['pending'] ?? 0,
+                'scheduled_appointments' => $stats['scheduled'] ?? 0,
                 'completed_today' => $stats['completed'] ?? 0,
+                'new_bookings_today' => $stats['new_bookings_today'] ?? 0,
             ],
             'filters' => [
                 'status' => $status,
@@ -180,7 +188,7 @@ class ClinicAppointmentsController extends Controller
 
         $appointment = Appointment::with([
             'pet.owner', 
-            'pet.petType', 
+            'pet.type', 
             'pet.breed',
             'service',
             'clinic',
@@ -228,7 +236,7 @@ class ClinicAppointmentsController extends Controller
             'pet' => [
                 'id' => $appointment->pet->id,
                 'name' => $appointment->pet->name,
-                'type' => $appointment->pet->petType ? $appointment->pet->petType->name : 'Unknown',
+                'type' => $appointment->pet->type ? $appointment->pet->type->name : 'Unknown',
                 'breed' => $appointment->pet->breed ? $appointment->pet->breed->name : 'Mixed',
                 'age' => $appointment->pet->age ?? 'Unknown',
                 'weight' => $appointment->pet->weight,
@@ -247,7 +255,7 @@ class ClinicAppointmentsController extends Controller
             'service' => $appointment->service ? [
                 'id' => $appointment->service->id,
                 'name' => $appointment->service->name,
-                'cost' => $appointment->service->cost,
+                'cost' => $appointment->service->base_price,
                 'description' => $appointment->service->description,
             ] : null,
             'owner' => [
@@ -289,7 +297,7 @@ class ClinicAppointmentsController extends Controller
             ->firstOrFail();
 
         $request->validate([
-            'status' => 'required|in:pending,confirmed,in_progress,completed,cancelled,no_show',
+            'status' => 'required|in:scheduled,confirmed,in_progress,completed,cancelled,no_show',
             'notes' => 'nullable|string|max:1000',
             'actualCost' => 'nullable|numeric|min:0',
         ]);
@@ -338,18 +346,24 @@ class ClinicAppointmentsController extends Controller
 
         $total = (clone $baseQuery)->count();
         $confirmed = (clone $baseQuery)->where('status', 'confirmed')->count();
-        $pending = (clone $baseQuery)->where('status', 'pending')->count();
+        $scheduled = (clone $baseQuery)->where('status', 'scheduled')->count();
         $completed = (clone $baseQuery)->where('status', 'completed')->count();
         $cancelled = (clone $baseQuery)->whereIn('status', ['cancelled', 'no_show'])->count();
+
+        // Count new bookings today (appointments created today regardless of scheduled date)
+        $newBookingsToday = Appointment::where('clinic_id', $clinicId)
+            ->whereDate('created_at', Carbon::today())
+            ->count();
 
         $revenue = (clone $baseQuery)->where('status', 'completed')->sum('actual_cost');
 
         return [
             'total' => $total,
             'confirmed' => $confirmed,
-            'pending' => $pending,
+            'scheduled' => $scheduled,
             'completed' => $completed,
             'cancelled' => $cancelled,
+            'new_bookings_today' => $newBookingsToday,
             'revenue' => $revenue,
             'formatted_revenue' => '₱' . number_format($revenue, 2),
         ];
@@ -361,7 +375,7 @@ class ClinicAppointmentsController extends Controller
     private function getStatusDisplay($status): string
     {
         $statusMap = [
-            'pending' => 'Pending',
+            'scheduled' => 'Scheduled',
             'confirmed' => 'Confirmed',
             'in_progress' => 'In Progress',
             'completed' => 'Completed',

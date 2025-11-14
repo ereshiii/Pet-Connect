@@ -4,6 +4,14 @@ import { history, appointmentDetails, appointmentsCreate, clinicAppointmentDetai
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
+import { 
+    NavigationMenu, 
+    NavigationMenuContent, 
+    NavigationMenuItem, 
+    NavigationMenuLink, 
+    NavigationMenuList, 
+    NavigationMenuTrigger 
+} from '@/components/ui/navigation-menu';
 
 // Types
 interface Appointment {
@@ -49,13 +57,6 @@ interface Pet {
     breed?: string;
 }
 
-interface Stats {
-    total_visits: number;
-    this_year: number;
-    clinics_visited: number;
-    total_spent: number;
-}
-
 interface PaginatedAppointments {
     data: Appointment[];
     current_page: number;
@@ -69,7 +70,6 @@ interface PaginatedAppointments {
 interface Props {
     appointments: PaginatedAppointments;
     userPets: Pet[];
-    stats: Stats;
     filters: {
         pet_id?: number;
         date_filter: string;
@@ -110,6 +110,35 @@ const breadcrumbs: BreadcrumbItem[] = [
 // Reactive filter state
 const selectedPetId = ref(props.filters.pet_id || '');
 const selectedDateFilter = ref(props.filters.date_filter);
+const activeCategory = ref<'completed' | 'cancelled' | 'no_show' | 'all'>('all');
+
+// Computed properties for filtered appointments
+const filteredAppointments = computed(() => {
+    let filtered = props.appointments.data.filter(appointment => 
+        ['completed', 'cancelled', 'no_show'].includes(appointment.status)
+    );
+
+    // Filter by category
+    if (activeCategory.value !== 'all') {
+        filtered = filtered.filter(appointment => appointment.status === activeCategory.value);
+    }
+
+    return filtered;
+});
+
+// Category counts
+const categoryCounts = computed(() => {
+    const historyAppointments = props.appointments.data.filter(appointment => 
+        ['completed', 'cancelled', 'no_show'].includes(appointment.status)
+    );
+    
+    return {
+        all: historyAppointments.length,
+        completed: historyAppointments.filter(apt => apt.status === 'completed').length,
+        cancelled: historyAppointments.filter(apt => apt.status === 'cancelled').length,
+        no_show: historyAppointments.filter(apt => apt.status === 'no_show').length,
+    };
+});
 
 // Computed properties
 const formatAppointmentDateTime = (scheduledAt: string) => {
@@ -259,6 +288,10 @@ const loadMore = () => {
     }
 };
 
+const setActiveCategory = (category: 'completed' | 'cancelled' | 'no_show' | 'all') => {
+    activeCategory.value = category;
+};
+
 const exportHistory = () => {
     // TODO: Implement export functionality
     alert('Export functionality will be implemented soon!');
@@ -299,9 +332,9 @@ const rebookAppointment = (appointment?: Appointment) => {
             <!-- Comprehensive Booking History -->
             <div class="bg-white dark:bg-gray-800 rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
                 <div class="p-6">
-                    <div class="flex items-center justify-between mb-6">
+                    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
                         <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Booking History</h2>
-                        <div class="flex gap-2">
+                        <div class="flex flex-col sm:flex-row gap-2">
                             <select 
                                 v-model="selectedPetId" 
                                 @change="applyFilters"
@@ -325,40 +358,89 @@ const rebookAppointment = (appointment?: Appointment) => {
                             </select>
                             <button 
                                 @click="exportHistory"
-                                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+                                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium whitespace-nowrap"
                             >
                                 Export History
                             </button>
                         </div>
                     </div>
                     
-                    <!-- Summary Stats -->
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                        <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 text-center">
-                            <p class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ stats.total_visits }}</p>
-                            <p class="text-sm text-blue-700 dark:text-blue-300">Total Visits</p>
-                        </div>
-                        <div class="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 text-center">
-                            <p class="text-2xl font-bold text-green-600 dark:text-green-400">{{ stats.this_year }}</p>
-                            <p class="text-sm text-green-700 dark:text-green-300">This Year</p>
-                        </div>
-                        <div class="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 text-center">
-                            <p class="text-2xl font-bold text-purple-600 dark:text-purple-400">{{ stats.clinics_visited }}</p>
-                            <p class="text-sm text-purple-700 dark:text-purple-300">Clinics Visited</p>
-                        </div>
-                        <div class="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-4 text-center">
-                            <p class="text-2xl font-bold text-orange-600 dark:text-orange-400">{{ formatCurrency(stats.total_spent) }}</p>
-                            <p class="text-sm text-orange-700 dark:text-orange-300">Total Spent</p>
-                        </div>
+                    <!-- Category Navigation -->
+                    <div class="mb-6">
+                        <NavigationMenu class="w-full">
+                            <NavigationMenuList class="flex space-x-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+                                <NavigationMenuItem>
+                                    <NavigationMenuLink
+                                        as="button"
+                                        @click="setActiveCategory('all')"
+                                        :class="[
+                                            'px-4 py-2 rounded-md text-sm font-medium transition-colors',
+                                            activeCategory === 'all' 
+                                                ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm' 
+                                                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+                                        ]"
+                                    >
+                                        All ({{ categoryCounts.all }})
+                                    </NavigationMenuLink>
+                                </NavigationMenuItem>
+                                <NavigationMenuItem>
+                                    <NavigationMenuLink
+                                        as="button"
+                                        @click="setActiveCategory('completed')"
+                                        :class="[
+                                            'px-4 py-2 rounded-md text-sm font-medium transition-colors',
+                                            activeCategory === 'completed' 
+                                                ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm' 
+                                                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+                                        ]"
+                                    >
+                                        Completed ({{ categoryCounts.completed }})
+                                    </NavigationMenuLink>
+                                </NavigationMenuItem>
+                                <NavigationMenuItem>
+                                    <NavigationMenuLink
+                                        as="button"
+                                        @click="setActiveCategory('cancelled')"
+                                        :class="[
+                                            'px-4 py-2 rounded-md text-sm font-medium transition-colors',
+                                            activeCategory === 'cancelled' 
+                                                ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm' 
+                                                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+                                        ]"
+                                    >
+                                        Cancelled ({{ categoryCounts.cancelled }})
+                                    </NavigationMenuLink>
+                                </NavigationMenuItem>
+                                <NavigationMenuItem>
+                                    <NavigationMenuLink
+                                        as="button"
+                                        @click="setActiveCategory('no_show')"
+                                        :class="[
+                                            'px-4 py-2 rounded-md text-sm font-medium transition-colors',
+                                            activeCategory === 'no_show' 
+                                                ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm' 
+                                                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+                                        ]"
+                                    >
+                                        No Show ({{ categoryCounts.no_show }})
+                                    </NavigationMenuLink>
+                                </NavigationMenuItem>
+                            </NavigationMenuList>
+                        </NavigationMenu>
                     </div>
                     
-                    <!-- Recent Bookings -->
+                    <!-- Appointments List -->
                     <div class="space-y-4">
-                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Recent Appointments</h3>
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+                            {{ activeCategory === 'all' ? 'All History' : 
+                               activeCategory === 'completed' ? 'Completed Appointments' :
+                               activeCategory === 'cancelled' ? 'Cancelled Appointments' :
+                               'No Show Appointments' }}
+                        </h3>
                         
                         <!-- Dynamic Appointments -->
                         <div 
-                            v-for="appointment in appointments.data" 
+                            v-for="appointment in filteredAppointments" 
                             :key="appointment.id"
                             class="border border-gray-200 dark:border-gray-600 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                             :class="{ 'opacity-75': appointment.status === 'cancelled' }"
@@ -435,10 +517,11 @@ const rebookAppointment = (appointment?: Appointment) => {
                         
                         <!-- No appointments message -->
                         <div 
-                            v-if="appointments.data.length === 0"
+                            v-if="filteredAppointments.length === 0"
                             class="text-center py-8 text-gray-500 dark:text-gray-400"
                         >
-                            <p>No appointments found for the selected filters.</p>
+                            <p v-if="categoryCounts.all === 0">No appointment history found.</p>
+                            <p v-else>No {{ activeCategory === 'all' ? '' : activeCategory }} appointments found for the selected filters.</p>
                         </div>
                     </div>
                     

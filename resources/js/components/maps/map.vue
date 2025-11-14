@@ -65,7 +65,7 @@ const emit = defineEmits<{
 const mapContainer = ref<HTMLDivElement>();
 let map: L.Map | null = null;
 let userLocationMarker: L.Marker | null = null;
-const mapMarkers = ref<L.Marker[]>([]);
+let markerLayerGroup: L.LayerGroup | null = null;
 const isLoading = ref(true);
 const error = ref<string | null>(null);
 
@@ -138,6 +138,9 @@ const initMap = () => {
             maxZoom: 19,
         }).addTo(map);
 
+        // Initialize marker layer group
+        markerLayerGroup = L.layerGroup().addTo(map);
+
         // Add markers
         addMarkers();
 
@@ -164,18 +167,30 @@ const initMap = () => {
 
 // Add markers to map
 const addMarkers = () => {
-    if (!map) return;
+    if (!map || !markerLayerGroup) return;
     
-    // Clear existing markers
-    clearMarkers();
+    // Clear existing markers efficiently using LayerGroup
+    markerLayerGroup.clearLayers();
     
-    if (props.markers.length === 0) return;
+    // If no markers, just return (this handles the filter case properly)
+    if (props.markers.length === 0) {
+        console.log('No markers to display - this is normal when filters result in no matches');
+        return;
+    }
+    
+    console.log('Adding', props.markers.length, 'markers to map');
+    
+    // Create all markers and add them to the layer group
+    const markersToAdd: L.Marker[] = [];
     
     props.markers.forEach((markerData) => {
         try {
             const marker = L.marker([markerData.lat, markerData.lng], {
                 icon: createCustomIcon(markerData.type)
-            }).addTo(map!);
+            });
+            
+            // Store marker data for easy access
+            (marker as any).markerData = markerData;
             
             // Create popup content
             const popupContent = `
@@ -192,37 +207,47 @@ const addMarkers = () => {
                 emit('markerClick', markerData);
             });
             
-            mapMarkers.value.push(marker);
+            markersToAdd.push(marker);
         } catch (error) {
-            console.warn('Error adding marker:', error, markerData);
+            console.warn('Error creating marker:', error, markerData);
         }
     });
     
-    // Only fit bounds on initial load or when specifically requested
-    // Avoid automatic bounds fitting during filter changes to prevent jarring movements
-    const shouldFitBounds = isLoading.value || mapMarkers.value.length !== props.markers.length;
+    // Add all markers to the layer group at once
+    if (markersToAdd.length > 0) {
+        markersToAdd.forEach(marker => markerLayerGroup!.addLayer(marker));
+        console.log(`Added ${markersToAdd.length} markers to map`);
+        
+        // Handle bounds fitting with improved logic
+        handleBoundsFitting(markersToAdd);
+    }
+};
+
+// Handle bounds fitting logic
+const handleBoundsFitting = (markers: L.Marker[]) => {
+    if (!map || markers.length === 0) return;
     
-    if (mapMarkers.value.length > 0 && shouldFitBounds) {
+    // Only fit bounds on initial load, not during filter updates
+    if (isLoading.value) {
         setTimeout(() => {
             try {
-                const group = new L.FeatureGroup(mapMarkers.value);
+                const group = new L.FeatureGroup(markers);
                 const bounds = group.getBounds();
                 
-                // More conservative bounds fitting
                 if (bounds.isValid()) {
                     const distance = bounds.getNorthEast().distanceTo(bounds.getSouthWest());
                     
-                    if (distance > 50) { // Only fit bounds if markers are spread out (more than 50 meters apart)
+                    if (distance > 50) { // Only fit bounds if markers are spread out
                         map!.fitBounds(bounds.pad(0.1), { 
                             maxZoom: 16,
                             animate: true,
                             duration: 0.5
                         });
-                    } else if (mapMarkers.value.length === 1) {
-                        // For single marker, just center on it without changing zoom too much
+                    } else if (markers.length === 1) {
+                        // For single marker, center on it
+                        const markerData = (markers[0] as any).markerData;
                         const currentZoom = map!.getZoom();
-                        const singleMarker = props.markers[0];
-                        map!.setView([singleMarker.lat, singleMarker.lng], Math.max(currentZoom, 14), {
+                        map!.setView([markerData.lat, markerData.lng], Math.max(currentZoom, 14), {
                             animate: true,
                             duration: 0.5
                         });
@@ -231,18 +256,15 @@ const addMarkers = () => {
             } catch (error) {
                 console.warn('Error fitting bounds:', error);
             }
-        }, 100); // Small delay to ensure DOM is ready
+        }, 100);
     }
 };
 
 // Clear all markers
 const clearMarkers = () => {
-    mapMarkers.value.forEach(marker => {
-        if (map) {
-            map.removeLayer(marker);
-        }
-    });
-    mapMarkers.value = [];
+    if (markerLayerGroup) {
+        markerLayerGroup.clearLayers();
+    }
 };
 
 // Get user's current location
@@ -288,34 +310,30 @@ const getUserLocation = () => {
     );
 };
 
-// Watch for prop changes
-let markerUpdateTimeout: NodeJS.Timeout | null = null;
+// Watch for prop changes with improved debouncing
+let markerUpdateTimeout: number | null = null;
 
 watch(() => props.markers, (newMarkers, oldMarkers) => {
-    if (!map) return;
+    if (!map || !markerLayerGroup) return;
     
     // Clear existing timeout
     if (markerUpdateTimeout) {
         clearTimeout(markerUpdateTimeout);
     }
     
-    // Debounce marker updates to prevent rapid re-rendering
+    // Shorter debounce for more responsive updates
     markerUpdateTimeout = setTimeout(() => {
         if (newMarkers) {
-            // Check if markers actually changed by comparing length and key properties
-            const oldIds = oldMarkers?.map(m => `${m.id}-${m.lat}-${m.lng}`) || [];
-            const newIds = newMarkers.map(m => `${m.id}-${m.lat}-${m.lng}`);
-            
-            const markersChanged = oldIds.length !== newIds.length || 
-                                 !oldIds.every((id, index) => id === newIds[index]);
-            
-            if (markersChanged) {
-                console.log('Updating markers:', { oldCount: oldIds.length, newCount: newIds.length });
-                addMarkers();
-            }
+            // Always update markers when props change - don't try to be too smart about change detection
+            // This ensures that filtered markers are properly updated
+            console.log('Updating markers:', { 
+                newCount: newMarkers.length,
+                layerCount: markerLayerGroup!.getLayers().length 
+            });
+            addMarkers();
         }
-    }, 150); // 150ms debounce
-}, { deep: true });
+    }, 50) as unknown as number; // Very short debounce for responsiveness
+}, { deep: true, immediate: false });
 
 watch(() => props.center, (newCenter) => {
     if (map && newCenter) {
@@ -341,6 +359,19 @@ onUnmounted(() => {
         clearTimeout(markerUpdateTimeout);
     }
     
+    // Clean up layer group
+    if (markerLayerGroup) {
+        markerLayerGroup.clearLayers();
+        markerLayerGroup = null;
+    }
+    
+    // Clean up user location marker
+    if (userLocationMarker && map) {
+        map.removeLayer(userLocationMarker);
+        userLocationMarker = null;
+    }
+    
+    // Remove map
     if (map) {
         map.remove();
         map = null;
@@ -350,11 +381,14 @@ onUnmounted(() => {
 // Expose methods for parent components
 defineExpose({
     getMap: () => map,
+    getMarkerLayer: () => markerLayerGroup,
     addMarker: (markerData: MapMarker) => {
-        if (map) {
+        if (map && markerLayerGroup) {
             const marker = L.marker([markerData.lat, markerData.lng], {
                 icon: createCustomIcon(markerData.type)
-            }).addTo(map);
+            });
+            
+            (marker as any).markerData = markerData;
             
             const popupContent = `
                 <div class="p-2">
@@ -365,16 +399,17 @@ defineExpose({
             
             marker.bindPopup(popupContent);
             marker.on('click', () => emit('markerClick', markerData));
-            mapMarkers.value.push(marker);
+            markerLayerGroup.addLayer(marker);
         }
     },
     removeMarker: (markerId: string | number) => {
-        const markerIndex = mapMarkers.value.findIndex(marker => 
-            (marker as any).markerId === markerId
-        );
-        if (markerIndex !== -1 && map) {
-            map.removeLayer(mapMarkers.value[markerIndex]);
-            mapMarkers.value.splice(markerIndex, 1);
+        if (markerLayerGroup) {
+            markerLayerGroup.eachLayer((layer) => {
+                const marker = layer as L.Marker;
+                if ((marker as any).markerData?.id === markerId) {
+                    markerLayerGroup!.removeLayer(marker);
+                }
+            });
         }
     },
     clearAllMarkers: clearMarkers,
@@ -384,19 +419,22 @@ defineExpose({
         }
     },
     fitBounds: (options?: { padding?: number; maxZoom?: number; animate?: boolean }) => {
-        if (map && mapMarkers.value.length > 0) {
-            const group = new L.FeatureGroup(mapMarkers.value);
-            const bounds = group.getBounds();
-            
-            if (bounds.isValid()) {
-                const opts = {
-                    padding: [options?.padding || 20, options?.padding || 20],
-                    maxZoom: options?.maxZoom || 16,
-                    animate: options?.animate !== false,
-                    duration: 0.5
-                };
+        if (map && markerLayerGroup) {
+            const layers = markerLayerGroup.getLayers();
+            if (layers.length > 0) {
+                const group = new L.FeatureGroup(layers as L.Layer[]);
+                const bounds = group.getBounds();
                 
-                map.fitBounds(bounds, opts);
+                if (bounds.isValid()) {
+                    const opts = {
+                        padding: [options?.padding || 20, options?.padding || 20],
+                        maxZoom: options?.maxZoom || 16,
+                        animate: options?.animate !== false,
+                        duration: 0.5
+                    };
+                    
+                    map.fitBounds(bounds, opts);
+                }
             }
         }
     }

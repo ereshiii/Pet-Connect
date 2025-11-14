@@ -26,7 +26,12 @@ interface Clinic {
 interface ClinicService {
     id: number;
     name: string;
-    cost: number;
+    description?: string;
+    category?: string;
+    base_price: number | null;
+    duration_minutes?: number;
+    requires_appointment?: boolean;
+    is_emergency_service?: boolean;
     clinic_id: number;
 }
 
@@ -79,6 +84,8 @@ const form = useForm({
 // Reactive data
 const selectedClinic = ref<Clinic | null>(null);
 const availableServices = ref<ClinicService[]>([]);
+const showSuccessModal = ref(false);
+const bookingConfirmation = ref<any>(null);
 
 // Error modal state
 const showErrorModal = ref(false);
@@ -196,9 +203,23 @@ if (props.selectedClinic) {
 // Methods
 const submitBooking = () => {
     form.post(appointmentsStore().url, {
-        onSuccess: () => {
-            // Redirect to appointments page or show success message
-            router.visit('/appointments');
+        onSuccess: (page) => {
+            // Store booking confirmation details
+            bookingConfirmation.value = {
+                appointment_id: page.props.appointment?.id,
+                confirmation_number: page.props.appointment?.confirmation_number,
+                clinic_name: selectedClinic.value?.name,
+                pet_name: selectedPet.value?.name,
+                appointment_date: form.preferred_date,
+                appointment_time: form.preferred_time,
+                status: 'scheduled'
+            };
+            
+            // Show success modal instead of immediate redirect
+            showSuccessModal.value = true;
+            
+            // Clear form
+            form.reset();
         },
         onError: (errors) => {
             console.error('Booking errors:', errors);
@@ -232,6 +253,21 @@ const retryBooking = () => {
 
 const cancelBooking = () => {
     router.visit(clinicsRoute().url);
+};
+
+const closeSuccessModal = () => {
+    showSuccessModal.value = false;
+    bookingConfirmation.value = null;
+};
+
+const goToAppointments = () => {
+    router.visit('/appointments');
+};
+
+const bookAnother = () => {
+    showSuccessModal.value = false;
+    bookingConfirmation.value = null;
+    // Stay on current page to book another appointment
 };
 </script>
 
@@ -307,7 +343,7 @@ const cancelBooking = () => {
                             >
                                 <option value="">Select a service</option>
                                 <option v-for="service in availableServices" :key="service.id" :value="service.id">
-                                    {{ service.name }} - ${{ service.cost }}
+                                    {{ service.name }} - {{ service.base_price ? '₱' + service.base_price.toLocaleString() : 'Price on request' }}
                                 </option>
                             </select>
                             <p v-if="!selectedClinic" class="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -475,7 +511,7 @@ const cancelBooking = () => {
                         <div class="text-sm text-blue-700 dark:text-blue-300 space-y-1">
                             <p><span class="font-medium">Pet:</span> {{ selectedPet.name }} ({{ selectedPet.type }} - {{ selectedPet.breed }})</p>
                             <p><span class="font-medium">Clinic:</span> {{ selectedClinic.name }}</p>
-                            <p v-if="selectedService"><span class="font-medium">Service:</span> {{ selectedService.name }} - ${{ selectedService.cost }}</p>
+                            <p v-if="selectedService"><span class="font-medium">Service:</span> {{ selectedService.name }} - {{ selectedService.base_price ? '₱' + selectedService.base_price.toLocaleString() : 'Price on request' }}</p>
                             <p><span class="font-medium">Type:</span> {{ appointmentTypes.find(t => t.value === form.type)?.label }}</p>
                             <p v-if="form.preferred_date && form.preferred_time">
                                 <span class="font-medium">Date & Time:</span> {{ form.preferred_date }} at {{ form.preferred_time }}
@@ -535,5 +571,78 @@ const cancelBooking = () => {
             :on-retry="retryBooking"
             @close="closeErrorModal"
         />
+
+        <!-- Success Modal -->
+        <div v-if="showSuccessModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div class="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
+                <div class="text-center">
+                    <!-- Success Icon -->
+                    <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/20 mb-4">
+                        <span class="text-green-600 dark:text-green-400 text-2xl">✅</span>
+                    </div>
+
+                    <!-- Success Message -->
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+                        Appointment Booked Successfully!
+                    </h3>
+                    
+                    <div v-if="bookingConfirmation" class="text-sm text-gray-600 dark:text-gray-400 space-y-2 mb-6">
+                        <p class="text-green-600 dark:text-green-400 font-medium">
+                            Your appointment has been submitted and the clinic will be notified immediately.
+                        </p>
+                        
+                        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 text-left">
+                            <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-2">Booking Details:</h4>
+                            <div class="space-y-1 text-sm">
+                                <p><span class="font-medium">Pet:</span> {{ bookingConfirmation.pet_name }}</p>
+                                <p><span class="font-medium">Clinic:</span> {{ bookingConfirmation.clinic_name }}</p>
+                                <p><span class="font-medium">Date:</span> {{ bookingConfirmation.appointment_date }}</p>
+                                <p><span class="font-medium">Time:</span> {{ bookingConfirmation.appointment_time }}</p>
+                                <p><span class="font-medium">Status:</span> 
+                                    <span class="text-yellow-600 dark:text-yellow-400">Scheduled</span>
+                                </p>
+                                <p v-if="bookingConfirmation.confirmation_number" class="text-xs text-gray-500 mt-2">
+                                    Confirmation #{{ bookingConfirmation.confirmation_number }}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-left">
+                            <h5 class="font-medium text-blue-900 dark:text-blue-100 text-sm mb-1">What happens next?</h5>
+                            <ul class="text-xs text-blue-800 dark:text-blue-300 space-y-1">
+                                <li>• The clinic has been notified immediately of your booking request</li>
+                                <li>• They will contact you within 24 hours to confirm</li>
+                                <li>• You'll receive an email with appointment details</li>
+                                <li>• You can view your appointments in your dashboard</li>
+                                <li>• The clinic's schedule updates automatically with your request</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Modal Actions -->
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <button 
+                            @click="goToAppointments"
+                            class="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
+                        >
+                            View My Appointments
+                        </button>
+                        <button 
+                            @click="bookAnother"
+                            class="flex-1 border border-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-50 transition-colors text-sm font-medium dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                        >
+                            Book Another
+                        </button>
+                    </div>
+
+                    <button 
+                        @click="closeSuccessModal"
+                        class="mt-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-sm"
+                    >
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
     </AppLayout>
 </template>

@@ -13,6 +13,9 @@ class ClinicStaff extends Model
     protected $fillable = [
         'clinic_id',
         'user_id',
+        'name',
+        'email',
+        'phone',
         'role',
         'license_number',
         'specializations',
@@ -58,7 +61,7 @@ class ClinicStaff extends Model
             default => ''
         };
 
-        return trim($title . ' ' . ($this->user->name ?? ''));
+        return trim($title . ' ' . $this->name);
     }
 
     /**

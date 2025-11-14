@@ -113,7 +113,7 @@ class PetMedicalRecord extends Model
      */
     public function getCostFormattedAttribute(): string
     {
-        return $this->cost ? '$' . number_format($this->cost, 2) : 'N/A';
+        return $this->cost ? '₱' . number_format($this->cost, 2) : 'N/A';
     }
 
     /**

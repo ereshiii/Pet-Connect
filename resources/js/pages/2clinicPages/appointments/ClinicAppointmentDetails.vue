@@ -3,7 +3,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { clinicDashboard, clinicAppointments, clinicAppointmentDetails } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, useForm } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 
 // Props from the backend
 interface Props {
@@ -108,7 +108,7 @@ const statusForm = useForm({
 });
 
 const availableStatuses = [
-    { value: 'pending', label: 'Pending', color: 'yellow' },
+    { value: 'scheduled', label: 'Scheduled', color: 'yellow' },
     { value: 'confirmed', label: 'Confirmed', color: 'blue' },
     { value: 'in_progress', label: 'In Progress', color: 'orange' },
     { value: 'completed', label: 'Completed', color: 'green' },
@@ -121,9 +121,22 @@ const goBack = () => {
 };
 
 const updateAppointmentStatus = () => {
+    const newStatus = statusForm.status;
+    const historicalStatuses = ['completed', 'cancelled', 'no_show'];
+    
     statusForm.patch(`/clinic/appointments/${props.appointment.id}/status`, {
         onSuccess: () => {
-            // Stay on the same page to see updated status
+            // If the appointment is now in a historical status, redirect to history
+            if (historicalStatuses.includes(newStatus)) {
+                // Show a success message and redirect to history
+                router.visit('/clinic/history', {
+                    onSuccess: () => {
+                        // You could add a toast notification here if available
+                        console.log(`Appointment marked as ${newStatus} and moved to history`);
+                    }
+                });
+            }
+            // Otherwise stay on the same page to see updated status
         },
         onError: (errors) => {
             console.error('Error updating appointment:', errors);
@@ -136,6 +149,108 @@ const callOwner = () => {
     if (phone) window.open(`tel:${phone}`);
 };
 
+// Real-time update functionality
+const isAutoRefreshEnabled = ref(true);
+const refreshInterval = ref<number | null>(null);
+const lastUpdated = ref(new Date());
+const isRefreshing = ref(false);
+const statusUpdateAlert = ref(false);
+
+// Real-time update methods
+const refreshAppointment = async () => {
+    if (isRefreshing.value) return;
+    
+    isRefreshing.value = true;
+    
+    try {
+        router.reload({
+            only: ['appointment', 'visitHistory'],
+            onSuccess: (page) => {
+                lastUpdated.value = new Date();
+                
+                // Check if status has changed
+                const newAppointment = page.props.appointment as typeof props.appointment;
+                if (newAppointment.status !== props.appointment.status) {
+                    statusUpdateAlert.value = true;
+                    setTimeout(() => {
+                        statusUpdateAlert.value = false;
+                    }, 5000);
+                }
+            },
+            onError: (errors) => {
+                console.error('Failed to refresh appointment:', errors);
+            },
+            onFinish: () => {
+                isRefreshing.value = false;
+            }
+        });
+    } catch (error) {
+        console.error('Error refreshing appointment:', error);
+        isRefreshing.value = false;
+    }
+};
+
+const toggleAutoRefresh = () => {
+    isAutoRefreshEnabled.value = !isAutoRefreshEnabled.value;
+    
+    if (isAutoRefreshEnabled.value) {
+        startAutoRefresh();
+    } else {
+        stopAutoRefresh();
+    }
+};
+
+const startAutoRefresh = () => {
+    if (refreshInterval.value) {
+        clearInterval(refreshInterval.value);
+    }
+    
+    refreshInterval.value = window.setInterval(() => {
+        if (isAutoRefreshEnabled.value && !document.hidden) {
+            refreshAppointment();
+        }
+    }, 45000); // Refresh every 45 seconds (less frequent for details page)
+};
+
+const stopAutoRefresh = () => {
+    if (refreshInterval.value) {
+        clearInterval(refreshInterval.value);
+        refreshInterval.value = null;
+    }
+};
+
+const manualRefresh = () => {
+    refreshAppointment();
+};
+
+// Lifecycle hooks
+onMounted(() => {
+    if (isAutoRefreshEnabled.value) {
+        startAutoRefresh();
+    }
+    
+    // Listen for visibility changes
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            stopAutoRefresh();
+        } else if (isAutoRefreshEnabled.value) {
+            startAutoRefresh();
+            refreshAppointment();
+        }
+    });
+    
+    // Listen for focus events
+    window.addEventListener('focus', () => {
+        if (isAutoRefreshEnabled.value) {
+            refreshAppointment();
+        }
+    });
+});
+
+onUnmounted(() => {
+    stopAutoRefresh();
+});
+
 // Returns status banner configuration based on appointment status
 const getStatusBanner = (status?: string) => {
     switch (status) {
@@ -147,7 +262,7 @@ const getStatusBanner = (status?: string) => {
                 titleColor: 'text-blue-900 dark:text-blue-100',
                 descColor: 'text-blue-700 dark:text-blue-300'
             };
-        case 'pending': 
+        case 'scheduled': 
             return { 
                 bgClass: 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800',
                 icon: '⏳', 
@@ -210,16 +325,56 @@ const getStatusColor = (status?: string) => {
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
+            <!-- Real-time Update Alert -->
+            <div 
+                v-if="statusUpdateAlert" 
+                class="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg flex items-center justify-between animate-pulse dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-400"
+            >
+                <div class="flex items-center">
+                    <span class="text-lg mr-2">🔄</span>
+                    <span class="font-medium">Appointment details have been updated!</span>
+                </div>
+                <button @click="statusUpdateAlert = false" class="text-blue-600 hover:text-blue-800">
+                    ✕
+                </button>
+            </div>
+
             <!-- Header -->
             <div class="bg-white dark:bg-gray-800 rounded-xl border border-sidebar-border/70 dark:border-sidebar-border p-6">
                 <div class="flex items-center justify-between mb-4">
                     <div>
                         <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">Appointment Details</h1>
                         <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                            Confirmation #{{ appointment.confirmationNumber }} • {{ clinic.name }}
+                            Confirmation #{{ appointment.confirmationNumber }} • {{ clinic.name }} • 
+                            Last updated: {{ lastUpdated.toLocaleTimeString() }}
+                            <span class="ml-2" :class="isAutoRefreshEnabled ? 'text-green-600' : 'text-red-600'">
+                                {{ isAutoRefreshEnabled ? '🟢 Live updates' : '🔴 Updates paused' }}
+                            </span>
                         </p>
                     </div>
                     <div class="flex gap-2">
+                        <!-- Real-time Controls -->
+                        <div class="flex items-center gap-2 text-sm">
+                            <label class="flex items-center cursor-pointer">
+                                <input 
+                                    type="checkbox" 
+                                    v-model="isAutoRefreshEnabled" 
+                                    @change="toggleAutoRefresh"
+                                    class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                />
+                                <span class="ml-2">Auto-refresh</span>
+                            </label>
+                        </div>
+                        
+                        <button 
+                            @click="manualRefresh" 
+                            :disabled="isRefreshing"
+                            class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50 text-sm disabled:opacity-50 dark:border-gray-600 dark:hover:bg-gray-700"
+                        >
+                            <span :class="{ 'animate-spin': isRefreshing }">🔄</span>
+                            {{ isRefreshing ? 'Refreshing...' : 'Refresh' }}
+                        </button>
+
                         <button @click="goBack" 
                                 class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm font-medium dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
                             ← Back to Appointments

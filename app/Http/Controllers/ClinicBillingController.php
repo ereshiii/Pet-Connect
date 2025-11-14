@@ -63,12 +63,12 @@ class ClinicBillingController extends Controller
             });
         }
 
-        // Get paginated invoices
+        // Get invoices (simplified - no pagination for now)
         $invoices = $invoicesQuery->orderBy('invoice_date', 'desc')
-            ->paginate(15);
+            ->get();
 
         // Transform invoices data
-        $transformedInvoices = $invoices->through(function ($invoice) {
+        $transformedInvoices = $invoices->map(function ($invoice) {
             return [
                 'id' => $invoice->id,
                 'invoice_number' => $invoice->invoice_number,

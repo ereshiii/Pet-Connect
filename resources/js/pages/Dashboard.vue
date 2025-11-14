@@ -1,11 +1,24 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
-import { dashboard, petsIndex, clinics, history } from '@/routes';
+import { dashboard, petsIndex, clinics, history, appointmentCalendar, booking } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link } from '@inertiajs/vue3';
-import { router } from '@inertiajs/vue3';
-import PlaceholderPattern from '@/components/PlaceholderPattern.vue';
-import { computed } from 'vue';
+import { Head, Link, router } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
+import { Chart } from '@/components/ui/chart';
+import { 
+    Calendar, 
+    Heart, 
+    Users, 
+    Activity, 
+    DollarSign,
+    PawPrint,
+    Stethoscope,
+    BarChart3,
+    AlertTriangle,
+    CheckCircle,
+    ArrowUpRight,
+    Plus
+} from 'lucide-vue-next';
 
 interface User {
     id: number;
@@ -35,11 +48,114 @@ interface User {
     profile_completion_percentage: number;
 }
 
-interface Props {
-    user: User;
+interface Pet {
+    id: number;
+    name: string;
+    species: string;
+    breed?: string;
+    age?: string;
+    gender: string;
+    health_status: {
+        overall: string;
+        vaccination_status: string;
+        alerts: string[];
+    };
+    next_appointment?: any;
+    medical_records_count: number;
+    vaccinations_count: number;
 }
 
-const props = defineProps<Props>();
+interface Appointment {
+    id: number;
+    appointment_number: string;
+    status: string;
+    scheduled_at: string;
+    type: string;
+    pet: {
+        name: string;
+        species: string;
+    };
+    clinic: {
+        name: string;
+    };
+    estimated_cost?: number;
+}
+
+interface DashboardStats {
+    pets: {
+        total: number;
+        dogs: number;
+        cats: number;
+        other: number;
+        needs_attention: number;
+        vaccination_due: number;
+    };
+    appointments: {
+        total: number;
+        upcoming: number;
+        completed: number;
+        cancelled: number;
+        this_month: number;
+        next_appointment?: Appointment;
+    };
+    spending: {
+        total_lifetime: number;
+        this_year: number;
+        this_month: number;
+        average_per_visit: number;
+        monthly_trend: number[];
+    };
+    health: {
+        active_conditions: number;
+        vaccinations_current: number;
+        checkups_due: number;
+        medications_active: number;
+    };
+}
+
+interface Props {
+    user: User;
+    pets?: Pet[];
+    recent_appointments?: Appointment[];
+    dashboard_stats?: DashboardStats;
+    upcoming_appointments?: Appointment[];
+}
+
+const props = withDefaults(defineProps<Props>(), {
+    pets: () => [],
+    recent_appointments: () => [],
+    upcoming_appointments: () => [],
+    dashboard_stats: () => ({
+        pets: {
+            total: 0,
+            dogs: 0,
+            cats: 0,
+            other: 0,
+            needs_attention: 0,
+            vaccination_due: 0,
+        },
+        appointments: {
+            total: 0,
+            upcoming: 0,
+            completed: 0,
+            cancelled: 0,
+            this_month: 0,
+        },
+        spending: {
+            total_lifetime: 0,
+            this_year: 0,
+            this_month: 0,
+            average_per_visit: 0,
+            monthly_trend: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        },
+        health: {
+            active_conditions: 0,
+            vaccinations_current: 0,
+            checkups_due: 0,
+            medications_active: 0,
+        },
+    }),
+});
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -47,6 +163,59 @@ const breadcrumbs: BreadcrumbItem[] = [
         href: dashboard().url,
     },
 ];
+
+// Chart data
+const petSpeciesChartData = computed(() => ({
+    labels: ['Dogs', 'Cats', 'Others'],
+    datasets: [{
+        data: [props.dashboard_stats.pets.dogs, props.dashboard_stats.pets.cats, props.dashboard_stats.pets.other],
+        backgroundColor: [
+            'rgba(59, 130, 246, 0.8)',
+            'rgba(16, 185, 129, 0.8)', 
+            'rgba(245, 158, 11, 0.8)'
+        ],
+        borderColor: [
+            'rgba(59, 130, 246, 1)',
+            'rgba(16, 185, 129, 1)',
+            'rgba(245, 158, 11, 1)'
+        ],
+        borderWidth: 2
+    }]
+}));
+
+const appointmentStatusChartData = computed(() => ({
+    labels: ['Completed', 'Upcoming', 'Cancelled'],
+    datasets: [{
+        data: [
+            props.dashboard_stats.appointments.completed,
+            props.dashboard_stats.appointments.upcoming,
+            props.dashboard_stats.appointments.cancelled
+        ],
+        backgroundColor: [
+            'rgba(34, 197, 94, 0.8)',
+            'rgba(59, 130, 246, 0.8)',
+            'rgba(239, 68, 68, 0.8)'
+        ],
+        borderColor: [
+            'rgba(34, 197, 94, 1)',
+            'rgba(59, 130, 246, 1)',
+            'rgba(239, 68, 68, 1)'
+        ],
+        borderWidth: 2
+    }]
+}));
+
+const monthlySpendingChartData = computed(() => ({
+    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+    datasets: [{
+        label: 'Monthly Spending',
+        data: props.dashboard_stats.spending.monthly_trend,
+        borderColor: 'rgba(139, 92, 246, 1)',
+        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+        fill: true,
+        tension: 0.4
+    }]
+}));
 
 // Navigation functions
 const navigateToAddPet = () => {
@@ -61,15 +230,25 @@ const navigateToHistory = () => {
     router.visit(history().url);
 };
 
+const navigateToCalendar = () => {
+    router.visit(appointmentCalendar().url);
+};
+
 const navigateToProfile = () => {
-    // Navigate to profile settings - using settings profile route
     router.visit('/settings/profile');
 };
 
-// Computed properties for formatted data
+// Computed properties
 const memberSinceFormatted = computed(() => {
     const date = new Date(props.user.created_at);
     return date.getFullYear();
+});
+
+const petsNeedingAttention = computed(() => {
+    return props.pets.filter(pet => 
+        pet.health_status.alerts.length > 0 || 
+        pet.health_status.vaccination_status === 'overdue'
+    );
 });
 
 const profileSettingsLink = '/settings/profile';
@@ -81,323 +260,183 @@ const addressSettingsLink = '/settings/address';
     <Head title="Dashboard" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div
-            class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4"
-        >
-            <!-- Comprehensive Account Overview -->
-            <div class="bg-white dark:bg-gray-800 rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                <div class="p-6">
-                    <div class="flex items-center justify-between mb-6">
-                        <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Account Overview</h2>
+        <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
+            <!-- Welcome Header -->
+            <div class="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-2xl font-bold mb-2">Welcome back, {{ user.name }}!</h1>
+                        <p class="text-blue-100">Here's what's happening with your pets today</p>
                     </div>
-                    
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <!-- Profile Section -->
-                        <div class="lg:col-span-1">
-                            <div class="text-center">
-                                <div class="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                                    <span class="text-white text-2xl font-bold">{{ user.initials }}</span>
-                                </div>
-                                <h3 class="font-semibold text-lg text-gray-900 dark:text-gray-100 mb-1">{{ user.name }}</h3>
-                                <p v-if="user.username" class="text-sm text-gray-600 dark:text-gray-400 mb-1">@{{ user.username }}</p>
-                                <p v-else class="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                                    <Link :href="profileSettingsLink" class="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
-                                        Set username
-                                    </Link>
-                                </p>
-                                <p class="text-xs text-gray-500 dark:text-gray-500 mb-4">{{ user.email }}</p>
-                                
-                                <!-- Account Stats -->
-                                <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
-                                    <div class="grid grid-cols-3 gap-4 text-center">
-                                        <div>
-                                            <p class="text-lg font-semibold text-gray-900 dark:text-gray-100">0</p>
-                                            <p class="text-xs text-gray-600 dark:text-gray-400">Pets</p>
-                                        </div>
-                                        <div>
-                                            <p class="text-lg font-semibold text-gray-900 dark:text-gray-100">0</p>
-                                            <p class="text-xs text-gray-600 dark:text-gray-400">Visits</p>
-                                        </div>
-                                        <div>
-                                            <p class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ user.membership_years }}</p>
-                                            <p class="text-xs text-gray-600 dark:text-gray-400">{{ user.membership_years === 1 ? 'Year' : 'Years' }}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Contact & Address Information -->
-                        <div class="lg:col-span-2">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <!-- Contact Information -->
-                                <div>
-                                    <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-3">Contact Information</h4>
-                                    <div class="space-y-3">
-                                        <div class="flex items-center">
-                                            <span class="text-gray-500 dark:text-gray-400 text-sm w-5">📧</span>
-                                            <span class="text-sm text-gray-900 dark:text-gray-100 ml-3">{{ user.email }}</span>
-                                        </div>
-                                        <div class="flex items-center">
-                                            <span class="text-gray-500 dark:text-gray-400 text-sm w-5">📱</span>
-                                            <span v-if="user.phone" class="text-sm text-gray-900 dark:text-gray-100 ml-3">{{ user.phone }}</span>
-                                            <Link v-else :href="contactSettingsLink" class="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 ml-3">
-                                                Add phone number
-                                            </Link>
-                                        </div>
-                                        <div class="flex items-center">
-                                            <span class="text-gray-500 dark:text-gray-400 text-sm w-5">📅</span>
-                                            <span class="text-sm text-gray-900 dark:text-gray-100 ml-3">Member since {{ memberSinceFormatted }}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Address Information -->
-                                <div>
-                                    <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-3">Address</h4>
-                                    <div v-if="user.has_complete_address" class="flex items-start">
-                                        <span class="text-gray-500 dark:text-gray-400 text-sm w-5 mt-0.5">🏠</span>
-                                        <div class="ml-3">
-                                            <p class="text-sm text-gray-900 dark:text-gray-100">{{ user.address_line_1 }}</p>
-                                            <p v-if="user.address_line_2" class="text-sm text-gray-900 dark:text-gray-100">{{ user.address_line_2 }}</p>
-                                            <p class="text-sm text-gray-600 dark:text-gray-400">{{ user.city }}, {{ user.state }} {{ user.postal_code }}</p>
-                                            <p class="text-sm text-gray-600 dark:text-gray-400">{{ user.country }}</p>
-                                        </div>
-                                    </div>
-                                    <div v-else class="flex items-center">
-                                        <span class="text-gray-500 dark:text-gray-400 text-sm w-5">🏠</span>
-                                        <Link :href="addressSettingsLink" class="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 ml-3">
-                                            Add address
-                                        </Link>
-                                    </div>
-                                </div>
-                                
-                                <!-- Emergency Contact -->
-                                <div>
-                                    <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-3">Emergency Contact</h4>
-                                    <div v-if="user.has_emergency_contact" class="space-y-2">
-                                        <div class="flex items-center">
-                                            <span class="text-gray-500 dark:text-gray-400 text-sm w-5">👤</span>
-                                            <span class="text-sm text-gray-900 dark:text-gray-100 ml-3">
-                                                {{ user.emergency_contact_name }}
-                                                <span v-if="user.emergency_contact_relationship" class="text-gray-500 dark:text-gray-400">
-                                                    ({{ user.emergency_contact_relationship }})
-                                                </span>
-                                            </span>
-                                        </div>
-                                        <div class="flex items-center">
-                                            <span class="text-gray-500 dark:text-gray-400 text-sm w-5">📞</span>
-                                            <span class="text-sm text-gray-900 dark:text-gray-100 ml-3">{{ user.emergency_contact_phone }}</span>
-                                        </div>
-                                    </div>
-                                    <div v-else class="flex items-center">
-                                        <span class="text-gray-500 dark:text-gray-400 text-sm w-5">👤</span>
-                                        <Link :href="contactSettingsLink" class="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 ml-3">
-                                            Add emergency contact
-                                        </Link>
-                                    </div>
-                                </div>
-                                
-                                <!-- Account Status -->
-                                <div>
-                                    <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-3">Account Status</h4>
-                                    <div class="space-y-2">
-                                        <div class="flex items-center justify-between">
-                                            <span class="text-sm text-gray-600 dark:text-gray-400">Email Verified</span>
-                                            <span class="text-sm font-medium text-green-600 dark:text-green-400">
-                                                {{ user.email_verified_at ? 'Yes' : 'No' }}
-                                            </span>
-                                        </div>
-                                        <div class="flex items-center justify-between">
-                                            <span class="text-sm text-gray-600 dark:text-gray-400">Account Type</span>
-                                            <span class="text-sm text-gray-900 dark:text-gray-100">Member</span>
-                                        </div>
-                                        <div class="flex items-center justify-between">
-                                            <span class="text-sm text-gray-600 dark:text-gray-400">Profile Completion</span>
-                                            <span class="text-sm text-gray-900 dark:text-gray-100">{{ user.profile_completion_percentage }}%</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Quick Actions -->
-                            <div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-600">
-                                <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-3">Quick Actions</h4>
-                                <div class="flex flex-wrap gap-2">
-                                    <button @click="navigateToProfile" class="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-md hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800">
-                                        Update Profile
-                                    </button>
-                                    <button @click="navigateToAddPet" class="px-3 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-md hover:bg-green-200 dark:bg-green-900 dark:text-green-200 dark:hover:bg-green-800">
-                                        Add Pet
-                                    </button>
-                                    <button @click="navigateToBookAppointment" class="px-3 py-1 bg-purple-100 text-purple-800 text-xs font-medium rounded-md hover:bg-purple-200 dark:bg-purple-900 dark:text-purple-200 dark:hover:bg-purple-800">
-                                        Book Appointment
-                                    </button>
-                                    <button @click="navigateToHistory" class="px-3 py-1 bg-gray-100 text-gray-800 text-xs font-medium rounded-md hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
-                                        View History
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Footer -->
-                    <div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-600 text-center">
-                        <p class="text-xs text-gray-500 dark:text-gray-500">
-                            Account created: {{ new Date(user.created_at).toLocaleDateString() }} • 
-                            <span v-if="user.email_verified_at" class="text-green-600 dark:text-green-400">Email verified ✓</span>
-                            <span v-else class="text-yellow-600 dark:text-yellow-400">Email not verified</span>
-                        </p>
-                    </div>
-                </div>
-            </div>
-            <div
-                class="relative min-h-[100vh] flex-1 rounded-xl border border-sidebar-border/70 md:min-h-min dark:border-sidebar-border bg-white dark:bg-gray-800"
-            >
-                <!-- Notification Summary -->
-                <div class="p-6">
-                    <div class="flex items-center justify-between mb-6">
-                        <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Notifications</h2>
-                        <div class="flex gap-2">
-                            <button class="text-blue-600 hover:text-blue-700 text-sm dark:text-blue-400 dark:hover:text-blue-300">
-                                Mark All Read
-                            </button>
-                            <button class="text-gray-600 hover:text-gray-700 text-sm dark:text-gray-400 dark:hover:text-gray-300">
-                                Settings
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="space-y-4">
-                        <!-- Appointment Reminder -->
-                        <div class="flex items-start space-x-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-l-4 border-blue-500">
-                            <div class="flex-shrink-0">
-                                <span class="text-blue-600 dark:text-blue-400 text-lg">📅</span>
-                            </div>
-                            <div class="flex-1">
-                                <div class="flex items-center justify-between">
-                                    <h4 class="font-medium text-gray-900 dark:text-gray-100">Appointment Reminder</h4>
-                                    <span class="text-xs text-blue-600 dark:text-blue-400 font-medium">2 hours ago</span>
-                                </div>
-                                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                    Bella's annual checkup is scheduled for today at 2:30 PM with Dr. Sarah Johnson
-                                </p>
-                                <div class="flex gap-2 mt-2">
-                                    <button class="text-xs bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700">
-                                        View Details
-                                    </button>
-                                    <button class="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400">
-                                        Dismiss
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Vaccination Due -->
-                        <div class="flex items-start space-x-3 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border-l-4 border-yellow-500">
-                            <div class="flex-shrink-0">
-                                <span class="text-yellow-600 dark:text-yellow-400 text-lg">💉</span>
-                            </div>
-                            <div class="flex-1">
-                                <div class="flex items-center justify-between">
-                                    <h4 class="font-medium text-gray-900 dark:text-gray-100">Vaccination Due</h4>
-                                    <span class="text-xs text-yellow-600 dark:text-yellow-400 font-medium">1 day ago</span>
-                                </div>
-                                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                    Max's rabies vaccination is due next week. Schedule an appointment to keep him protected.
-                                </p>
-                                <div class="flex gap-2 mt-2">
-                                    <button class="text-xs bg-yellow-600 text-white px-3 py-1 rounded-md hover:bg-yellow-700">
-                                        Schedule Now
-                                    </button>
-                                    <button class="text-xs text-yellow-600 hover:text-yellow-700 dark:text-yellow-400">
-                                        Remind Later
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Treatment Complete -->
-                        <div class="flex items-start space-x-3 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border-l-4 border-green-500">
-                            <div class="flex-shrink-0">
-                                <span class="text-green-600 dark:text-green-400 text-lg">✅</span>
-                            </div>
-                            <div class="flex-1">
-                                <div class="flex items-center justify-between">
-                                    <h4 class="font-medium text-gray-900 dark:text-gray-100">Treatment Complete</h4>
-                                    <span class="text-xs text-green-600 dark:text-green-400 font-medium">3 days ago</span>
-                                </div>
-                                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                    Luna's dental cleaning was completed successfully. Follow-up care instructions have been sent to your email.
-                                </p>
-                                <div class="flex gap-2 mt-2">
-                                    <button class="text-xs text-green-600 hover:text-green-700 dark:text-green-400">
-                                        View Report
-                                    </button>
-                                    <button class="text-xs text-green-600 hover:text-green-700 dark:text-green-400">
-                                        Mark Read
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Prescription Refill -->
-                        <div class="flex items-start space-x-3 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border-l-4 border-purple-500">
-                            <div class="flex-shrink-0">
-                                <span class="text-purple-600 dark:text-purple-400 text-lg">💊</span>
-                            </div>
-                            <div class="flex-1">
-                                <div class="flex items-center justify-between">
-                                    <h4 class="font-medium text-gray-900 dark:text-gray-100">Prescription Refill</h4>
-                                    <span class="text-xs text-purple-600 dark:text-purple-400 font-medium">5 days ago</span>
-                                </div>
-                                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                    Bella's arthritis medication is ready for pickup at Happy Paws Veterinary Clinic.
-                                </p>
-                                <div class="flex gap-2 mt-2">
-                                    <button class="text-xs bg-purple-600 text-white px-3 py-1 rounded-md hover:bg-purple-700">
-                                        Get Directions
-                                    </button>
-                                    <button class="text-xs text-purple-600 hover:text-purple-700 dark:text-purple-400">
-                                        Mark Read
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- System Update -->
-                        <div class="flex items-start space-x-3 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border-l-4 border-gray-400">
-                            <div class="flex-shrink-0">
-                                <span class="text-gray-600 dark:text-gray-400 text-lg">🔔</span>
-                            </div>
-                            <div class="flex-1">
-                                <div class="flex items-center justify-between">
-                                    <h4 class="font-medium text-gray-900 dark:text-gray-100">System Update</h4>
-                                    <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">1 week ago</span>
-                                </div>
-                                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                    PetConnect has been updated with new features including enhanced appointment scheduling and pet health tracking.
-                                </p>
-                                <div class="flex gap-2 mt-2">
-                                    <button class="text-xs text-gray-600 hover:text-gray-700 dark:text-gray-400">
-                                        Learn More
-                                    </button>
-                                    <button class="text-xs text-gray-600 hover:text-gray-700 dark:text-gray-400">
-                                        Dismiss
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Load More -->
-                    <div class="flex justify-center mt-6">
-                        <button class="text-blue-600 hover:text-blue-700 text-sm font-medium dark:text-blue-400 dark:hover:text-blue-300">
-                            Load More Notifications
+                    <div class="hidden md:flex items-center space-x-4">
+                        <button @click="navigateToAddPet" class="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg hover:bg-white/30 transition-colors">
+                            <Plus class="h-4 w-4 inline mr-2" />
+                            Add Pet
+                        </button>
+                        <button @click="navigateToBookAppointment" class="bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 transition-colors">
+                            <Calendar class="h-4 w-4 inline mr-2" />
+                            Book Appointment
                         </button>
                     </div>
                 </div>
             </div>
+
+            <!-- Key Metrics -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Total Pets -->
+                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Pets</p>
+                            <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ dashboard_stats.pets.total }}</p>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                {{ dashboard_stats.pets.needs_attention }} need attention
+                            </p>
+                        </div>
+                        <div class="p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
+                            <PawPrint class="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Upcoming Appointments -->
+                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Upcoming Appointments</p>
+                            <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ dashboard_stats.appointments.upcoming }}</p>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                {{ dashboard_stats.appointments.this_month }} this month
+                            </p>
+                        </div>
+                        <div class="p-3 bg-green-100 dark:bg-green-900 rounded-full">
+                            <Calendar class="h-6 w-6 text-green-600 dark:text-green-400" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Health Alerts -->
+                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Health Alerts</p>
+                            <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ dashboard_stats.health.active_conditions }}</p>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                {{ dashboard_stats.pets.vaccination_due }} vaccinations due
+                            </p>
+                        </div>
+                        <div class="p-3 bg-yellow-100 dark:bg-yellow-900 rounded-full">
+                            <AlertTriangle class="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Total Spending -->
+                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">This Year's Spending</p>
+                            <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">${{ dashboard_stats.spending.this_year.toLocaleString() }}</p>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                ${{ dashboard_stats.spending.average_per_visit }} avg per visit
+                            </p>
+                        </div>
+                        <div class="p-3 bg-purple-100 dark:bg-purple-900 rounded-full">
+                            <DollarSign class="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Pet Species Distribution -->
+                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Pet Distribution</h3>
+                        <BarChart3 class="h-5 w-5 text-gray-400" />
+                    </div>
+                    <div class="h-64">
+                        <Chart 
+                            type="doughnut" 
+                            :data="petSpeciesChartData"
+                            :options="{ plugins: { legend: { position: 'bottom' } } }"
+                        />
+                    </div>
+                </div>
+
+                <!-- Appointment Status -->
+                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Appointment Status</h3>
+                        <Activity class="h-5 w-5 text-gray-400" />
+                    </div>
+                    <div class="h-64">
+                        <Chart 
+                            type="pie" 
+                            :data="appointmentStatusChartData"
+                            :options="{ plugins: { legend: { position: 'bottom' } } }"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content Grid -->
+            <div class="grid grid-cols-1 gap-6">
+                <!-- Pets Section -->
+                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                            <PawPrint class="h-5 w-5" />
+                            Your Pets
+                        </h3>
+                        <Link :href="petsIndex().url" class="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium flex items-center gap-1">
+                            View All
+                            <ArrowUpRight class="h-4 w-4" />
+                        </Link>
+                    </div>
+
+                    <div v-if="pets.length === 0" class="text-center py-8">
+                        <PawPrint class="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+                        <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No pets added yet</h4>
+                        <p class="text-gray-600 dark:text-gray-400 mb-4">Add your first pet to get started</p>
+                        <button @click="navigateToAddPet" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                            <Plus class="h-4 w-4 inline mr-2" />
+                            Add Your First Pet
+                        </button>
+                    </div>
+
+                    <div v-else class="space-y-4">
+                        <div v-for="pet in pets.slice(0, 4)" :key="pet.id" 
+                             class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-12 h-12 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center">
+                                    <PawPrint class="h-6 w-6 text-white" />
+                                </div>
+                                <div>
+                                    <h4 class="font-medium text-gray-900 dark:text-gray-100">{{ pet.name }}</h4>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">{{ pet.species }} • {{ pet.breed || 'Mixed' }}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <span :class="[
+                                    'px-2 py-1 text-xs font-medium rounded-full',
+                                    pet.health_status.overall === 'excellent' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                                    pet.health_status.overall === 'good' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                                    pet.health_status.overall === 'fair' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                                    'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                                ]">
+                                    {{ pet.health_status.overall }}
+                                </span>
+                                <div v-if="pet.health_status.alerts.length > 0" class="relative">
+                                    <AlertTriangle class="h-4 w-4 text-yellow-500" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </AppLayout>
 </template>

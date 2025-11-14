@@ -43,17 +43,8 @@ interface PetData {
     next_appointment: any | null;
 }
 
-interface StatsData {
-    total_pets: number;
-    dogs: number;
-    cats: number;
-    other_species: number;
-    pets_needing_attention: number;
-}
-
 interface Props {
     pets: PetData[];
-    stats: StatsData;
     filters: {
         species?: string;
         search?: string;
@@ -195,12 +186,12 @@ const clearFilters = () => {
             <!-- My Pets Overview -->
             <div class="bg-white dark:bg-gray-800 rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
                 <div class="p-6">
-                    <div class="flex items-center justify-between mb-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                         <div>
                             <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">My Pets</h2>
                             <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Manage your beloved companions</p>
                         </div>
-                        <div class="flex gap-2">
+                        <div class="flex flex-col sm:flex-row gap-2">
                             <select 
                                 v-model="currentFilters.species"
                                 @change="applyFilters"
@@ -227,33 +218,13 @@ const clearFilters = () => {
                                 @input="applyFilters"
                                 type="text"
                                 placeholder="Search pets..."
-                                class="px-3 py-2 border border-gray-300 rounded-md text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+                                class="px-3 py-2 border border-gray-300 rounded-md text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 min-w-0 flex-1 sm:w-48"
                             />
                         </div>
                     </div>
                     
-                    <!-- Pet Statistics -->
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                        <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 text-center">
-                            <p class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ props.stats.total_pets }}</p>
-                            <p class="text-sm text-blue-700 dark:text-blue-300">Total Pets</p>
-                        </div>
-                        <div class="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 text-center">
-                            <p class="text-2xl font-bold text-green-600 dark:text-green-400">{{ props.stats.dogs }}</p>
-                            <p class="text-sm text-green-700 dark:text-green-300">Dogs</p>
-                        </div>
-                        <div class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4 text-center">
-                            <p class="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{{ props.stats.cats }}</p>
-                            <p class="text-sm text-yellow-700 dark:text-yellow-300">Cats</p>
-                        </div>
-                        <div class="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 text-center">
-                            <p class="text-2xl font-bold text-purple-600 dark:text-purple-400">{{ props.stats.pets_needing_attention }}</p>
-                            <p class="text-sm text-purple-700 dark:text-purple-300">Need Attention</p>
-                        </div>
-                    </div>
-                    
                     <!-- Pet Cards Grid -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
                         <div v-for="petItem in filteredPets" :key="petItem.id" 
                              class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600 hover:shadow-md transition-shadow">
                             

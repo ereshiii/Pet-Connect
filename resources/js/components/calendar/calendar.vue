@@ -229,27 +229,6 @@ const isDateDisabled = (date: string): boolean => {
     return false;
 };
 
-const getEventColor = (event: CalendarEvent): string => {
-    if (event.color) return event.color;
-    
-    switch (event.type) {
-        case 'appointment':
-            return event.status === 'confirmed' ? 'bg-primary' : 
-                   event.status === 'pending' ? 'bg-secondary' : 
-                   event.status === 'cancelled' ? 'bg-destructive' : 'bg-accent';
-        case 'reminder':
-            return 'bg-muted';
-        case 'event':
-            return 'bg-secondary';
-        case 'holiday':
-            return 'bg-destructive';
-        case 'blocked':
-            return 'bg-primary';
-        default:
-            return 'bg-primary';
-    }
-};
-
 // Event handlers
 const handleDateClick = (day: any) => {
     if (day.isDisabled || !props.selectable) return;
@@ -340,6 +319,10 @@ const goToDate = (date: string) => {
     emit('month-change', currentDate.value.getFullYear(), currentDate.value.getMonth());
 };
 
+const onViewChange = () => {
+    emit('view-change', currentView.value);
+};
+
 // Public methods exposed to parent
 const clearSelection = () => {
     selectedDates.value = [];
@@ -352,6 +335,51 @@ const getSelectedDates = () => {
 
 const getEventsForDate = (date: string) => {
     return eventsMap.value.get(date) || [];
+};
+
+// Get event color class based on event properties
+const getEventColor = (event: CalendarEvent): string => {
+    // If event has a specific color, use it
+    if (event.color) {
+        // Handle both Tailwind classes and direct color values
+        if (event.color.startsWith('bg-')) {
+            return event.color; // Already a Tailwind class
+        }
+        // Convert to CSS variable style for better dark mode support
+        return `bg-[${event.color}]`;
+    }
+    
+    // Color based on event type
+    if (event.type === 'appointment') {
+        switch (event.status?.toLowerCase()) {
+            case 'confirmed':
+                return 'bg-green-500 dark:bg-green-600';
+            case 'scheduled':
+                return 'bg-blue-500 dark:bg-blue-600';
+            case 'pending':
+                return 'bg-yellow-500 dark:bg-yellow-600';
+            case 'in_progress':
+                return 'bg-orange-500 dark:bg-orange-600';
+            case 'completed':
+                return 'bg-purple-500 dark:bg-purple-600';
+            case 'cancelled':
+                return 'bg-red-500 dark:bg-red-600';
+            default:
+                return 'bg-blue-500 dark:bg-blue-600';
+        }
+    }
+    
+    // Default colors for other event types
+    switch (event.type) {
+        case 'holiday':
+            return 'bg-red-500 dark:bg-red-600';
+        case 'reminder':
+            return 'bg-yellow-500 dark:bg-yellow-600';
+        case 'blocked':
+            return 'bg-gray-500 dark:bg-gray-600';
+        default:
+            return 'bg-blue-500 dark:bg-blue-600';
+    }
 };
 
 // Expose methods to parent component
@@ -387,31 +415,31 @@ const sizeClasses = computed(() => {
     }
 });
 
-// Theme classes
+// Theme classes with proper dark mode support
 const themeClasses = computed(() => {
     switch (props.theme) {
         case 'minimal':
             return {
-                header: 'border-b',
-                dayName: 'text-muted-foreground font-normal',
-                today: 'bg-accent text-accent-foreground',
-                selected: 'bg-primary text-primary-foreground',
+                header: 'border-b border-gray-200 dark:border-gray-700',
+                dayName: 'text-gray-600 dark:text-gray-400 font-normal',
+                today: 'bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100',
+                selected: 'bg-blue-600 dark:bg-blue-500 text-white',
                 event: 'rounded-sm'
             };
         case 'professional':
             return {
-                header: 'bg-muted border-b',
-                dayName: 'text-foreground font-semibold',
-                today: 'bg-primary text-primary-foreground',
-                selected: 'bg-primary text-primary-foreground',
+                header: 'bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700',
+                dayName: 'text-gray-900 dark:text-gray-100 font-semibold',
+                today: 'bg-blue-600 dark:bg-blue-500 text-white',
+                selected: 'bg-blue-600 dark:bg-blue-500 text-white',
                 event: 'rounded-md'
             };
         default:
             return {
-                header: 'border-b',
-                dayName: 'text-muted-foreground font-medium',
-                today: 'bg-primary text-primary-foreground',
-                selected: 'bg-primary text-primary-foreground',
+                header: 'border-b border-gray-200 dark:border-gray-700',
+                dayName: 'text-gray-700 dark:text-gray-300 font-medium',
+                today: 'bg-blue-600 dark:bg-blue-500 text-white',
+                selected: 'bg-blue-600 dark:bg-blue-500 text-white',
                 event: 'rounded'
             };
     }
@@ -419,23 +447,23 @@ const themeClasses = computed(() => {
 </script>
 
 <template>
-    <div :class="['calendar-container', sizeClasses.calendar]" class="bg-background rounded-lg">
+    <div :class="['calendar-container', sizeClasses.calendar]" class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
         <!-- Calendar Header -->
         <div :class="['calendar-header flex items-center justify-between p-4', themeClasses.header]">
             <div class="flex items-center gap-2">
                 <button @click="goToPrevMonth" 
-                        class="p-2 hover:bg-muted rounded-md transition-colors">
+                        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors text-gray-600 dark:text-gray-400">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                     </svg>
                 </button>
                 
-                <h2 class="text-[1.125rem] font-semibold text-foreground min-w-[200px] text-center">
+                <h2 class="text-[1.125rem] font-semibold text-gray-900 dark:text-gray-100 min-w-[200px] text-center">
                     {{ monthTitle }}
                 </h2>
                 
                 <button @click="goToNextMonth" 
-                        class="p-2 hover:bg-muted rounded-md transition-colors">
+                        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors text-gray-600 dark:text-gray-400">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                     </svg>
@@ -443,16 +471,28 @@ const themeClasses = computed(() => {
             </div>
             
             <div class="flex items-center gap-2">
+                <!-- View Selector Dropdown -->
+                <div class="relative">
+                    <select 
+                        v-model="currentView" 
+                        @change="onViewChange"
+                        class="px-3 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="month">Month</option>
+                        <option value="week">Week</option>
+                        <option value="day">Day</option>
+                    </select>
+                </div>
+                
                 <button @click="goToToday" 
-                        class="px-3 py-1 text-[0.875rem] bg-primary text-primary-foreground rounded-md hover:bg-primary transition-colors">
+                        class="px-3 py-1 text-[0.875rem] bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
                     Today
                 </button>
             </div>
         </div>
         
         <!-- Day Names Header -->
-        <div class="grid grid-cols-7">
-            <div v-if="showWeekNumbers" class="p-2 text-center">
+        <div class="grid grid-cols-7 border-b border-gray-200 dark:border-gray-700">
+            <div v-if="showWeekNumbers" class="p-2 text-center border-r border-gray-200 dark:border-gray-700">
                 <span :class="['text-[0.75rem] font-medium', themeClasses.dayName]">Week</span>
             </div>
             <div v-for="(day, index) in dayNames" 
@@ -467,12 +507,12 @@ const themeClasses = computed(() => {
         <div class="calendar-grid">
             <div v-for="(week, weekIndex) in calendarWeeks" 
                  :key="weekIndex" 
-                 class="grid grid-cols-7 last:border-b-0">
+                 class="grid grid-cols-7 border-b border-gray-200 dark:border-gray-700 last:border-b-0">
                 
                 <!-- Week Number -->
                 <div v-if="showWeekNumbers" 
-                     class="flex items-center justify-center p-1 bg-muted">
-                    <span class="text-[0.75rem] text-muted-foreground">{{ week[0]?.weekNumber }}</span>
+                     class="flex items-center justify-center p-1 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+                    <span class="text-[0.75rem] text-gray-500 dark:text-gray-400">{{ week[0]?.weekNumber }}</span>
                 </div>
                 
                 <!-- Calendar Days -->
@@ -483,12 +523,12 @@ const themeClasses = computed(() => {
                      @dblclick="handleDateDoubleClick(day)"
                      @mouseenter="handleDateHover(day)"
                      :class="[
-                         'calendar-day relative p-1 last:border-r-0 cursor-pointer transition-colors min-h-[60px]',
+                         'calendar-day relative p-1 border-r border-gray-200 dark:border-gray-700 last:border-r-0 cursor-pointer transition-colors min-h-[60px]',
                          {
-                             'bg-muted': !day.isCurrentMonth,
-                             'hover:bg-muted': !day.isDisabled && day.isCurrentMonth,
+                             'bg-gray-50 dark:bg-gray-800': !day.isCurrentMonth,
+                             'hover:bg-gray-100 dark:hover:bg-gray-700': !day.isDisabled && day.isCurrentMonth,
                              'cursor-not-allowed opacity-50': day.isDisabled,
-                             'bg-destructive': day.isWeekend && highlightWeekends && day.isCurrentMonth,
+                             'bg-red-50 dark:bg-red-900/20': day.isWeekend && highlightWeekends && day.isCurrentMonth,
                          }
                      ]">
                     
@@ -500,10 +540,10 @@ const themeClasses = computed(() => {
                                 {
                                     [themeClasses.today]: day.isToday && highlightToday,
                                     [themeClasses.selected]: day.isSelected,
-                                    'text-muted-foreground': !day.isCurrentMonth,
-                                    'text-foreground': day.isCurrentMonth && !day.isSelected && !day.isToday,
+                                    'text-gray-400 dark:text-gray-600': !day.isCurrentMonth,
+                                    'text-gray-900 dark:text-gray-100': day.isCurrentMonth && !day.isSelected && !day.isToday,
                                     'opacity-75': hoveredDate === day.fullDate && props.selectMode === 'range' && rangeStart,
-                                    'bg-muted text-muted-foreground cursor-not-allowed': day.isDisabled
+                                    'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-600 cursor-not-allowed': day.isDisabled
                                 }
                             ]">
                             {{ day.date }}
@@ -517,7 +557,7 @@ const themeClasses = computed(() => {
                              :key="event.id"
                              @click="handleEventClick(event, $event)"
                              :class="[
-                                 'event cursor-pointer text-primary-foreground truncate transition-transform hover:scale-105',
+                                 'event cursor-pointer text-white truncate transition-transform hover:scale-105',
                                  sizeClasses.event,
                                  themeClasses.event,
                                  getEventColor(event)
@@ -529,7 +569,7 @@ const themeClasses = computed(() => {
                         <!-- More events indicator -->
                         <div v-if="eventsMap.get(day.fullDate)!.length > maxEventsPerDay"
                              :class="[
-                                 'text-center text-muted-foreground cursor-pointer hover:text-foreground',
+                                 'text-center text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-700 dark:hover:text-gray-300',
                                  sizeClasses.event
                              ]">
                             +{{ eventsMap.get(day.fullDate)!.length - maxEventsPerDay }} more
@@ -540,7 +580,7 @@ const themeClasses = computed(() => {
         </div>
         
         <!-- Calendar Footer (optional slot) -->
-        <div v-if="$slots.footer" class="calendar-footer p-4">
+        <div v-if="$slots.footer" class="calendar-footer p-4 border-t border-gray-200 dark:border-gray-700">
             <slot name="footer" />
         </div>
     </div>
@@ -548,17 +588,23 @@ const themeClasses = computed(() => {
 
 <style scoped>
 .calendar-container {
-    border: 1px solid hsl(var(--border));
+    /* Container styles are handled by Tailwind classes */
 }
 
 .calendar-day:hover .event {
-    opacity: 0.8;
+    opacity: 0.9;
+    transform: scale(1.02);
 }
 
 .event {
-    color: hsl(var(--primary-foreground));
     font-size: 0.75rem;
     font-weight: 500;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Dark mode event shadows */
+.dark .event {
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 /* Animation for selected dates */
@@ -581,5 +627,47 @@ const themeClasses = computed(() => {
     .calendar-day {
         min-height: 50px;
     }
+    
+    .event {
+        font-size: 0.6875rem;
+        padding: 1px 4px;
+    }
+}
+
+/* Custom scrollbar for event lists */
+.calendar-day::-webkit-scrollbar {
+    width: 4px;
+}
+
+.calendar-day::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.calendar-day::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 2px;
+}
+
+.dark .calendar-day::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* Better event hover effects */
+.event:hover {
+    transform: scale(1.02);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.dark .event:hover {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* Improve weekend styling */
+.calendar-day.weekend {
+    background-color: rgba(239, 68, 68, 0.02);
+}
+
+.dark .calendar-day.weekend {
+    background-color: rgba(239, 68, 68, 0.05);
 }
 </style>

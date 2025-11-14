@@ -32,7 +32,9 @@ class ClinicController extends Controller
 
         // Get approved clinics from ClinicRegistration for now
         // TODO: Migrate to use organized Clinic model when data is populated
-        $clinics = ClinicRegistration::with('user')
+        $clinics = ClinicRegistration::with(['user', 'clinicServices' => function($query) {
+                $query->where('is_active', true);
+            }])
             ->where('status', 'approved')
             ->get()
             ->map(function ($clinic) use ($userLat, $userLng) {
@@ -55,6 +57,11 @@ class ClinicController extends Controller
                     $travelTime = LocationService::getEstimatedTravelTime($distance);
                 }
 
+                // Use ClinicService records if available, otherwise fall back to services array
+                $services = $clinic->clinicServices->count() > 0
+                    ? $clinic->clinicServices->pluck('name')->toArray()
+                    : $this->formatServices($clinic->services ?? []);
+
                 return [
                     'id' => $clinic->id,
                     'name' => $clinic->clinic_name,
@@ -66,7 +73,7 @@ class ClinicController extends Controller
                     'rating' => (float) $clinic->rating,
                     'total_reviews' => (int) $clinic->total_reviews,
                     'stars' => $clinic->stars,
-                    'services' => $clinic->services,
+                    'services' => $services,
                     'veterinarians' => $clinic->veterinarians,
                     'operating_hours' => $clinic->operating_hours,
                     'latitude' => $clinic->latitude,
@@ -101,9 +108,19 @@ class ClinicController extends Controller
             $clinics = $clinics->sortByDesc('rating');
         }
 
+        // Get user's favorite clinic IDs if user is authenticated
+        $userFavorites = [];
+        if (auth()->check()) {
+            $userFavorites = auth()->user()
+                ->favoriteClinics()
+                ->pluck('clinic_registration_id')
+                ->toArray();
+        }
+
         return Inertia::render('Clinics', [
             'clinics' => $clinics->values(),
             'featured_clinics' => $clinics->where('is_featured', true)->values(),
+            'user_favorites' => $userFavorites,
             'user_location' => [
                 'lat' => $userLat,
                 'lng' => $userLng,
@@ -507,6 +524,15 @@ class ClinicController extends Controller
      */
     private function formatServices(array $services): array
     {
+        // Check if services are in new format (objects with name, category, etc.)
+        if (!empty($services) && is_array($services[0]) && isset($services[0]['name'])) {
+            // New format - return service names directly
+            return array_map(function ($service) {
+                return $service['name'];
+            }, $services);
+        }
+        
+        // Old format - map service keys to display names
         $serviceNames = [
             'consultation' => 'General Health Exams',
             'vaccination' => 'Vaccination Programs',

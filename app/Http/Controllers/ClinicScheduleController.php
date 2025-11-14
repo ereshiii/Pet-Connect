@@ -35,6 +35,9 @@ class ClinicScheduleController extends Controller
 
         $clinicId = $clinicRegistration->id;
 
+        // Initialize operating hours from registration if first time
+        $this->initializeOperatingHoursFromRegistration($clinicRegistration);
+
         // Get current week dates
         $startDate = $request->get('start_date', Carbon::now()->startOfWeek()->format('Y-m-d'));
         $currentWeek = $this->getWeekDates($startDate);
@@ -211,6 +214,68 @@ class ClinicScheduleController extends Controller
         }
         
         return $dates;
+    }
+
+    /**
+     * Initialize operating hours from registration data if no hours exist.
+     */
+    private function initializeOperatingHoursFromRegistration(ClinicRegistration $clinicRegistration)
+    {
+        // Check if operating hours already exist
+        if (ClinicOperatingHour::where('clinic_id', $clinicRegistration->id)->exists()) {
+            return;
+        }
+
+        // Create operating hours from registration data
+        if (!empty($clinicRegistration->operating_hours)) {
+            foreach ($clinicRegistration->operating_hours as $hourData) {
+                if (empty($hourData['day'])) continue;
+
+                $day = strtolower($hourData['day']);
+                $isClosed = $hourData['is_closed'] ?? false;
+
+                ClinicOperatingHour::create([
+                    'clinic_id' => $clinicRegistration->id,
+                    'day_of_week' => $day,
+                    'is_closed' => $isClosed,
+                    'opening_time' => !$isClosed && !empty($hourData['opening_time']) ? $hourData['opening_time'] : null,
+                    'closing_time' => !$isClosed && !empty($hourData['closing_time']) ? $hourData['closing_time'] : null,
+                    'break_start_time' => !$isClosed && !empty($hourData['break_start']) ? $hourData['break_start'] : null,
+                    'break_end_time' => !$isClosed && !empty($hourData['break_end']) ? $hourData['break_end'] : null,
+                ]);
+            }
+        } else {
+            // Create default operating hours if none in registration
+            $this->createDefaultOperatingHours($clinicRegistration->id);
+        }
+    }
+
+    /**
+     * Create default operating hours for new clinics.
+     */
+    private function createDefaultOperatingHours(int $clinicId)
+    {
+        $defaultHours = [
+            ['day' => 'monday', 'opening' => '08:00', 'closing' => '18:00'],
+            ['day' => 'tuesday', 'opening' => '08:00', 'closing' => '18:00'],
+            ['day' => 'wednesday', 'opening' => '08:00', 'closing' => '18:00'],
+            ['day' => 'thursday', 'opening' => '08:00', 'closing' => '18:00'],
+            ['day' => 'friday', 'opening' => '08:00', 'closing' => '18:00'],
+            ['day' => 'saturday', 'opening' => '08:00', 'closing' => '16:00'],
+            ['day' => 'sunday', 'is_closed' => true],
+        ];
+
+        foreach ($defaultHours as $hourData) {
+            ClinicOperatingHour::create([
+                'clinic_id' => $clinicId,
+                'day_of_week' => $hourData['day'],
+                'is_closed' => $hourData['is_closed'] ?? false,
+                'opening_time' => $hourData['opening'] ?? null,
+                'closing_time' => $hourData['closing'] ?? null,
+                'break_start_time' => null,
+                'break_end_time' => null,
+            ]);
+        }
     }
 
     /**
@@ -422,7 +487,7 @@ class ClinicScheduleController extends Controller
             'utilization_rate' => round($utilizationRate, 1),
             'total_appointments' => $appointments->count(),
             'confirmed_appointments' => $appointments->where('status', 'confirmed')->count(),
-            'pending_appointments' => $appointments->where('status', 'pending')->count(),
+            'scheduled_appointments' => $appointments->where('status', 'scheduled')->count(),
         ];
     }
 
@@ -491,7 +556,7 @@ class ClinicScheduleController extends Controller
         $statusMap = [
             'available' => 'Available',
             'blocked' => 'Blocked',
-            'pending' => 'Pending',
+            'scheduled' => 'Scheduled',
             'confirmed' => 'Confirmed',
             'in_progress' => 'In Progress',
             'completed' => 'Completed',

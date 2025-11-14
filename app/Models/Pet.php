@@ -17,17 +17,23 @@ class Pet extends Model
         'name',
         'species',
         'breed_id',
+        'breed',  // Added for string breed
         'type_id',
         'gender',
         'birth_date',
+        'age',    // Added for direct age storage
         'weight',
         'size',
         'color',
         'markings',
         'microchip_number',
+        'microchip_id',  // Added for alternative microchip field
         'is_neutered',
         'special_needs',
         'notes',
+        'allergies',  // Added for allergies storage
+        'current_medications',  // Added for medications storage
+        'medical_conditions',   // Added for conditions storage
         'profile_image',
         'images',
         'is_active',
@@ -122,9 +128,9 @@ class Pet extends Model
     }
 
     /**
-     * Get the pet's age.
+     * Get the pet's calculated age from birth date.
      */
-    public function getAgeAttribute(): ?string
+    public function getCalculatedAgeAttribute(): ?string
     {
         if (!$this->birth_date) {
             return null;

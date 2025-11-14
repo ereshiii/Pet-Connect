@@ -24,7 +24,12 @@ interface Clinic {
 interface ClinicService {
     id: number;
     name: string;
-    cost: number;
+    description?: string;
+    category?: string;
+    base_price: number | null;
+    duration_minutes?: number;
+    requires_appointment?: boolean;
+    is_emergency_service?: boolean;
     clinic_id: number;
 }
 
@@ -254,7 +259,7 @@ const formatDate = (dateStr: string) => {
                                 <span class="font-medium">Type:</span> {{ appointmentTypes.find(t => t.value === props.appointment.type)?.label }}
                             </p>
                             <p v-if="props.appointment.service" class="text-blue-700 dark:text-blue-300">
-                                <span class="font-medium">Service:</span> {{ props.appointment.service.name }} - ${{ props.appointment.service.cost }}
+                                <span class="font-medium">Service:</span> {{ props.appointment.service.name }} - {{ props.appointment.service.cost ? '₱' + props.appointment.service.cost.toLocaleString() : 'Price on request' }}
                             </p>
                         </div>
                         <div>
@@ -336,7 +341,7 @@ const formatDate = (dateStr: string) => {
                                 >
                                     <option value="">No service selected</option>
                                     <option v-for="service in availableServices" :key="service.id" :value="service.id">
-                                        {{ service.name }} - ${{ service.cost }}
+                                        {{ service.name }} - {{ service.base_price ? '₱' + service.base_price.toLocaleString() : 'Price on request' }}
                                     </option>
                                 </select>
                                 <p v-if="form.errors.service_id" class="mt-1 text-sm text-red-600 dark:text-red-400">
@@ -543,7 +548,7 @@ const formatDate = (dateStr: string) => {
                         <div class="text-sm text-green-700 dark:text-green-300 space-y-1">
                             <p><span class="font-medium">Pet:</span> {{ props.appointment.pet.name }} ({{ props.appointment.pet.type }} - {{ props.appointment.pet.breed }})</p>
                             <p><span class="font-medium">Clinic:</span> {{ selectedClinic?.name }}</p>
-                            <p v-if="selectedService"><span class="font-medium">Service:</span> {{ selectedService.name }} - ${{ selectedService.cost }}</p>
+                            <p v-if="selectedService"><span class="font-medium">Service:</span> {{ selectedService.name }} - {{ selectedService.base_price ? '₱' + selectedService.base_price.toLocaleString() : 'Price on request' }}</p>
                             <p><span class="font-medium">Type:</span> {{ appointmentTypes.find(t => t.value === form.type)?.label }}</p>
                             <p><span class="font-medium">Priority:</span> {{ priorityLevels.find(p => p.value === form.priority)?.label }}</p>
                             <p><span class="font-medium">Date & Time:</span> {{ formatDate(form.preferred_date) }} at {{ form.preferred_time }}</p>

@@ -59,7 +59,8 @@ import {
     History as HistoryIcon,
     Heart,
     CreditCard,
-    Bell
+    Bell,
+    PawPrint
 } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 
@@ -110,6 +111,11 @@ const userNavItems: NavItem[] = [
         icon: Building2,
     },
     {
+        title: 'Favorited Clinics',
+        href: '/user/favorited-clinics',
+        icon: Heart,
+    },
+    {
         title: 'Schedule',
         href: schedule().url,
         icon: Clock,
@@ -127,7 +133,7 @@ const userNavItems: NavItem[] = [
      {
         title: 'Pet',
         href: petsIndex().url,
-        icon: Heart,
+        icon: PawPrint,
     },
 ];
 
@@ -141,6 +147,11 @@ const clinicNavItems: NavItem[] = [
         title: 'Appointments',
         href: clinicAppointments().url,
         icon: Calendar,
+    },
+    {
+        title: 'History',
+        href: '/clinic/history',
+        icon: HistoryIcon,
     },
     {
         title: 'Patients',

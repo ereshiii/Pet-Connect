@@ -289,32 +289,62 @@ defineExpose({
     color: white;
 }
 
-.vuecal__event--appointment {
-    background-color: #3b82f6;
-}
-
-.vuecal__event--pending {
-    background-color: #f59e0b;
+/* Appointment status styles */
+.vuecal__event--scheduled {
+    background-color: #3b82f6 !important;
+    border-color: #2563eb !important;
+    color: white !important;
 }
 
 .vuecal__event--confirmed {
-    background-color: #10b981;
+    background-color: #10b981 !important;
+    border-color: #059669 !important;
+    color: white !important;
 }
 
-.vuecal__event--cancelled {
-    background-color: #ef4444;
+.vuecal__event--pending {
+    background-color: #f59e0b !important;
+    border-color: #d97706 !important;
+    color: white !important;
+}
+
+.vuecal__event--in_progress {
+    background-color: #f97316 !important;
+    border-color: #ea580c !important;
+    color: white !important;
 }
 
 .vuecal__event--completed {
-    background-color: #6b7280;
+    background-color: #6366f1 !important;
+    border-color: #4f46e5 !important;
+    color: white !important;
 }
 
-.vuecal__event--holiday {
-    background-color: #dc2626;
+.vuecal__event--cancelled {
+    background-color: #ef4444 !important;
+    border-color: #dc2626 !important;
+    color: white !important;
+    opacity: 0.7;
 }
 
-.vuecal__event--reminder {
-    background-color: #8b5cf6;
+.vuecal__event--no_show {
+    background-color: #6b7280 !important;
+    border-color: #4b5563 !important;
+    color: white !important;
+    opacity: 0.6;
+}
+
+/* Priority indicators */
+.vuecal__event--high-priority {
+    border-left: 4px solid #dc2626 !important;
+}
+
+.vuecal__event--medium-priority {
+    border-left: 4px solid #f59e0b !important;
+}
+
+.vuecal__event--low-priority {
+    border-left: 4px solid #10b981 !important;
 }
 
 .event-content {
