@@ -11,6 +11,8 @@ import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/AppLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { type BreadcrumbItem } from '@/types';
+import PinAddressLocation from '@/pages/2clinicPages/registerClinic/pinAddressLocation.vue';
+import { ref, computed } from 'vue';
 
 interface Props {
     address?: {
@@ -20,6 +22,8 @@ interface Props {
         state?: string;
         postal_code?: string;
         country?: string;
+        latitude?: number | null;
+        longitude?: number | null;
     };
 }
 
@@ -42,6 +46,20 @@ const page = usePage<{
     };
     address?: Props['address'];
 }>();
+
+const latitude = ref<number | null>(page.props.address?.latitude || null);
+const longitude = ref<number | null>(page.props.address?.longitude || null);
+
+const fullAddress = computed(() => {
+    const addr = page.props.address;
+    if (!addr) return '';
+    return `${addr.address_line_1 || ''}, ${addr.city || ''}, ${addr.state || ''}`;
+});
+
+const handleLocationUpdate = (location: { latitude: number; longitude: number }) => {
+    latitude.value = location.latitude;
+    longitude.value = location.longitude;
+};
 </script>
 
 <template>
@@ -145,6 +163,20 @@ const page = usePage<{
                             <InputError class="mt-2" :message="errors.country" />
                         </div>
                     </div>
+
+                    <!-- Pin Location on Map -->
+                    <div class="pt-6 border-t">
+                        <PinAddressLocation
+                            :latitude="latitude"
+                            :longitude="longitude"
+                            :address="fullAddress"
+                            @location-update="handleLocationUpdate"
+                        />
+                    </div>
+                    
+                    <!-- Hidden fields for latitude and longitude -->
+                    <input type="hidden" name="latitude" :value="latitude" />
+                    <input type="hidden" name="longitude" :value="longitude" />
 
                     <div class="flex items-center gap-4">
                         <Button

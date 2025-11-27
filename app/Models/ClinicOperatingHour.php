@@ -23,19 +23,25 @@ class ClinicOperatingHour extends Model
     ];
 
     protected $casts = [
-        'opening_time' => 'datetime:H:i:s',
-        'closing_time' => 'datetime:H:i:s',
-        'break_start_time' => 'datetime:H:i:s',
-        'break_end_time' => 'datetime:H:i:s',
         'is_closed' => 'boolean',
     ];
 
     /**
-     * Get the clinic that owns these operating hours.
+     * Get the clinic registration that owns these operating hours.
+     * Note: clinic_id references clinic_registrations.id (not clinics.id)
      */
     public function clinic(): BelongsTo
     {
-        return $this->belongsTo(Clinic::class);
+        return $this->belongsTo(ClinicRegistration::class, 'clinic_id');
+    }
+
+    /**
+     * Alias for clinic() for better semantics.
+     * Returns the clinic registration.
+     */
+    public function clinicRegistration(): BelongsTo
+    {
+        return $this->clinic();
     }
 
     /**

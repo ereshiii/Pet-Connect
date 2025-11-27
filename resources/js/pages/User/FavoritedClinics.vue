@@ -1,319 +1,274 @@
 <script setup lang="ts">
-import AppSidebarLayout from '@/layouts/app/AppSidebarLayout.vue';
-import { Head, Link, router } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import AppLayout from '@/layouts/AppLayout.vue';
+import { clinics, clinicDetails } from '@/routes';
+import { type BreadcrumbItem } from '@/types';
+import { Head, router } from '@inertiajs/vue3';
+import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { 
     Heart, 
-    HeartOff,
     MapPin, 
     Phone, 
     Mail, 
-    Star,
-    Clock,
-    Building2,
-    Navigation,
-    Trash2
+    Clock, 
+    Star, 
+    Trash2,
+    ExternalLink,
+    Calendar,
+    MoreVertical
 } from 'lucide-vue-next';
+import { Button } from '@/components/ui/button';
 
-interface FavoritedClinic {
+// Types
+interface Clinic {
     id: number;
     clinic_name: string;
     clinic_description?: string;
     email: string;
     phone: string;
-    street_address: string;
-    city: string;
-    province: string;
-    rating: number;
-    total_reviews: number;
+    street_address?: string;
+    city?: string;
+    province?: string;
+    rating?: number;
+    total_reviews?: number;
     is_open_24_7: boolean;
     operating_hours?: any;
-    services?: string[];
+    services?: any[];
+    status: string;
     favorited_at: string;
-    distance?: number;
-    status: 'approved' | 'pending' | 'rejected';
 }
 
 interface Props {
-    favoritedClinics: FavoritedClinic[];
+    favoritedClinics: Clinic[];
 }
 
 const props = defineProps<Props>();
 
+const breadcrumbs: BreadcrumbItem[] = [
+    {
+        title: 'Services',
+        href: clinics().url,
+    },
+    {
+        title: 'Favorited Clinics',
+        href: '/favorited-clinics',
+    },
+];
+
 const searchQuery = ref('');
-const sortBy = ref<'name' | 'rating' | 'distance' | 'recent'>('recent');
-const removingFavorite = ref<number | null>(null);
+const openMenuId = ref<number | null>(null);
 
+// Computed properties
 const filteredClinics = computed(() => {
-    let filtered = props.favoritedClinics.filter(clinic => 
-        clinic.clinic_name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-        clinic.city.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-        clinic.province.toLowerCase().includes(searchQuery.value.toLowerCase())
-    );
-
-    // Sort the results
-    switch (sortBy.value) {
-        case 'name':
-            filtered.sort((a, b) => a.clinic_name.localeCompare(b.clinic_name));
-            break;
-        case 'rating':
-            filtered.sort((a, b) => b.rating - a.rating);
-            break;
-        case 'distance':
-            filtered.sort((a, b) => (a.distance || 0) - (b.distance || 0));
-            break;
-        case 'recent':
-        default:
-            filtered.sort((a, b) => new Date(b.favorited_at).getTime() - new Date(a.favorited_at).getTime());
-            break;
+    if (!searchQuery.value) {
+        return props.favoritedClinics;
     }
-
-    return filtered;
+    
+    const query = searchQuery.value.toLowerCase();
+    return props.favoritedClinics.filter(clinic => 
+        clinic.clinic_name.toLowerCase().includes(query) ||
+        clinic.city?.toLowerCase().includes(query) ||
+        clinic.province?.toLowerCase().includes(query)
+    );
 });
 
-const removeFavorite = async (clinicId: number) => {
-    removingFavorite.value = clinicId;
+const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+    });
+};
+
+const formatAddress = (clinic: Clinic) => {
+    const parts = [
+        clinic.street_address,
+        clinic.city,
+        clinic.province,
+    ].filter(Boolean);
     
-    try {
-        await router.delete(`/user/favorited-clinics/${clinicId}`, {
+    return parts.join(', ');
+};
+
+// Methods
+const toggleMenu = (clinicId: number) => {
+    openMenuId.value = openMenuId.value === clinicId ? null : clinicId;
+};
+
+const closeMenu = () => {
+    openMenuId.value = null;
+};
+
+const removeFavorite = (clinicId: number) => {
+    closeMenu();
+    if (confirm('Are you sure you want to remove this clinic from your favorites?')) {
+        router.delete(`/favorited-clinics/${clinicId}`, {
             preserveScroll: true,
+            onSuccess: () => {
+                // Success message will be handled by backend
+            },
         });
-    } catch (error) {
-        console.error('Error removing favorite:', error);
-    } finally {
-        removingFavorite.value = null;
     }
 };
 
-const viewClinicDetails = (clinicId: number) => {
-    router.visit(`/clinics/${clinicId}`);
+const viewClinic = (clinicId: number) => {
+    router.visit(clinicDetails(clinicId).url);
 };
 
-const getStatusColor = (status: string) => {
-    switch (status) {
-        case 'approved': return 'text-green-600 bg-green-100 dark:text-green-400 dark:bg-green-900/20';
-        case 'pending': return 'text-yellow-600 bg-yellow-100 dark:text-yellow-400 dark:bg-yellow-900/20';
-        case 'rejected': return 'text-red-600 bg-red-100 dark:text-red-400 dark:bg-red-900/20';
-        default: return 'text-gray-600 bg-gray-100 dark:text-gray-400 dark:bg-gray-900/20';
+const bookAppointment = (clinicId: number) => {
+    router.visit(`/appointments/create?clinic_id=${clinicId}`);
+};
+
+const getRatingDisplay = (rating?: number, totalReviews?: number) => {
+    if (!rating) return 'No reviews yet';
+    return `${rating.toFixed(1)} (${totalReviews || 0} reviews)`;
+};
+
+// Close menu when clicking outside
+const handleClickOutside = (event: MouseEvent) => {
+    const target = event.target as HTMLElement;
+    if (!target.closest('.kebab-menu-container')) {
+        closeMenu();
     }
 };
 
-const formatOperatingHours = (hours: any) => {
-    if (!hours) return 'Hours not available';
-    // This would need to be implemented based on your operating hours structure
-    return 'See details';
-};
+onMounted(() => {
+    document.addEventListener('click', handleClickOutside);
+});
+
+onUnmounted(() => {
+    document.removeEventListener('click', handleClickOutside);
+});
 </script>
 
 <template>
     <Head title="Favorited Clinics" />
 
-    <AppSidebarLayout>
-        <div class="container mx-auto px-4 py-6 max-w-7xl">
+    <AppLayout :breadcrumbs="breadcrumbs">
+        <div class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
             <!-- Header -->
-            <div class="mb-8">
+            <div class="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl p-6 shadow-lg">
                 <div class="flex items-center gap-3 mb-2">
-                    <Heart class="h-8 w-8 text-red-500" />
-                    <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">
-                        Favorited Clinics
-                    </h1>
+                    <Heart class="w-8 h-8" :fill="'currentColor'" />
+                    <h1 class="text-3xl md:text-4xl font-bold">Favorited Clinics</h1>
                 </div>
-                <p class="text-gray-600 dark:text-gray-400">
-                    {{ props.favoritedClinics.length }} clinic{{ props.favoritedClinics.length !== 1 ? 's' : '' }} in your favorites
-                </p>
+                <p class="text-blue-100">Your saved veterinary clinics for quick access</p>
             </div>
 
-            <!-- Search and Filter Controls -->
-            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 mb-6">
-                <div class="flex flex-col sm:flex-row gap-4">
-                    <!-- Search -->
-                    <div class="flex-1">
-                        <label for="search" class="sr-only">Search clinics</label>
+            <!-- Search and Stats -->
+            <div class="bg-gray-800 rounded-xl border border-gray-700 p-6">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div class="flex-1 max-w-md">
                         <div class="relative">
                             <input
-                                id="search"
                                 v-model="searchQuery"
                                 type="text"
-                                placeholder="Search by clinic name, city, or province..."
-                                class="w-full pl-4 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="Search favorited clinics..."
+                                class="w-full px-4 py-2 pr-10 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-900 text-gray-100 placeholder-gray-400"
                             />
+                            <Heart class="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                         </div>
                     </div>
-
-                    <!-- Sort -->
-                    <div class="sm:w-48">
-                        <label for="sort" class="sr-only">Sort by</label>
-                        <select
-                            id="sort"
-                            v-model="sortBy"
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        >
-                            <option value="recent">Recently Added</option>
-                            <option value="name">Clinic Name</option>
-                            <option value="rating">Highest Rated</option>
-                            <option value="distance">Nearest</option>
-                        </select>
+                    <div class="flex items-center gap-2 text-sm text-gray-400">
+                        <Heart class="w-4 h-4 text-red-400 fill-current" />
+                        <span class="font-medium text-white">{{ favoritedClinics.length }}</span>
+                        <span>{{ favoritedClinics.length === 1 ? 'clinic' : 'clinics' }} saved</span>
                     </div>
                 </div>
-            </div>
-
-            <!-- Empty State -->
-            <div v-if="filteredClinics.length === 0 && searchQuery === ''" 
-                 class="text-center py-12 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-                <Heart class="h-16 w-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-                <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                    No Favorite Clinics Yet
-                </h3>
-                <p class="text-gray-600 dark:text-gray-400 mb-6">
-                    Start building your list of favorite clinics by exploring our clinic directory.
-                </p>
-                <Link 
-                    href="/clinics"
-                    class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                    <Building2 class="h-4 w-4" />
-                    Browse Clinics
-                </Link>
-            </div>
-
-            <!-- No Search Results -->
-            <div v-else-if="filteredClinics.length === 0 && searchQuery !== ''" 
-                 class="text-center py-12 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-                <p class="text-gray-600 dark:text-gray-400">
-                    No clinics found matching "{{ searchQuery }}"
-                </p>
             </div>
 
             <!-- Clinics Grid -->
-            <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                <div 
-                    v-for="clinic in filteredClinics" 
+            <div v-if="filteredClinics.length === 0" class="bg-gray-900 rounded-xl border border-gray-800 p-12 text-center">
+                <Heart class="w-16 h-16 mx-auto mb-4 text-gray-600" />
+                <h3 class="text-lg font-medium text-white mb-2">
+                    {{ searchQuery ? 'No clinics found' : 'No favorited clinics yet' }}
+                </h3>
+                <p class="text-gray-400 mb-6">
+                    {{ searchQuery 
+                        ? 'Try adjusting your search query' 
+                        : 'Start adding clinics to your favorites for quick access' 
+                    }}
+                </p>
+                <Button v-if="!searchQuery" @click="router.visit(clinics().url)" class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+                    Browse Clinics
+                </Button>
+            </div>
+
+            <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div
+                    v-for="clinic in filteredClinics"
                     :key="clinic.id"
-                    class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition-all duration-200 group cursor-pointer"
-                    @click="viewClinicDetails(clinic.id)"
+                    @click="viewClinic(clinic.id)"
+                    class="bg-black rounded-2xl p-6 border border-gray-800 hover:border-gray-700 transition-all cursor-pointer group relative overflow-hidden shadow-lg"
                 >
-                    <!-- Clinic Header -->
-                    <div class="p-6 pb-4">
-                        <div class="flex items-start justify-between mb-3">
-                            <div class="flex-1">
-                                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                                    {{ clinic.clinic_name }}
-                                </h3>
-                                <div class="flex items-center gap-2 mt-1">
-                                    <span :class="['px-2 py-1 text-xs font-medium rounded-full', getStatusColor(clinic.status)]">
-                                        {{ clinic.status.charAt(0).toUpperCase() + clinic.status.slice(1) }}
-                                    </span>
-                                </div>
-                            </div>
-                            
-                            <!-- Remove Favorite Button -->
+                    <!-- Kebab Menu -->
+                    <div class="absolute top-3 right-3 kebab-menu-container" style="z-index: 30;">
+                        <button
+                            @click.stop="toggleMenu(clinic.id)"
+                            class="w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-all flex items-center justify-center relative z-30"
+                            title="Options"
+                        >
+                            <MoreVertical class="h-4 w-4 text-gray-300" />
+                        </button>
+                        
+                        <!-- Dropdown Menu -->
+                        <div
+                            v-if="openMenuId === clinic.id"
+                            @click.stop
+                            class="absolute right-0 mt-2 w-56 bg-gray-900 border border-gray-700 rounded-lg shadow-xl overflow-hidden"
+                            style="z-index: 40;"
+                        >
                             <button
-                                @click.stop="removeFavorite(clinic.id)"
-                                :disabled="removingFavorite === clinic.id"
-                                class="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors group/btn"
-                                :class="{ 'opacity-50 cursor-not-allowed': removingFavorite === clinic.id }"
+                                @click="removeFavorite(clinic.id)"
+                                class="w-full px-4 py-3 text-left text-sm text-red-400 hover:bg-gray-800 transition-colors flex items-center gap-3"
                             >
-                                <Heart 
-                                    class="h-5 w-5 fill-current group-hover/btn:scale-110 transition-transform"
-                                    :class="{ 'animate-pulse': removingFavorite === clinic.id }"
-                                />
+                                <Heart class="h-4 w-4" />
+                                <span>Remove from Favorites</span>
                             </button>
                         </div>
-
-                        <!-- Rating -->
-                        <div class="flex items-center gap-2 mb-3">
-                            <div class="flex items-center">
-                                <Star class="h-4 w-4 text-yellow-400 fill-current" />
-                                <span class="ml-1 text-sm font-medium text-gray-900 dark:text-gray-100">
-                                    {{ clinic.rating?.toFixed(1) || 'No rating' }}
-                                </span>
-                            </div>
-                            <span class="text-sm text-gray-500 dark:text-gray-400">
-                                ({{ clinic.total_reviews || 0 }} review{{ clinic.total_reviews !== 1 ? 's' : '' }})
-                            </span>
-                        </div>
-
-                        <!-- Description -->
-                        <p v-if="clinic.clinic_description" 
-                           class="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">
-                            {{ clinic.clinic_description }}
-                        </p>
                     </div>
-
-                    <!-- Clinic Details -->
-                    <div class="px-6 pb-6 space-y-3">
-                        <!-- Location -->
-                        <div class="flex items-start gap-2">
-                            <MapPin class="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                            <span class="text-sm text-gray-600 dark:text-gray-400">
-                                {{ clinic.street_address }}, {{ clinic.city }}, {{ clinic.province }}
-                            </span>
-                        </div>
-
-                        <!-- Contact -->
-                        <div class="flex items-center gap-2">
-                            <Phone class="h-4 w-4 text-gray-400 flex-shrink-0" />
-                            <span class="text-sm text-gray-600 dark:text-gray-400">
-                                {{ clinic.phone }}
-                            </span>
-                        </div>
-
-                        <!-- Operating Hours -->
-                        <div class="flex items-center gap-2">
-                            <Clock class="h-4 w-4 text-gray-400 flex-shrink-0" />
-                            <span class="text-sm text-gray-600 dark:text-gray-400">
-                                {{ clinic.is_open_24_7 ? '24/7' : formatOperatingHours(clinic.operating_hours) }}
-                            </span>
-                        </div>
-
-                        <!-- Services -->
-                        <div v-if="clinic.services && clinic.services.length > 0" class="mt-4">
-                            <div class="flex flex-wrap gap-1">
-                                <span 
-                                    v-for="service in clinic.services.slice(0, 3)" 
-                                    :key="service"
-                                    class="px-2 py-1 text-xs bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400 rounded-full"
-                                >
-                                    {{ service }}
-                                </span>
-                                <span 
-                                    v-if="clinic.services.length > 3"
-                                    class="px-2 py-1 text-xs bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 rounded-full"
-                                >
-                                    +{{ clinic.services.length - 3 }} more
-                                </span>
+                    
+                    <!-- Clinic Image -->
+                    <div class="w-full h-44 rounded-xl mb-4 overflow-hidden bg-gray-900">
+                        <img v-if="clinic.clinic_photo" 
+                             :src="clinic.clinic_photo" 
+                             :alt="clinic.clinic_name"
+                             class="w-full h-full object-cover" />
+                        <div v-else class="w-full h-full bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center">
+                            <div class="text-center p-4">
+                                <Heart class="w-12 h-12 mx-auto mb-2 text-gray-500" />
+                                <span class="text-gray-400 text-sm font-medium">{{ clinic.clinic_name }}</span>
                             </div>
                         </div>
-
-                        <!-- Favorited Date -->
-                        <div class="pt-3 border-t border-gray-200 dark:border-gray-700">
-                            <p class="text-xs text-gray-500 dark:text-gray-400">
-                                Added {{ new Date(clinic.favorited_at).toLocaleDateString() }}
-                            </p>
-                        </div>
+                    </div>
+                    
+                    <!-- Clinic Info -->
+                    <h3 class="font-semibold text-white text-base mb-2 line-clamp-1">{{ clinic.clinic_name }}</h3>
+                    
+                    <!-- Rating -->
+                    <div v-if="clinic.rating" class="flex items-center mb-3">
+                        <Star class="h-4 w-4 text-yellow-400 fill-yellow-400 mr-1.5" />
+                        <span class="text-sm text-white font-semibold">{{ Number(clinic.rating || 0).toFixed(1) }}</span>
+                        <span class="text-xs text-gray-500 ml-2">({{ clinic.total_reviews || 0 }} review{{ clinic.total_reviews !== 1 ? 's' : '' }})</span>
+                    </div>
+                    <div v-else class="flex items-center mb-3">
+                        <Star class="h-4 w-4 text-gray-600 mr-1.5" />
+                        <span class="text-sm text-gray-500">No reviews yet</span>
+                    </div>
+                    
+                    <p v-if="clinic.clinic_description" class="text-sm text-gray-400 mb-4 line-clamp-2">
+                        {{ clinic.clinic_description }}
+                    </p>
+                    <p v-else class="text-sm text-gray-400 mb-4 line-clamp-2">
+                        Professional veterinary care for your beloved pets.
+                    </p>
+                    
+                    <!-- Location -->
+                    <div v-if="formatAddress(clinic)" class="flex items-start gap-2 text-sm text-gray-500">
+                        <MapPin class="h-4 w-4 mt-0.5 flex-shrink-0 text-red-500" />
+                        <span class="line-clamp-1">{{ formatAddress(clinic) }}</span>
                     </div>
                 </div>
             </div>
-
-            <!-- Quick Actions -->
-            <div v-if="filteredClinics.length > 0" class="mt-8 text-center">
-                <Link 
-                    href="/clinics"
-                    class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                    <Building2 class="h-5 w-5" />
-                    Discover More Clinics
-                </Link>
-            </div>
         </div>
-    </AppSidebarLayout>
+    </AppLayout>
 </template>
-
-<style scoped>
-.line-clamp-2 {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-</style>

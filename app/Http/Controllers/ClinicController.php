@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Clinic;
 use App\Models\ClinicRegistration;
 use App\Services\LocationService;
 use App\Services\ClinicOperatingStatusService;
@@ -32,14 +31,14 @@ class ClinicController extends Controller
 
         // Get approved clinics from ClinicRegistration for now
         // TODO: Migrate to use organized Clinic model when data is populated
-        $clinics = ClinicRegistration::with(['user', 'clinicServices' => function($query) {
+        $clinics = ClinicRegistration::with(['user.subscriptions', 'clinicServices' => function($query) {
                 $query->where('is_active', true);
             }])
             ->where('status', 'approved')
             ->get()
             ->map(function ($clinic) use ($userLat, $userLng) {
                 // Get operating status
-                $operatingStatus = ClinicOperatingStatusService::getOperatingStatus($clinic);
+                $operatingStatus = ClinicOperatingStatusService::getOperatingStatus($clinic->operating_hours);
                 
                 // Calculate distance if user location is available
                 $distance = null;
@@ -62,6 +61,19 @@ class ClinicController extends Controller
                     ? $clinic->clinicServices->pluck('name')->toArray()
                     : $this->formatServices($clinic->services ?? []);
 
+                // Check if clinic has an active paid subscription (not basic)
+                $hasActiveSubscription = false;
+                $subscriptionType = null;
+                if ($clinic->user && $clinic->user->subscribed('default')) {
+                    $subscription = $clinic->user->subscription('default');
+                    if ($subscription && $subscription->stripe_status === 'active') {
+                        // Get the subscription type from the type column
+                        $subscriptionType = $subscription->type;
+                        // Featured only if NOT basic-clinic
+                        $hasActiveSubscription = $subscriptionType !== 'basic-clinic';
+                    }
+                }
+
                 return [
                     'id' => $clinic->id,
                     'name' => $clinic->clinic_name,
@@ -78,9 +90,15 @@ class ClinicController extends Controller
                     'operating_hours' => $clinic->operating_hours,
                     'latitude' => $clinic->latitude,
                     'longitude' => $clinic->longitude,
-                    'is_featured' => (bool) $clinic->is_featured,
+                    'is_featured' => $hasActiveSubscription, // Only featured if has active paid subscription
+                    'subscription_type' => $subscriptionType, // Include subscription info for debugging
                     'is_open_24_7' => (bool) $clinic->is_open_24_7,
+                    'is_emergency_clinic' => (bool) $clinic->is_emergency_clinic,
                     'created_at' => $clinic->created_at,
+                    
+                    // Media
+                    'clinic_photo' => $clinic->clinic_photo ? asset('storage/' . $clinic->clinic_photo) : null,
+                    'gallery' => $clinic->gallery ? array_map(fn($photo) => asset('storage/' . $photo), $clinic->gallery) : [],
                     
                     // Enhanced status information
                     'operating_status' => $operatingStatus,
@@ -110,16 +128,49 @@ class ClinicController extends Controller
 
         // Get user's favorite clinic IDs if user is authenticated
         $userFavorites = [];
+        $favoritedClinics = collect();
         if (auth()->check()) {
             $userFavorites = auth()->user()
                 ->favoriteClinics()
                 ->pluck('clinic_registration_id')
                 ->toArray();
+            
+            // Get full data for favorited clinics
+            $favoritedClinics = $clinics->whereIn('id', $userFavorites);
+        }
+
+        // Get nearby clinics (within 10km if user location available)
+        $nearbyClinics = collect();
+        if ($userLat && $userLng) {
+            $nearbyClinics = $clinics->filter(function ($clinic) {
+                return isset($clinic['distance_km']) && $clinic['distance_km'] < 10;
+            })->take(6);
+        }
+
+        // Get featured clinics - all subscribed clinics, prioritizing within 50km radius
+        $featuredClinics = $clinics->where('is_featured', true);
+        if ($userLat && $userLng) {
+            // Separate into nearby (within 50km) and far
+            $nearbyFeatured = $featuredClinics->filter(function ($clinic) {
+                return isset($clinic['distance_km']) && $clinic['distance_km'] <= 50;
+            })->sortBy('distance_km');
+            
+            $farFeatured = $featuredClinics->filter(function ($clinic) {
+                return !isset($clinic['distance_km']) || $clinic['distance_km'] > 50;
+            })->sortByDesc('rating');
+            
+            // Combine: nearby first, then far clinics
+            $featuredClinics = $nearbyFeatured->concat($farFeatured);
+        } else {
+            // No user location - sort by rating
+            $featuredClinics = $featuredClinics->sortByDesc('rating');
         }
 
         return Inertia::render('Clinics', [
             'clinics' => $clinics->values(),
-            'featured_clinics' => $clinics->where('is_featured', true)->values(),
+            'featured_clinics' => $featuredClinics->values(),
+            'favorited_clinics' => $favoritedClinics->values(),
+            'nearby_clinics' => $nearbyClinics->values(),
             'user_favorites' => $userFavorites,
             'user_location' => [
                 'lat' => $userLat,
@@ -145,49 +196,62 @@ class ClinicController extends Controller
         // Get user location from request parameters
         $userLat = $request->get('user_lat');
         $userLng = $request->get('user_lng');
+        $user = auth()->user();
         
-        // First, try to find in the organized Clinic model
-        $clinic = Clinic::with([
-                'addresses' => function ($query) {
-                    $query->active();
-                },
-                'primaryAddress',
-                'operatingHours',
-                'staff' => function ($query) {
-                    $query->active()->with('user');
-                },
-                'clinicServices' => function ($query) {
-                    $query->active();
-                },
-                'equipment',
-                'reviews' => function ($query) {
-                    $query->with('user')->latest()->limit(10);
-                }
-            ])
+        // Query ClinicRegistration (primary data source for this system)
+        $clinicRegistration = ClinicRegistration::with([
+            'user',
+            'reviews' => function ($query) {
+                $query->with('user')->latest()->limit(10);
+            }
+        ])
             ->where('id', $id)
+            ->where('status', 'approved')
             ->first();
 
-        // If not found in organized structure, try ClinicRegistration for backward compatibility
-        if (!$clinic) {
-            $clinicRegistration = ClinicRegistration::with('user')
-                ->where('id', $id)
-                ->where('status', 'approved')
+        if (!$clinicRegistration) {
+            abort(404, 'Clinic not found');
+        }
+
+        // Map ClinicRegistration data to display format
+        $clinicData = $this->mapClinicRegistrationData($clinicRegistration, $userLat, $userLng);
+        
+        // Check if user can review this clinic
+        $canReview = false;
+        $hasReviewed = false;
+        $userReview = null;
+        
+        if ($user) {
+            // Check if user has completed appointments at this clinic
+            $canReview = \App\Models\Appointment::where('owner_id', $user->id)
+                ->where('clinic_id', $id)
+                ->where('status', 'completed')
+                ->exists();
+            
+            // Check if user has already reviewed
+            $userReview = \App\Models\ClinicReview::where('user_id', $user->id)
+                ->where(function($query) use ($id) {
+                    $query->where('clinic_registration_id', $id)
+                          ->orWhere('clinic_id', $id);
+                })
+                ->with('appointment')
                 ->first();
-
-            if (!$clinicRegistration) {
-                abort(404, 'Clinic not found');
-            }
-
-            // Map ClinicRegistration data to match expected format
-            $clinicData = $this->mapClinicRegistrationData($clinicRegistration, $userLat, $userLng);
-        } else {
-            // Use organized clinic data
-            $clinicData = $this->mapOrganizedClinicData($clinic, $userLat, $userLng);
+            
+            $hasReviewed = $userReview !== null;
         }
 
         return Inertia::render('clinics/clinicViewDetails', [
             'clinic' => $clinicData,
             'clinicId' => $id, // Keep for backward compatibility with Vue component
+            'canReview' => $canReview,
+            'hasReviewed' => $hasReviewed,
+            'userReview' => $userReview ? [
+                'id' => $userReview->id,
+                'rating' => $userReview->rating,
+                'comment' => $userReview->comment,
+                'created_at' => $userReview->created_at->format('M j, Y'),
+                'appointment_id' => $userReview->appointment_id,
+            ] : null,
         ]);
     }
 
@@ -208,6 +272,75 @@ class ClinicController extends Controller
                 (float) $clinicRegistration->longitude
             );
             $formattedDistance = LocationService::getFormattedDistance($distance);
+        }
+        
+        // Get services - prefer database table, fallback to array field
+        $services = [];
+        if ($clinicRegistration->clinicServices()->where('is_active', true)->exists()) {
+            $services = $clinicRegistration->clinicServices()
+                ->where('is_active', true)
+                ->get()
+                ->map(function ($service) {
+                    return [
+                        'id' => $service->id,
+                        'name' => $service->name,
+                        'description' => $service->description,
+                        'category' => $service->category,
+                        'category_display' => $service->category_display,
+                        'price' => $service->formatted_price,
+                        'duration' => $service->formatted_duration,
+                        'requires_appointment' => $service->requires_appointment,
+                        'emergency_service' => $service->is_emergency_service,
+                    ];
+                })
+                ->toArray();
+        } elseif (!empty($clinicRegistration->services)) {
+            // Fallback to array field if table is empty
+            $services = $this->formatServices($clinicRegistration->services);
+        }
+        
+        // Get staff - prefer database table, fallback to array field
+        $staff = [];
+        if ($clinicRegistration->staff()->exists()) {
+            $staff = $clinicRegistration->staff()
+                ->get()
+                ->map(function ($member) {
+                    return [
+                        'id' => $member->id,
+                        'name' => $member->full_title,
+                        'full_title' => $member->full_title,
+                        'role' => $member->role,
+                        'role_display' => $member->role_display,
+                        'specialties' => $member->specializations ?? [],
+                        'specializations' => $member->specializations ?? [],
+                        'specializations_string' => $member->specializations_string,
+                        'experience' => $member->years_of_service ? $member->years_of_service . ' years at clinic' : 'New team member',
+                        'years_of_service' => $member->years_of_service,
+                        'license_number' => $member->license_number,
+                        'phone' => $member->phone,
+                        'email' => $member->email,
+                    ];
+                })
+                ->toArray();
+        } elseif (!empty($clinicRegistration->veterinarians)) {
+            // Fallback to array field if table is empty
+            $staff = $this->formatStaff($clinicRegistration->veterinarians);
+        }
+        
+        // Get operating hours - prefer database table, fallback to array field
+        $operatingHours = [];
+        if ($clinicRegistration->operatingHours()->exists()) {
+            $operatingHours = $clinicRegistration->operatingHours()
+                ->get()
+                ->reduce(function ($carry, $hour) {
+                    $carry[ucfirst($hour->day_of_week)] = $hour->formatted_hours;
+                    return $carry;
+                }, []);
+        }
+        
+        // Fallback to old array field if table is empty
+        if (empty($operatingHours)) {
+            $operatingHours = $this->formatOperatingHours($clinicRegistration->operating_hours ?? []);
         }
         
         return [
@@ -241,21 +374,36 @@ class ClinicController extends Controller
             'longitude' => $clinicRegistration->longitude,
             
             // Operating Hours
-            'operating_hours' => $this->formatOperatingHours($clinicRegistration->operating_hours ?? []),
+            'operating_hours' => $operatingHours,
             'current_status' => $this->getCurrentStatus($clinicRegistration->operating_hours ?? []),
             'is_24_hours' => (bool) $clinicRegistration->is_open_24_7,
             
             // Services
-            'services' => $this->formatServices($clinicRegistration->services ?? []),
+            'services' => $services,
             
             // Staff
-            'staff' => $this->formatStaff($clinicRegistration->veterinarians ?? []),
+            'staff' => $staff,
             
-            // Ratings and Reviews (placeholder data)
+            // Ratings and Reviews
             'rating' => (float) ($clinicRegistration->rating ?? 4.5),
             'total_reviews' => (int) ($clinicRegistration->total_reviews ?? 0),
             'stars' => $this->generateStars($clinicRegistration->rating ?? 4.5),
-            'reviews' => [], // No reviews system in ClinicRegistration yet
+            'reviews' => $clinicRegistration->reviews ? $clinicRegistration->reviews->map(function ($review) {
+                return [
+                    'id' => $review->id,
+                    'author' => $review->user->name ?? 'Anonymous',
+                    'author_initials' => $review->user_initials,
+                    'rating' => $review->rating,
+                    'stars' => $review->stars,
+                    'comment' => $review->comment,
+                    'date' => $review->formatted_date,
+                    'response' => $review->response,
+                    'response_date' => $review->response_date?->format('M j, Y'),
+                    'helpful_votes' => $review->helpful_votes_count,
+                    'is_verified' => $review->is_verified,
+                    'is_featured' => $review->is_featured,
+                ];
+            })->toArray() : [],
             
             // Status
             'status' => $clinicRegistration->display_status ?? 'Open Now',
@@ -269,6 +417,10 @@ class ClinicController extends Controller
             'distance_km' => $distance,
             'formatted_distance' => $formattedDistance,
             'distance' => $formattedDistance, // For display compatibility
+            
+            // Media
+            'clinic_photo' => $clinicRegistration->clinic_photo ? asset('storage/' . $clinicRegistration->clinic_photo) : null,
+            'gallery' => $clinicRegistration->gallery ? array_map(fn($photo) => asset('storage/' . $photo), $clinicRegistration->gallery) : [],
             
             // Metadata
             'created_at' => $clinicRegistration->created_at,
@@ -489,7 +641,8 @@ class ClinicController extends Controller
         
         $todayHours = $hours[$dayOfWeek] ?? null;
         
-        if (!$todayHours || $todayHours['open'] === 'closed') {
+        // Check if clinic is closed today
+        if (!$todayHours || isset($todayHours['closed']) || empty($todayHours['open']) || empty($todayHours['close'])) {
             return [
                 'is_open' => false,
                 'status' => 'Closed',
@@ -497,8 +650,8 @@ class ClinicController extends Controller
             ];
         }
         
-        $openTime = $todayHours['open'] ?? '08:00';
-        $closeTime = $todayHours['close'] ?? '17:00';
+        $openTime = $todayHours['open'];
+        $closeTime = $todayHours['close'];
         
         $isOpen = $currentTime >= $openTime && $currentTime <= $closeTime;
         

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ClinicService;
 use App\Models\ClinicRegistration;
 use App\Models\Appointment;
+use App\Services\SubscriptionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +15,13 @@ use Carbon\Carbon;
 
 class ClinicServicesController extends Controller
 {
+    protected SubscriptionService $subscriptionService;
+
+    public function __construct(SubscriptionService $subscriptionService)
+    {
+        $this->subscriptionService = $subscriptionService;
+    }
+
     /**
      * Display the clinic services management page.
      */
@@ -31,13 +39,7 @@ class ClinicServicesController extends Controller
             abort(404, 'Clinic registration not found.');
         }
 
-        // Get the actual clinic record
-        $clinic = $clinicRegistration->clinic;
-        if (!$clinic) {
-            abort(404, 'Clinic not found. Registration may not be approved yet.');
-        }
-
-        $clinicId = $clinic->id;
+        $clinicId = $clinicRegistration->id;
 
         // Initialize services from registration if first time
         $this->initializeServicesFromRegistration($clinicRegistration);
@@ -87,8 +89,6 @@ class ClinicServicesController extends Controller
                 'description' => $service->description,
                 'category' => $service->category,
                 'category_display' => $service->category_display,
-                'base_price' => $service->base_price,
-                'formatted_price' => $service->formatted_price,
                 'duration_minutes' => $service->duration_minutes,
                 'formatted_duration' => $service->formatted_duration,
                 'is_active' => $service->is_active,
@@ -105,6 +105,13 @@ class ClinicServicesController extends Controller
         
         // Get available categories
         $categories = $this->getServiceCategories();
+
+        // Get usage limits for services
+        $usageLimits = $this->subscriptionService->getUsageStats($user)['services'] ?? [
+            'current' => $transformedServices->count(),
+            'max' => 0,
+            'can_add' => false,
+        ];
 
         return Inertia::render('2clinicPages/services/ServicesList', [
             'services' => [
@@ -124,9 +131,11 @@ class ClinicServicesController extends Controller
                 'search' => $search,
             ],
             'clinic' => [
-                'id' => $clinic->id,
-                'name' => $clinic->name,
+                'id' => $clinicRegistration->id,
+                'name' => $clinicRegistration->clinic_name,
             ],
+            'usage_limits' => $usageLimits,
+            'show_upgrade_prompt' => $request->session()->get('show_upgrade_prompt', false),
         ]);
     }
 
@@ -141,19 +150,22 @@ class ClinicServicesController extends Controller
             abort(403, 'Access denied. Clinic account required.');
         }
 
-        $clinicRegistration = $user->clinicRegistration;
-
-        // Get the actual clinic record
-        $clinic = $clinicRegistration->clinic;
-        if (!$clinic) {
-            abort(404, 'Clinic not found. Registration may not be approved yet.');
+        // Check service count limit
+        if (!$this->subscriptionService->canAddService($user)) {
+            $limits = $this->subscriptionService->getUsageLimits($user);
+            $maxServices = $limits['max_services'] ?? 0;
+            
+            return back()->withErrors([
+                'limit' => "You've reached your service limit ({$maxServices} services). Upgrade your plan to add more services."
+            ])->with('show_upgrade_prompt', true);
         }
+
+        $clinicRegistration = $user->clinicRegistration;
 
         $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
             'category' => 'required|string|in:consultation,vaccination,surgery,dental,grooming,boarding,emergency,diagnostic,other',
-            'base_price' => 'nullable|numeric|min:0|max:999999.99',
             'duration_minutes' => 'nullable|integer|min:1|max:1440', // 1 minute to 24 hours
             'is_active' => 'boolean',
             'requires_appointment' => 'boolean',
@@ -161,11 +173,10 @@ class ClinicServicesController extends Controller
         ]);
 
         $service = ClinicService::create([
-            'clinic_id' => $clinic->id,
+            'clinic_id' => $clinicRegistration->id,
             'name' => $request->name,
             'description' => $request->description,
             'category' => $request->category,
-            'base_price' => $request->base_price,
             'duration_minutes' => $request->duration_minutes ?? 30,
             'is_active' => $request->is_active ?? true,
             'requires_appointment' => $request->requires_appointment ?? true,
@@ -188,21 +199,14 @@ class ClinicServicesController extends Controller
 
         $clinicRegistration = $user->clinicRegistration;
         
-        // Get the actual clinic record
-        $clinic = $clinicRegistration->clinic;
-        if (!$clinic) {
-            abort(404, 'Clinic not found. Registration may not be approved yet.');
-        }
-        
         $service = ClinicService::where('id', $id)
-            ->where('clinic_id', $clinic->id)
+            ->where('clinic_id', $clinicRegistration->id)
             ->firstOrFail();
 
         $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
             'category' => 'required|string|in:consultation,vaccination,surgery,dental,grooming,boarding,emergency,diagnostic,other',
-            'base_price' => 'nullable|numeric|min:0|max:999999.99',
             'duration_minutes' => 'nullable|integer|min:1|max:1440',
             'is_active' => 'boolean',
             'requires_appointment' => 'boolean',
@@ -213,7 +217,6 @@ class ClinicServicesController extends Controller
             'name' => $request->name,
             'description' => $request->description,
             'category' => $request->category,
-            'base_price' => $request->base_price,
             'duration_minutes' => $request->duration_minutes,
             'is_active' => $request->is_active,
             'requires_appointment' => $request->requires_appointment,
@@ -236,14 +239,8 @@ class ClinicServicesController extends Controller
 
         $clinicRegistration = $user->clinicRegistration;
         
-        // Get the actual clinic record
-        $clinic = $clinicRegistration->clinic;
-        if (!$clinic) {
-            abort(404, 'Clinic not found. Registration may not be approved yet.');
-        }
-        
         $service = ClinicService::where('id', $id)
-            ->where('clinic_id', $clinic->id)
+            ->where('clinic_id', $clinicRegistration->id)
             ->firstOrFail();
 
         // Check if service is being used in appointments
@@ -273,14 +270,8 @@ class ClinicServicesController extends Controller
 
         $clinicRegistration = $user->clinicRegistration;
         
-        // Get the actual clinic record
-        $clinic = $clinicRegistration->clinic;
-        if (!$clinic) {
-            abort(404, 'Clinic not found. Registration may not be approved yet.');
-        }
-        
         $service = ClinicService::where('id', $id)
-            ->where('clinic_id', $clinic->id)
+            ->where('clinic_id', $clinicRegistration->id)
             ->firstOrFail();
 
         $service->update([
@@ -305,14 +296,8 @@ class ClinicServicesController extends Controller
 
         $clinicRegistration = $user->clinicRegistration;
         
-        // Get the actual clinic record
-        $clinic = $clinicRegistration->clinic;
-        if (!$clinic) {
-            abort(404, 'Clinic not found. Registration may not be approved yet.');
-        }
-        
         $originalService = ClinicService::where('id', $id)
-            ->where('clinic_id', $clinic->id)
+            ->where('clinic_id', $clinicRegistration->id)
             ->firstOrFail();
 
         $duplicatedService = $originalService->replicate();
@@ -408,13 +393,10 @@ class ClinicServicesController extends Controller
      */
     private function initializeServicesFromRegistration(ClinicRegistration $clinicRegistration)
     {
-        $clinic = $clinicRegistration->clinic;
-        if (!$clinic) {
-            return;
-        }
+        $clinicId = $clinicRegistration->id;
 
         // Check if services already exist
-        if (ClinicService::where('clinic_id', $clinic->id)->exists()) {
+        if (ClinicService::where('clinic_id', $clinicId)->exists()) {
             return;
         }
 
@@ -423,35 +405,28 @@ class ClinicServicesController extends Controller
             foreach ($clinicRegistration->services as $serviceData) {
                 if (empty($serviceData['name'])) continue;
 
-                // Map service category
-                $category = $this->mapServiceCategory($serviceData['name']);
+                // Use the category from the service data if available, otherwise map from name
+                $category = $serviceData['category'] ?? $this->mapServiceCategory($serviceData['name']);
                 
-                // Extract price if available
-                $price = null;
-                if (!empty($serviceData['price'])) {
-                    $price = is_numeric($serviceData['price']) ? $serviceData['price'] : null;
-                }
-
-                // Estimate duration based on service name
-                $duration = $this->estimateServiceDuration($serviceData['name'], $category);
+                // Use duration from data or estimate
+                $duration = $serviceData['duration_minutes'] ?? $this->estimateServiceDuration($serviceData['name'], $category);
 
                 ClinicService::create([
-                    'clinic_id' => $clinic->id,
+                    'clinic_id' => $clinicId,
                     'name' => $serviceData['name'],
                     'description' => $serviceData['description'] ?? '',
                     'category' => $category,
-                    'base_price' => $price,
                     'duration_minutes' => $duration,
                     'is_active' => true,
-                    'requires_appointment' => $this->requiresAppointment($category),
-                    'is_emergency_service' => $this->isEmergencyService($serviceData['name']),
+                    'requires_appointment' => $serviceData['requires_appointment'] ?? $this->requiresAppointment($category),
+                    'is_emergency_service' => $serviceData['is_emergency_service'] ?? $this->isEmergencyService($serviceData['name']),
                 ]);
             }
         }
 
         // Add default basic services if no services were in registration
         if (empty($clinicRegistration->services)) {
-            $this->createDefaultServices($clinic->id);
+            $this->createDefaultServices($clinicId);
         }
     }
 
@@ -545,21 +520,18 @@ class ClinicServicesController extends Controller
                 'name' => 'General Consultation',
                 'description' => 'Basic veterinary consultation and examination',
                 'category' => 'consultation',
-                'base_price' => 500,
                 'duration_minutes' => 30,
             ],
             [
                 'name' => 'Vaccination',
                 'description' => 'Pet vaccination services',
                 'category' => 'vaccination',
-                'base_price' => 800,
                 'duration_minutes' => 15,
             ],
             [
                 'name' => 'Basic Grooming',
                 'description' => 'Basic pet grooming and hygiene',
                 'category' => 'grooming',
-                'base_price' => 300,
                 'duration_minutes' => 45,
             ],
         ];

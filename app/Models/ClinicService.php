@@ -15,7 +15,6 @@ class ClinicService extends Model
         'name',
         'description',
         'category',
-        'base_price',
         'duration_minutes',
         'is_active',
         'requires_appointment',
@@ -23,7 +22,6 @@ class ClinicService extends Model
     ];
 
     protected $casts = [
-        'base_price' => 'decimal:2',
         'duration_minutes' => 'integer',
         'is_active' => 'boolean',
         'requires_appointment' => 'boolean',
@@ -31,11 +29,21 @@ class ClinicService extends Model
     ];
 
     /**
-     * Get the clinic that offers this service.
+     * Get the clinic registration that offers this service.
+     * Note: clinic_id references clinic_registrations.id (not clinics.id)
      */
     public function clinic(): BelongsTo
     {
         return $this->belongsTo(ClinicRegistration::class, 'clinic_id');
+    }
+
+    /**
+     * Alias for clinic() for better semantics.
+     * Returns the clinic registration.
+     */
+    public function clinicRegistration(): BelongsTo
+    {
+        return $this->clinic();
     }
 
     /**
@@ -44,18 +52,6 @@ class ClinicService extends Model
     public function appointments()
     {
         return $this->hasMany(Appointment::class, 'service_id');
-    }
-
-    /**
-     * Get formatted price.
-     */
-    public function getFormattedPriceAttribute(): string
-    {
-        if (!$this->base_price) {
-            return 'Price on request';
-        }
-
-        return '₱' . number_format($this->base_price, 2);
     }
 
     /**

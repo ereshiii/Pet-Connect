@@ -5,4 +5,5 @@ return [
     App\Providers\FeatureServiceProvider::class,
     App\Providers\FirebaseServiceProvider::class,
     App\Providers\FortifyServiceProvider::class,
+    App\Providers\QueryMonitoringServiceProvider::class,
 ];

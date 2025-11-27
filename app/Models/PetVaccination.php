@@ -35,17 +35,27 @@ class PetVaccination extends Model
     }
 
     /**
-     * Get the veterinarian associated with this vaccination.
+     * Get the veterinarian (clinic staff) associated with this vaccination.
+     * Note: veterinarian_id references users.id (legacy), should be migrated to clinic_staff.id
      */
     public function veterinarian(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'veterinarian_id');
+        return $this->belongsTo(ClinicStaff::class, 'veterinarian_id');
     }
 
     /**
-     * Get the clinic associated with this vaccination.
+     * Get the clinic registration associated with this vaccination.
+     * Note: clinic_id references clinic_registrations.id (not clinics.id)
      */
     public function clinic(): BelongsTo
+    {
+        return $this->belongsTo(ClinicRegistration::class, 'clinic_id');
+    }
+
+    /**
+     * Get the clinic registration associated with this vaccination (alias).
+     */
+    public function clinicRegistration(): BelongsTo
     {
         return $this->belongsTo(ClinicRegistration::class, 'clinic_id');
     }

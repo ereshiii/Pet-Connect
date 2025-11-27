@@ -223,6 +223,19 @@
         touch-action: manipulation;
     }
 
+    /* Page-level padding utility for consistent page gutters */
+    .page-default-padding {
+        padding: 1.5rem;
+        /* 24px default */
+    }
+
+    @media (min-width: 768px) {
+        .page-default-padding {
+            padding: 2rem;
+            /* 32px on medium+ screens */
+        }
+    }
+
     /* Prevent zoom on input focus on iOS */
     @media screen and (max-width: 768px) {
 

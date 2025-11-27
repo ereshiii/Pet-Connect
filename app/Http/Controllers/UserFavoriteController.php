@@ -26,6 +26,7 @@ class UserFavoriteController extends Controller
                     'id' => $clinic->id,
                     'clinic_name' => $clinic->clinic_name,
                     'clinic_description' => $clinic->clinic_description,
+                    'clinic_photo' => $clinic->clinic_photo ? asset('storage/' . $clinic->clinic_photo) : null,
                     'email' => $clinic->email,
                     'phone' => $clinic->phone,
                     'street_address' => $clinic->street_address,

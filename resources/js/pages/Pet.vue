@@ -255,7 +255,8 @@ const clearFilters = () => {
                     <!-- Pet Cards Grid -->
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         <div v-for="petItem in filteredPets" :key="petItem.id" 
-                             class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600 hover:shadow-md transition-shadow">
+                             @click="viewPetDetails(petItem.id)"
+                             class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600 hover:shadow-md transition-all cursor-pointer hover:scale-[1.02]">
                             
                             <!-- Pet Image -->
                             <div class="w-full h-32 rounded-lg mb-4 flex items-center justify-center bg-cover bg-center"
@@ -281,56 +282,16 @@ const clearFilters = () => {
                                 </p>
                             </div>
                             
-                            <!-- Health Status Badges -->
-                            <div class="mb-3 space-y-1">
-                                <div class="flex gap-1 flex-wrap">
-                                    <span :class="['inline-flex px-2 py-1 text-xs font-medium rounded-full', getVaccinationStatus(petItem).class]">
-                                        {{ getVaccinationStatus(petItem).label }}
-                                    </span>
-                                    <span :class="['inline-flex px-2 py-1 text-xs font-medium rounded-full', getHealthStatusBadge(petItem).class]">
-                                        {{ getHealthStatusBadge(petItem).label }}
-                                    </span>
-                                </div>
-                                
-                                <!-- Health Alerts -->
-                                <div v-if="petItem.health_status.alerts.length > 0" class="text-xs text-amber-600 dark:text-amber-400">
-                                    <div v-for="alert in petItem.health_status.alerts" :key="alert" class="flex items-center gap-1">
-                                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                                        </svg>
-                                        {{ alert }}
-                                    </div>
-                                </div>
-                            </div>
-                            
                             <!-- Additional Info -->
                             <div class="text-xs text-gray-500 dark:text-gray-400 mb-3 space-y-1">
                                 <div v-if="petItem.microchip_number" class="flex justify-between">
                                     <span>Microchip:</span>
                                     <span class="font-mono">{{ petItem.microchip_number }}</span>
                                 </div>
-                                <div class="flex justify-between">
-                                    <span>Medical Records:</span>
-                                    <span>{{ petItem.medical_records_count }}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span>Vaccinations:</span>
-                                    <span>{{ petItem.vaccinations_count }}</span>
-                                </div>
                                 <div v-if="petItem.active_health_conditions_count > 0" class="flex justify-between">
                                     <span>Active Conditions:</span>
                                     <span>{{ petItem.active_health_conditions_count }}</span>
                                 </div>
-                            </div>
-                            
-                            <!-- Action Buttons -->
-                            <div class="flex gap-2">
-                                <button @click="viewPetDetails(petItem.id)" class="flex-1 bg-blue-600 text-white py-2 px-3 rounded-md hover:bg-blue-700 text-xs font-medium">
-                                    View Profile
-                                </button>
-                                <button @click="bookVisitForPet(petItem)" class="flex-1 border border-gray-300 text-gray-700 py-2 px-3 rounded-md hover:bg-gray-50 text-xs font-medium dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600">
-                                    Book Visit
-                                </button>
                             </div>
                         </div>
                         

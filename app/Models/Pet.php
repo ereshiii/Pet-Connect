@@ -16,24 +16,24 @@ class Pet extends Model
         'owner_id',
         'name',
         'species',
-        'breed_id',
-        'breed',  // Added for string breed
+        'breed_id',  // Foreign key to pet_breeds table (preferred)
+        'breed',     // String breed name (fallback when breed_id not set)
         'type_id',
         'gender',
-        'birth_date',
-        'age',    // Added for direct age storage
+        'birth_date', // Preferred: calculate age from this
+        'age',        // Deprecated: use calculated_age attribute instead
         'weight',
         'size',
         'color',
         'markings',
-        'microchip_number',
-        'microchip_id',  // Added for alternative microchip field
+        'microchip_number', // Primary microchip field
+        'microchip_id',     // Deprecated: use microchip_number instead
         'is_neutered',
         'special_needs',
         'notes',
-        'allergies',  // Added for allergies storage
-        'current_medications',  // Added for medications storage
-        'medical_conditions',   // Added for conditions storage
+        'allergies',          // Deprecated: use PetHealthCondition model instead
+        'current_medications', // Deprecated: use PetHealthCondition model instead
+        'medical_conditions',  // Deprecated: use PetHealthCondition model instead
         'profile_image',
         'images',
         'is_active',

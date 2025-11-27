@@ -3,12 +3,13 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use App\Models\Appointment;
-use App\Models\Pet;
 use App\Models\User;
+use App\Models\Pet;
+use App\Models\Appointment;
 use App\Models\ClinicRegistration;
 use App\Models\ClinicService;
-use Carbon\Carbon;
+use App\Models\ClinicStaff;
+use Illuminate\Support\Str;
 
 class AppointmentSeeder extends Seeder
 {
@@ -17,79 +18,99 @@ class AppointmentSeeder extends Seeder
      */
     public function run(): void
     {
-        // Get a clinic
-        $clinicUser = User::where('account_type', 'clinic')->first();
-        if (!$clinicUser) {
-            $this->command->info('No clinic user found. Please run ClinicUserSeeder first.');
+        $this->command->info('📅 Seeding appointments...');
+
+        // Get necessary data
+        $users = User::where('account_type', 'user')->get();
+        $pets = Pet::with('owner')->get();
+        $clinics = ClinicRegistration::where('status', 'approved')->get();
+
+        if ($users->isEmpty() || $pets->isEmpty() || $clinics->isEmpty()) {
+            $this->command->warn('⚠️  Missing required data. Ensure UserSeeder, PetSeeder, and ClinicSeeder have run.');
             return;
         }
 
-        $clinicRegistration = ClinicRegistration::where('user_id', $clinicUser->id)->first();
-        if (!$clinicRegistration) {
-            $this->command->info('No clinic registration found.');
-            return;
-        }
-
-        // Get an existing pet
-        $pet = Pet::first();
-        if (!$pet) {
-            $this->command->info('No pets found. Please create some pets first.');
-            return;
-        }
-
-        // Get the pet owner
-        $petOwner = $pet->owner;
-        if (!$petOwner) {
-            $this->command->info('Pet has no owner.');
-            return;
-        }
-
-        // Get a clinic service
-        $service = ClinicService::where('clinic_id', $clinicRegistration->id)->first();
-
-        // Create appointments for today and upcoming days
-        $appointments = [
-            [
-                'scheduled_at' => Carbon::today()->setTime(9, 0),
-                'status' => 'scheduled',
-                'actual_cost' => 500.00,
-            ],
-            [
-                'scheduled_at' => Carbon::today()->setTime(14, 0),
-                'status' => 'completed',
-                'actual_cost' => 1200.00,
-            ],
-            [
-                'scheduled_at' => Carbon::today()->addDay()->setTime(10, 0),
-                'status' => 'scheduled',
-                'estimated_cost' => 800.00,
-            ],
-            [
-                'scheduled_at' => Carbon::today()->addDays(2)->setTime(15, 30),
-                'status' => 'confirmed',
-                'estimated_cost' => 2500.00,
-            ],
+        $statuses = ['completed', 'completed', 'completed', 'confirmed', 'pending']; // More completed for reviews
+        $reasons = [
+            'Regular checkup',
+            'Vaccination',
+            'Follow-up consultation',
+            'Dental cleaning',
+            'Grooming session',
+            'Skin condition',
+            'Wellness exam',
+            'Behavior consultation',
+            'Weight management',
+            'General consultation',
         ];
 
-        foreach ($appointments as $appointmentData) {
-            Appointment::create([
-                'appointment_number' => 'APT-' . Carbon::today()->format('Ymd') . '-' . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT),
-                'pet_id' => $pet->id,
-                'owner_id' => $petOwner->id,
-                'clinic_id' => $clinicRegistration->id,
-                'service_id' => $service ? $service->id : null,
-                'scheduled_at' => $appointmentData['scheduled_at'],
-                'duration_minutes' => 30,
-                'type' => 'consultation',
-                'priority' => 'normal',
-                'status' => $appointmentData['status'],
-                'reason' => 'Regular checkup and consultation',
-                'estimated_cost' => $appointmentData['estimated_cost'] ?? null,
-                'actual_cost' => $appointmentData['actual_cost'] ?? null,
-                'created_by' => $petOwner->id,
-            ]);
+        $appointmentsCreated = 0;
+
+        // Create 3-5 appointments per pet
+        foreach ($pets as $pet) {
+            $numAppointments = rand(3, 5);
+            $clinic = $clinics->random();
+            $services = ClinicService::where('clinic_id', $clinic->id)->get();
+            $staff = ClinicStaff::where('clinic_id', $clinic->id)->where('role', 'veterinarian')->first();
+
+            if ($services->isEmpty()) {
+                continue;
+            }
+
+            for ($i = 0; $i < $numAppointments; $i++) {
+                $service = $services->random();
+                $status = $statuses[array_rand($statuses)];
+                
+                // Determine appointment date based on status
+                if ($status === 'completed') {
+                    // Past appointments (1-60 days ago)
+                    $scheduledAt = now()->subDays(rand(1, 60))->setHour(rand(9, 17))->setMinute([0, 15, 30, 45][rand(0, 3)]);
+                    $checkedInAt = $scheduledAt->copy()->addMinutes(rand(-5, 10));
+                    $checkedOutAt = $checkedInAt->copy()->addMinutes($service->duration_minutes ?? 30);
+                } elseif ($status === 'confirmed') {
+                    // Near future appointments (1-14 days)
+                    $scheduledAt = now()->addDays(rand(1, 14))->setHour(rand(9, 17))->setMinute([0, 15, 30, 45][rand(0, 3)]);
+                    $checkedInAt = null;
+                    $checkedOutAt = null;
+                } else {
+                    // Pending appointments (15-30 days)
+                    $scheduledAt = now()->addDays(rand(15, 30))->setHour(rand(9, 17))->setMinute([0, 15, 30, 45][rand(0, 3)]);
+                    $checkedInAt = null;
+                    $checkedOutAt = null;
+                }
+
+                $appointment = Appointment::create([
+                    'appointment_number' => 'APT-' . strtoupper(Str::random(8)),
+                    'pet_id' => $pet->id,
+                    'owner_id' => $pet->owner_id,
+                    'clinic_id' => $clinic->id,
+                    'service_id' => $service->id,
+                    'clinic_staff_id' => $staff?->id,
+                    'scheduled_at' => $scheduledAt,
+                    'duration_minutes' => $service->duration_minutes ?? 30,
+                    'type' => 'regular',
+                    'priority' => 'normal',
+                    'status' => $status,
+                    'reason' => $reasons[array_rand($reasons)],
+                    'notes' => $status === 'completed' ? 'Appointment completed successfully' : null,
+                    'checked_in_at' => $checkedInAt,
+                    'checked_out_at' => $checkedOutAt,
+                    'created_by' => $pet->owner_id,
+                    'is_priority' => false,
+                ]);
+
+                $statusEmoji = match($status) {
+                    'completed' => '✅',
+                    'confirmed' => '📋',
+                    'pending' => '⏳',
+                    default => '📅'
+                };
+
+                $this->command->line("  {$statusEmoji} {$pet->name} @ {$clinic->clinic_name} - {$scheduledAt->format('M d, Y')} ({$status})");
+                $appointmentsCreated++;
+            }
         }
 
-        $this->command->info('Created ' . count($appointments) . ' test appointments.');
+        $this->command->info("✅ {$appointmentsCreated} appointments seeded successfully!");
     }
 }

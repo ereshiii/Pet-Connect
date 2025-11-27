@@ -8,6 +8,13 @@ import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig({
     build: {
         rollupOptions: {
+            onwarn(warning, warn) {
+                // Suppress "use client" directive warnings from React components
+                if (warning.code === 'MODULE_LEVEL_DIRECTIVE' && warning.message.includes('"use client"')) {
+                    return;
+                }
+                warn(warning);
+            },
             output: {
                 manualChunks: (id) => {
                     // Node modules vendor chunks

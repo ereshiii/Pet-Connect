@@ -6,7 +6,10 @@ use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use App\Models\User;
 use App\Models\ClinicRegistration;
+use App\Models\ClinicStaff;
+use App\Models\ClinicService;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 
 class ClinicSeeder extends Seeder
 {
@@ -32,6 +35,7 @@ class ClinicSeeder extends Seeder
                 ],
                 'clinic' => [
                     'clinic_name' => 'Amor Pet Clinic',
+                    'description' => 'Premier pet healthcare facility in Makati offering comprehensive veterinary services with state-of-the-art equipment and experienced veterinarians.',
                     'phone' => '02-8123-4567',
                     'country' => 'Philippines',
                     'region' => 'National Capital Region',
@@ -683,6 +687,697 @@ class ClinicSeeder extends Seeder
                         'sunday' => ['open' => '09:00', 'close' => '18:00']
                     ]
                 ]
+            ],
+            // BATCH 3 (merged): 10 clinics
+            [
+                'email' => 'info@laguna petclinic.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Carmela',
+                    'last_name' => 'Santos',
+                    'phone' => '09121234531',
+                    'date_of_birth' => '1979-06-20',
+                    'gender' => 'female',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'CALABARZON veterinarian specializing in lake region animal care.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Laguna Pet Clinic',
+                    'phone' => '049-234-5678',
+                    'country' => 'Philippines',
+                    'region' => 'CALABARZON',
+                    'province' => 'Laguna',
+                    'city' => 'Santa Rosa',
+                    'barangay' => 'Tagapo',
+                    'street_address' => '741 National Highway',
+                    'postal_code' => '4026',
+                    'latitude' => 14.3119,
+                    'longitude' => 121.1113,
+                    'services' => ['consultation', 'vaccination', 'surgery', 'lake care', 'boarding'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Carmela Santos',
+                            'license_number' => 'VET-2024-030',
+                            'specialization' => 'Lake Region Medicine'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '08:00', 'close' => '18:00'],
+                        'tuesday' => ['open' => '08:00', 'close' => '18:00'],
+                        'wednesday' => ['open' => '08:00', 'close' => '18:00'],
+                        'thursday' => ['open' => '08:00', 'close' => '18:00'],
+                        'friday' => ['open' => '08:00', 'close' => '18:00'],
+                        'saturday' => ['open' => '08:00', 'close' => '16:00'],
+                        'sunday' => ['open' => '09:00', 'close' => '15:00']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'contact@cavite vetcenter.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Gregorio',
+                    'last_name' => 'Dela Rosa',
+                    'phone' => '09231234532',
+                    'date_of_birth' => '1976-12-07',
+                    'gender' => 'male',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Historical province veterinarian with heritage animal care focus.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Cavite Veterinary Center',
+                    'phone' => '046-345-6789',
+                    'country' => 'Philippines',
+                    'region' => 'CALABARZON',
+                    'province' => 'Cavite',
+                    'city' => 'Imus',
+                    'barangay' => 'Poblacion',
+                    'street_address' => '852 Aguinaldo Highway',
+                    'postal_code' => '4103',
+                    'latitude' => 14.4297,
+                    'longitude' => 120.9367,
+                    'services' => ['consultation', 'vaccination', 'surgery', 'heritage care', 'emergency'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Gregorio Dela Rosa',
+                            'license_number' => 'VET-2024-031',
+                            'specialization' => 'Heritage Animal Care'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '07:00', 'close' => '19:00'],
+                        'tuesday' => ['open' => '07:00', 'close' => '19:00'],
+                        'wednesday' => ['open' => '07:00', 'close' => '19:00'],
+                        'thursday' => ['open' => '07:00', 'close' => '19:00'],
+                        'friday' => ['open' => '07:00', 'close' => '19:00'],
+                        'saturday' => ['open' => '08:00', 'close' => '17:00'],
+                        'sunday' => ['open' => 'closed', 'close' => 'closed']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'admin@rizal petcare.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Luisa',
+                    'last_name' => 'Morales',
+                    'phone' => '09341234533',
+                    'date_of_birth' => '1981-04-25',
+                    'gender' => 'female',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Mountain province veterinarian with highland animal expertise.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Rizal Pet Care',
+                    'phone' => '02-8456-7890',
+                    'country' => 'Philippines',
+                    'region' => 'CALABARZON',
+                    'province' => 'Rizal',
+                    'city' => 'Antipolo',
+                    'barangay' => 'Dela Paz',
+                    'street_address' => '963 Sumulong Highway',
+                    'postal_code' => '1870',
+                    'latitude' => 14.5878,
+                    'longitude' => 121.1789,
+                    'services' => ['consultation', 'vaccination', 'surgery', 'highland care', 'wellness'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Luisa Morales',
+                            'license_number' => 'VET-2024-032',
+                            'specialization' => 'Highland Animal Medicine'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '09:00', 'close' => '18:00'],
+                        'tuesday' => ['open' => '09:00', 'close' => '18:00'],
+                        'wednesday' => ['open' => '09:00', 'close' => '18:00'],
+                        'thursday' => ['open' => '09:00', 'close' => '18:00'],
+                        'friday' => ['open' => '09:00', 'close' => '18:00'],
+                        'saturday' => ['open' => '09:00', 'close' => '15:00'],
+                        'sunday' => ['open' => '10:00', 'close' => '14:00']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'info@quezon petclinic.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Teodoro',
+                    'last_name' => 'Villanueva',
+                    'phone' => '09451234534',
+                    'date_of_birth' => '1974-08-13',
+                    'gender' => 'male',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Quezon province veterinarian with coconut farm animal care.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Quezon Pet Clinic',
+                    'phone' => '042-567-8901',
+                    'country' => 'Philippines',
+                    'region' => 'CALABARZON',
+                    'province' => 'Quezon',
+                    'city' => 'Lucena',
+                    'barangay' => 'Ibabang Dupay',
+                    'street_address' => '159 Maharlika Highway',
+                    'postal_code' => '4301',
+                    'latitude' => 13.9371,
+                    'longitude' => 121.6174,
+                    'services' => ['consultation', 'vaccination', 'surgery', 'farm care', 'emergency'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Teodoro Villanueva',
+                            'license_number' => 'VET-2024-033',
+                            'specialization' => 'Farm Animal Medicine'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '06:00', 'close' => '18:00'],
+                        'tuesday' => ['open' => '06:00', 'close' => '18:00'],
+                        'wednesday' => ['open' => '06:00', 'close' => '18:00'],
+                        'thursday' => ['open' => '06:00', 'close' => '18:00'],
+                        'friday' => ['open' => '06:00', 'close' => '18:00'],
+                        'saturday' => ['open' => '08:00', 'close' => '16:00'],
+                        'sunday' => ['open' => '09:00', 'close' => '15:00']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'contact@ilocos petcare.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Remedios',
+                    'last_name' => 'Agbayani',
+                    'phone' => '09561234535',
+                    'date_of_birth' => '1983-02-09',
+                    'gender' => 'female',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Ilocos region veterinarian with tobacco farm animal expertise.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Ilocos Pet Care',
+                    'phone' => '077-678-9012',
+                    'country' => 'Philippines',
+                    'region' => 'Ilocos Region',
+                    'province' => 'Ilocos Sur',
+                    'city' => 'Vigan',
+                    'barangay' => 'Poblacion',
+                    'street_address' => '753 Liberation Boulevard',
+                    'postal_code' => '2700',
+                    'latitude' => 17.5748,
+                    'longitude' => 120.3869,
+                    'services' => ['consultation', 'vaccination', 'surgery', 'heritage care', 'tobacco farm'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Remedios Agbayani',
+                            'license_number' => 'VET-2024-034',
+                            'specialization' => 'Heritage Medicine'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '08:00', 'close' => '17:00'],
+                        'tuesday' => ['open' => '08:00', 'close' => '17:00'],
+                        'wednesday' => ['open' => '08:00', 'close' => '17:00'],
+                        'thursday' => ['open' => '08:00', 'close' => '17:00'],
+                        'friday' => ['open' => '08:00', 'close' => '17:00'],
+                        'saturday' => ['open' => '08:00', 'close' => '16:00'],
+                        'sunday' => ['open' => '09:00', 'close' => '15:00']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'admin@pangasinan vetcenter.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Artemio',
+                    'last_name' => 'Lacson',
+                    'phone' => '09671234536',
+                    'date_of_birth' => '1977-10-31',
+                    'gender' => 'male',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Pangasinan veterinarian with salt industry animal care focus.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Pangasinan Veterinary Center',
+                    'phone' => '075-789-0123',
+                    'country' => 'Philippines',
+                    'region' => 'Ilocos Region',
+                    'province' => 'Pangasinan',
+                    'city' => 'Dagupan',
+                    'barangay' => 'Poblacion',
+                    'street_address' => '456 AB Fernandez Avenue',
+                    'postal_code' => '2400',
+                    'latitude' => 16.0433,
+                    'longitude' => 120.3334,
+                    'services' => ['consultation', 'vaccination', 'surgery', 'aquatic', 'salt industry'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Artemio Lacson',
+                            'license_number' => 'VET-2024-035',
+                            'specialization' => 'Aquatic Medicine'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '07:00', 'close' => '19:00'],
+                        'tuesday' => ['open' => '07:00', 'close' => '19:00'],
+                        'wednesday' => ['open' => '07:00', 'close' => '19:00'],
+                        'thursday' => ['open' => '07:00', 'close' => '19:00'],
+                        'friday' => ['open' => '07:00', 'close' => '19:00'],
+                        'saturday' => ['open' => '08:00', 'close' => '17:00'],
+                        'sunday' => ['open' => '08:00', 'close' => '17:00']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'info@pampanga petclinic.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Consuelo',
+                    'last_name' => 'Manalo',
+                    'phone' => '09781234537',
+                    'date_of_birth' => '1980-01-17',
+                    'gender' => 'female',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Central Luzon veterinarian with flood-prone area expertise.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Pampanga Pet Clinic',
+                    'phone' => '045-890-1234',
+                    'country' => 'Philippines',
+                    'region' => 'Central Luzon',
+                    'province' => 'Pampanga',
+                    'city' => 'San Fernando',
+                    'barangay' => 'Del Rosario',
+                    'street_address' => '789 MacArthur Highway',
+                    'postal_code' => '2000',
+                    'latitude' => 15.0255,
+                    'longitude' => 120.6893,
+                    'services' => ['consultation', 'vaccination', 'surgery', 'flood care', 'emergency'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Consuelo Manalo',
+                            'license_number' => 'VET-2024-036',
+                            'specialization' => 'Flood Area Medicine'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '08:00', 'close' => '18:00'],
+                        'tuesday' => ['open' => '08:00', 'close' => '18:00'],
+                        'wednesday' => ['open' => '08:00', 'close' => '18:00'],
+                        'thursday' => ['open' => '08:00', 'close' => '18:00'],
+                        'friday' => ['open' => '08:00', 'close' => '18:00'],
+                        'saturday' => ['open' => '08:00', 'close' => '16:00'],
+                        'sunday' => ['open' => '09:00', 'close' => '15:00']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'contact@bulacan vetcenter.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Emilio',
+                    'last_name' => 'Francisco',
+                    'phone' => '09891234538',
+                    'date_of_birth' => '1978-07-04',
+                    'gender' => 'male',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Bulacan veterinarian with industrial zone animal care focus.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Bulacan Veterinary Center',
+                    'phone' => '044-901-2345',
+                    'country' => 'Philippines',
+                    'region' => 'Central Luzon',
+                    'province' => 'Bulacan',
+                    'city' => 'Malolos',
+                    'barangay' => 'Poblacion',
+                    'street_address' => '321 McArthur Highway',
+                    'postal_code' => '3000',
+                    'latitude' => 14.8433,
+                    'longitude' => 120.8110,
+                    'services' => ['consultation', 'vaccination', 'surgery', 'industrial care', 'laboratory'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Emilio Francisco',
+                            'license_number' => 'VET-2024-037',
+                            'specialization' => 'Industrial Medicine'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '09:00', 'close' => '18:00'],
+                        'tuesday' => ['open' => '09:00', 'close' => '18:00'],
+                        'wednesday' => ['open' => '09:00', 'close' => '18:00'],
+                        'thursday' => ['open' => '09:00', 'close' => '18:00'],
+                        'friday' => ['open' => '09:00', 'close' => '18:00'],
+                        'saturday' => ['open' => '09:00', 'close' => '15:00'],
+                        'sunday' => ['open' => '10:00', 'close' => '14:00']
+                    ]
+                ]
+            ],
+            // BATCH 4 (merged): 10 clinics
+            [
+                'email' => 'contact@samar petclinic.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Florencia',
+                    'last_name' => 'Gutierrez',
+                    'phone' => '09121234541',
+                    'date_of_birth' => '1979-08-19',
+                    'gender' => 'female',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Eastern Visayas island veterinarian with coastal animal care.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Samar Pet Clinic',
+                    'phone' => '055-234-5678',
+                    'country' => 'Philippines',
+                    'region' => 'Eastern Visayas',
+                    'province' => 'Samar',
+                    'city' => 'Catbalogan',
+                    'barangay' => 'Poblacion',
+                    'street_address' => '159 Allen Avenue',
+                    'postal_code' => '6700',
+                    'latitude' => 11.7743,
+                    'longitude' => 124.8810,
+                    'services' => ['consultation', 'vaccination', 'surgery', 'coastal care', 'emergency'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Florencia Gutierrez',
+                            'license_number' => 'VET-2024-040',
+                            'specialization' => 'Coastal Animal Medicine'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '08:00', 'close' => '17:00'],
+                        'tuesday' => ['open' => '08:00', 'close' => '17:00'],
+                        'wednesday' => ['open' => '08:00', 'close' => '17:00'],
+                        'thursday' => ['open' => '08:00', 'close' => '17:00'],
+                        'friday' => ['open' => '08:00', 'close' => '17:00'],
+                        'saturday' => ['open' => '08:00', 'close' => '16:00'],
+                        'sunday' => ['open' => '09:00', 'close' => '15:00']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'info@siquijor vetcenter.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Maximo',
+                    'last_name' => 'Espiritu',
+                    'phone' => '09231234542',
+                    'date_of_birth' => '1976-05-03',
+                    'gender' => 'male',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Mystical island veterinarian with traditional healing knowledge.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Siquijor Veterinary Center',
+                    'phone' => '035-345-6789',
+                    'country' => 'Philippines',
+                    'region' => 'Central Visayas',
+                    'province' => 'Siquijor',
+                    'city' => 'Siquijor',
+                    'barangay' => 'Poblacion',
+                    'street_address' => '753 Circumferential Road',
+                    'postal_code' => '6226',
+                    'latitude' => 9.2142,
+                    'longitude' => 123.5041,
+                    'services' => ['consultation', 'vaccination', 'surgery', 'traditional care', 'herbs'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Maximo Espiritu',
+                            'license_number' => 'VET-2024-041',
+                            'specialization' => 'Traditional Medicine'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '07:00', 'close' => '18:00'],
+                        'tuesday' => ['open' => '07:00', 'close' => '18:00'],
+                        'wednesday' => ['open' => '07:00', 'close' => '18:00'],
+                        'thursday' => ['open' => '07:00', 'close' => '18:00'],
+                        'friday' => ['open' => '07:00', 'close' => '18:00'],
+                        'saturday' => ['open' => '08:00', 'close' => '16:00'],
+                        'sunday' => ['open' => '09:00', 'close' => '15:00']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'admin@masbate petcare.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Felicidad',
+                    'last_name' => 'Caballero',
+                    'phone' => '09341234543',
+                    'date_of_birth' => '1981-12-11',
+                    'gender' => 'female',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Cattle island veterinarian with livestock expertise.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Masbate Pet Care',
+                    'phone' => '056-456-7890',
+                    'country' => 'Philippines',
+                    'region' => 'Bicol Region',
+                    'province' => 'Masbate',
+                    'city' => 'Masbate City',
+                    'barangay' => 'Poblacion',
+                    'street_address' => '456 Quezon Street',
+                    'postal_code' => '5400',
+                    'latitude' => 12.3685,
+                    'longitude' => 123.6198,
+                    'services' => ['consultation', 'vaccination', 'surgery', 'cattle care', 'livestock'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Felicidad Caballero',
+                            'license_number' => 'VET-2024-042',
+                            'specialization' => 'Cattle Medicine'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '06:00', 'close' => '18:00'],
+                        'tuesday' => ['open' => '06:00', 'close' => '18:00'],
+                        'wednesday' => ['open' => '06:00', 'close' => '18:00'],
+                        'thursday' => ['open' => '06:00', 'close' => '18:00'],
+                        'friday' => ['open' => '06:00', 'close' => '18:00'],
+                        'saturday' => ['open' => '08:00', 'close' => '16:00'],
+                        'sunday' => ['open' => 'closed', 'close' => 'closed']
+                    ]
+                ]
+            ],
+            // BATCH 5 (merged): 5 clinics
+            [
+                'email' => 'contact@leyte vetcenter.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Jovita',
+                    'last_name' => 'Esperanza',
+                    'phone' => '09221234551',
+                    'date_of_birth' => '1979-03-17',
+                    'gender' => 'female',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Historical province veterinarian with typhoon disaster response.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Leyte Veterinary Center',
+                    'phone' => '053-234-5678',
+                    'country' => 'Philippines',
+                    'region' => 'Eastern Visayas',
+                    'province' => 'Leyte',
+                    'city' => 'Tacloban City',
+                    'barangay' => 'Poblacion',
+                    'street_address' => '789 Gen. MacArthur Highway',
+                    'postal_code' => '6500',
+                    'latitude' => 11.2439,
+                    'longitude' => 125.0063,
+                    'services' => ['consultation', 'vaccination', 'surgery', 'disaster response', 'emergency'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Jovita Esperanza',
+                            'license_number' => 'VET-2024-050',
+                            'specialization' => 'Disaster Response Medicine'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '08:00', 'close' => '18:00'],
+                        'tuesday' => ['open' => '08:00', 'close' => '18:00'],
+                        'wednesday' => ['open' => '08:00', 'close' => '18:00'],
+                        'thursday' => ['open' => '08:00', 'close' => '18:00'],
+                        'friday' => ['open' => '08:00', 'close' => '18:00'],
+                        'saturday' => ['open' => '08:00', 'close' => '16:00'],
+                        'sunday' => ['open' => '09:00', 'close' => '15:00']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'info@biliran petcare.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Segundino',
+                    'last_name' => 'Villanueva',
+                    'phone' => '09331234552',
+                    'date_of_birth' => '1976-11-24',
+                    'gender' => 'male',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Island province veterinarian with marine life expertise.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Biliran Pet Care',
+                    'phone' => '053-345-6789',
+                    'country' => 'Philippines',
+                    'region' => 'Eastern Visayas',
+                    'province' => 'Biliran',
+                    'city' => 'Naval',
+                    'barangay' => 'Poblacion',
+                    'street_address' => '456 Provincial Road',
+                    'postal_code' => '6550',
+                    'latitude' => 11.5756,
+                    'longitude' => 124.4681,
+                    'services' => ['consultation', 'vaccination', 'surgery', 'marine care', 'aquatic'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Segundino Villanueva',
+                            'license_number' => 'VET-2024-051',
+                            'specialization' => 'Marine Life Medicine'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '08:00', 'close' => '17:00'],
+                        'tuesday' => ['open' => '08:00', 'close' => '17:00'],
+                        'wednesday' => ['open' => '08:00', 'close' => '17:00'],
+                        'thursday' => ['open' => '08:00', 'close' => '17:00'],
+                        'friday' => ['open' => '08:00', 'close' => '17:00'],
+                        'saturday' => ['open' => '08:00', 'close' => '16:00'],
+                        'sunday' => ['open' => '09:00', 'close' => '15:00']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'admin@basilan vetclinic.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Hadji',
+                    'last_name' => 'Abdulla',
+                    'phone' => '09441234553',
+                    'date_of_birth' => '1981-08-09',
+                    'gender' => 'male',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Southern island veterinarian with halal veterinary practices.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Basilan Veterinary Clinic',
+                    'phone' => '062-456-7890',
+                    'country' => 'Philippines',
+                    'region' => 'Bangsamoro Autonomous Region in Muslim Mindanao',
+                    'province' => 'Basilan',
+                    'city' => 'Isabela City',
+                    'barangay' => 'Poblacion',
+                    'street_address' => '123 Veterans Avenue',
+                    'postal_code' => '7300',
+                    'latitude' => 6.7042,
+                    'longitude' => 121.9711,
+                    'services' => ['consultation', 'vaccination', 'surgery', 'halal practice', 'island care'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Hadji Abdulla',
+                            'license_number' => 'VET-2024-052',
+                            'specialization' => 'Halal Veterinary Practice'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '08:00', 'close' => '17:00'],
+                        'tuesday' => ['open' => '08:00', 'close' => '17:00'],
+                        'wednesday' => ['open' => '08:00', 'close' => '17:00'],
+                        'thursday' => ['open' => '08:00', 'close' => '17:00'],
+                        'friday' => ['open' => '14:00', 'close' => '18:00'],
+                        'saturday' => ['open' => '08:00', 'close' => '16:00'],
+                        'sunday' => ['open' => '09:00', 'close' => '15:00']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'contact@sulu animalhospital.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Fatima',
+                    'last_name' => 'Jamalul',
+                    'phone' => '09551234554',
+                    'date_of_birth' => '1984-01-30',
+                    'gender' => 'female',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Archipelago veterinarian with pearl diving animal care.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Sulu Animal Hospital',
+                    'phone' => '068-567-8901',
+                    'country' => 'Philippines',
+                    'region' => 'Bangsamoro Autonomous Region in Muslim Mindanao',
+                    'province' => 'Sulu',
+                    'city' => 'Jolo',
+                    'barangay' => 'Poblacion',
+                    'street_address' => '987 Pier Road',
+                    'postal_code' => '7400',
+                    'latitude' => 6.0538,
+                    'longitude' => 121.0075,
+                    'services' => ['consultation', 'vaccination', 'surgery', 'pearl diving', 'archipelago'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Fatima Jamalul',
+                            'license_number' => 'VET-2024-053',
+                            'specialization' => 'Archipelago Medicine'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '08:00', 'close' => '17:00'],
+                        'tuesday' => ['open' => '08:00', 'close' => '17:00'],
+                        'wednesday' => ['open' => '08:00', 'close' => '17:00'],
+                        'thursday' => ['open' => '08:00', 'close' => '17:00'],
+                        'friday' => ['open' => '14:00', 'close' => '18:00'],
+                        'saturday' => ['open' => '08:00', 'close' => '16:00'],
+                        'sunday' => ['open' => '09:00', 'close' => '15:00']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'info@tawi-tawi petcenter.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Almahdi',
+                    'last_name' => 'Sahidulla',
+                    'phone' => '09661234555',
+                    'date_of_birth' => '1973-12-05',
+                    'gender' => 'male',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Southernmost veterinarian with border area animal care.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Tawi-Tawi Pet Center',
+                    'phone' => '068-678-9012',
+                    'country' => 'Philippines',
+                    'region' => 'Bangsamoro Autonomous Region in Muslim Mindanao',
+                    'province' => 'Tawi-Tawi',
+                    'city' => 'Bongao',
+                    'barangay' => 'Poblacion',
+                    'street_address' => '654 Border Highway',
+                    'postal_code' => '7500',
+                    'latitude' => 5.0319,
+                    'longitude' => 119.7744,
+                    'services' => ['consultation', 'vaccination', 'surgery', 'border care', 'southernmost'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Almahdi Sahidulla',
+                            'license_number' => 'VET-2024-054',
+                            'specialization' => 'Border Area Medicine'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '08:00', 'close' => '17:00'],
+                        'tuesday' => ['open' => '08:00', 'close' => '17:00'],
+                        'wednesday' => ['open' => '08:00', 'close' => '17:00'],
+                        'thursday' => ['open' => '08:00', 'close' => '17:00'],
+                        'friday' => ['open' => '14:00', 'close' => '18:00'],
+                        'saturday' => ['open' => '08:00', 'close' => '16:00'],
+                        'sunday' => ['open' => '09:00', 'close' => '15:00']
+                    ]
+                ]
             ]
         ];
 
@@ -690,34 +1385,185 @@ class ClinicSeeder extends Seeder
         $this->command->info('🔐 CLINIC ACCOUNTS:');
         $this->command->info('====================================');
 
+        // find admin user to set as approver (avoid hard-coded id)
+        $adminUser = User::where('is_admin', true)->first();
+        $approvedById = $adminUser ? $adminUser->id : 1;
+
         foreach ($clinics as $clinicData) {
             // Create clinic user account
-            $user = User::create([
-                'email' => $clinicData['email'],
-                'password' => Hash::make($clinicData['password']),
-                'account_type' => 'clinic',
-                'is_admin' => false,
-                'is_verified' => true,
-                'email_verified_at' => now(),
-            ]);
+            $user = User::updateOrCreate(
+                ['email' => $clinicData['email']],
+                [
+                    'password' => Hash::make($clinicData['password']),
+                    'account_type' => 'clinic',
+                    'is_admin' => false,
+                    'is_verified' => true,
+                    'email_verified_at' => now(),
+                    'name' => $clinicData['profile']['first_name'] . ' ' . ($clinicData['profile']['last_name'] ?? ''),
+                ]
+            );
 
-            // Create user profile for the clinic owner/admin
-            $user->profile()->create($clinicData['profile']);
+            // Create or update user profile for the clinic owner/admin
+            if (method_exists($user, 'profile')) {
+                if (!$user->profile) {
+                    $user->profile()->create($clinicData['profile']);
+                } else {
+                    $user->profile->update($clinicData['profile']);
+                }
+            }
 
-            // Create clinic registration
-            $registration = ClinicRegistration::create(array_merge($clinicData['clinic'], [
-                'user_id' => $user->id,
-                'email' => $clinicData['email'],
-                'certification_proofs' => [],
-                'status' => 'approved',
-                'submitted_at' => now(),
-                'approved_at' => now(),
-                'approved_by' => 1, // Admin user ID
-            ]));
+            // Create or update clinic registration (idempotent by email)
+            $registration = ClinicRegistration::updateOrCreate(
+                ['email' => $clinicData['email']],
+                [
+                    'user_id' => $user->id,
+                    'clinic_name' => $clinicData['clinic']['clinic_name'],
+                    'clinic_description' => $clinicData['clinic']['description'] ?? null,
+                    'email' => $clinicData['email'],
+                    'phone' => $clinicData['clinic']['phone'],
+                    'country' => $clinicData['clinic']['country'],
+                    'region' => $clinicData['clinic']['region'],
+                    'province' => $clinicData['clinic']['province'],
+                    'city' => $clinicData['clinic']['city'],
+                    'barangay' => $clinicData['clinic']['barangay'],
+                    'street_address' => $clinicData['clinic']['street_address'],
+                    'postal_code' => $clinicData['clinic']['postal_code'],
+                    'operating_hours' => $clinicData['clinic']['operating_hours'],
+                    'services' => $clinicData['clinic']['services'],
+                    'veterinarians' => $clinicData['clinic']['veterinarians'] ?? [],
+                    'certification_proofs' => [],
+                    'status' => 'approved',
+                    'submitted_at' => now(),
+                    'approved_at' => now(),
+                    'approved_by' => $approvedById,
+                ]
+            );
+
+            // Create clinic operating hours entries
+            foreach ($clinicData['clinic']['operating_hours'] as $day => $hours) {
+                $isClosed = ($hours['open'] === 'closed' || $hours['close'] === 'closed');
+                
+                DB::table('clinic_operating_hours')->updateOrInsert(
+                    [
+                        'clinic_id' => $registration->id,
+                        'day_of_week' => $day
+                    ],
+                    [
+                        'opening_time' => $isClosed ? null : $hours['open'],
+                        'closing_time' => $isClosed ? null : $hours['close'],
+                        'is_closed' => $isClosed,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]
+                );
+            }
+
+            // Create clinic services
+            foreach ($clinicData['clinic']['services'] as $serviceName) {
+                DB::table('clinic_services')->updateOrInsert(
+                    [
+                        'clinic_id' => $registration->id,
+                        'name' => ucfirst($serviceName),
+                    ],
+                    [
+                        'description' => "Professional {$serviceName} service",
+                        'category' => $serviceName,
+                        'duration_minutes' => $this->getServiceDuration($serviceName),
+                        'requires_appointment' => true,
+                        'is_active' => true,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]
+                );
+            }
+
+            // Create clinic staff/veterinarians if any
+            if (isset($clinicData['clinic']['veterinarians']) && !empty($clinicData['clinic']['veterinarians'])) {
+                foreach ($clinicData['clinic']['veterinarians'] as $vetData) {
+                    // For seeding, we'll just create the clinic staff entry for the clinic owner
+                    // In production, veterinarians would have their own user accounts
+                    $ownerName = trim(($clinicData['profile']['first_name'] ?? '') . ' ' . ($clinicData['profile']['last_name'] ?? ''));
+                    if (empty($ownerName)) {
+                        $ownerName = $clinicData['clinic']['clinic_name'] . ' Owner';
+                    }
+                    
+                    DB::table('clinic_staff')->updateOrInsert(
+                        [
+                            'clinic_id' => $registration->id,
+                            'user_id' => $user->id,
+                        ],
+                        [
+                            'name' => $ownerName,
+                            'email' => $user->email,
+                            'phone' => $user->phone ?? $clinicData['clinic']['phone'] ?? null,
+                            'role' => 'veterinarian',
+                            'license_number' => $vetData['license'] ?? 'VET-' . str_pad($registration->id, 6, '0', STR_PAD_LEFT),
+                            'specializations' => json_encode([$vetData['specialization'] ?? 'General Practice']),
+                            'start_date' => now()->subYear(),
+                            'is_active' => true,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]
+                    );
+                    break; // Only create one staff entry for the owner
+                }
+            } else {
+                // Create default staff entry for clinic owner
+                $ownerName = trim(($clinicData['profile']['first_name'] ?? '') . ' ' . ($clinicData['profile']['last_name'] ?? ''));
+                if (empty($ownerName)) {
+                    $ownerName = $clinicData['clinic']['clinic_name'] . ' Owner';
+                }
+                
+                DB::table('clinic_staff')->updateOrInsert(
+                    [
+                        'clinic_id' => $registration->id,
+                        'user_id' => $user->id,
+                    ],
+                    [
+                        'name' => $ownerName,
+                        'email' => $user->email,
+                        'phone' => $user->phone ?? $clinicData['clinic']['phone'] ?? null,
+                        'role' => 'veterinarian',
+                        'license_number' => 'VET-' . str_pad($registration->id, 6, '0', STR_PAD_LEFT),
+                        'specializations' => json_encode(['General Practice']),
+                        'start_date' => now()->subYear(),
+                        'is_active' => true,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]
+                );
+            }
 
             $this->command->line("📧 {$clinicData['email']} | 🔑 {$clinicData['password']} | 🏥 {$clinicData['clinic']['clinic_name']}");
         }
 
         $this->command->info('✅ Clinic accounts seeded successfully!');
+    }
+
+    /**
+     * Get duration in minutes for a service type.
+     */
+    private function getServiceDuration(string $service): int
+    {
+        $durations = [
+            'consultation' => 30,
+            'vaccination' => 20,
+            'surgery' => 120,
+            'grooming' => 60,
+            'boarding' => 0, // Not time-based
+            'emergency' => 45,
+            'dental' => 60,
+            'wellness' => 45,
+            'nutrition' => 30,
+            'behavioral' => 60,
+            'imaging' => 45,
+            'laboratory' => 30,
+            'aquatic' => 40,
+            'livestock' => 60,
+            'marine' => 90,
+            'wildlife' => 90,
+        ];
+
+        return $durations[$service] ?? 30;
     }
 }

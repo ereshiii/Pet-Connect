@@ -16,6 +16,8 @@ class ClinicRegistration extends Model
         'user_id',
         'clinic_name',
         'clinic_description',
+        'clinic_photo',
+        'gallery',
         'website',
         'email',
         'phone',
@@ -32,6 +34,7 @@ class ClinicRegistration extends Model
         'total_reviews',
         'is_featured',
         'is_open_24_7',
+        'is_emergency_clinic',
         'operating_hours',
         'is_24_hours',
         'services',
@@ -51,9 +54,11 @@ class ClinicRegistration extends Model
         'services' => 'array',
         'veterinarians' => 'array',
         'certification_proofs' => 'array',
+        'gallery' => 'array',
         'is_24_hours' => 'boolean',
         'is_featured' => 'boolean',
         'is_open_24_7' => 'boolean',
+        'is_emergency_clinic' => 'boolean',
         'rating' => 'decimal:2',
         'submitted_at' => 'datetime',
         'approved_at' => 'datetime',
@@ -76,23 +81,47 @@ class ClinicRegistration extends Model
     }
 
     /**
-     * Get the organized clinic created from this registration.
-     */
-    public function clinic(): HasOne
-    {
-        return $this->hasOne(Clinic::class, 'registration_id');
-    }
-
-    /**
      * Get the services offered by this clinic.
+     * Note: clinic_services.clinic_id now directly references clinic_registrations.id
      */
-    public function clinicServices()
+    public function clinicServices(): HasMany
     {
         return $this->hasMany(ClinicService::class, 'clinic_id');
     }
 
     /**
-     * Get the appointments for this clinic.
+     * Get the staff members for this clinic.
+     * Note: clinic_staff.clinic_id now directly references clinic_registrations.id
+     */
+    public function staff(): HasMany
+    {
+        return $this->hasMany(ClinicStaff::class, 'clinic_id');
+    }
+
+    /**
+     * Get the operating hours for this clinic.
+     * Note: clinic_operating_hours.clinic_id now directly references clinic_registrations.id
+     */
+    public function operatingHours(): HasMany
+    {
+        return $this->hasMany(ClinicOperatingHour::class, 'clinic_id');
+    }
+
+    // Note: clinic_addresses and clinic_equipment tables have been removed
+    // Address data is stored directly in clinic_registrations table
+    // Equipment tracking is not needed for this application
+
+    /**
+     * Get the clinic's veterinarians.
+     */
+    public function veterinarians(): HasMany
+    {
+        return $this->staff()->where('role', 'veterinarian');
+    }
+
+    /**
+     * Get the appointments for this clinic registration.
+     * Note: appointments.clinic_id references clinic_registrations.id (this model's ID), not clinics.id
      */
     public function appointments()
     {
@@ -100,17 +129,19 @@ class ClinicRegistration extends Model
     }
 
     /**
-     * Get the invoices for this clinic.
+     * Get the invoices for this clinic registration.
+     * Note: invoices.clinic_id directly references clinic_registrations.id (this model's ID)
      */
-    public function invoices()
+    public function invoices(): HasMany
     {
         return $this->hasMany(Invoice::class, 'clinic_id');
     }
 
     /**
-     * Get the payments for this clinic.
+     * Get the payments for this clinic registration.
+     * Note: payments.clinic_id directly references clinic_registrations.id (this model's ID)
      */
-    public function payments()
+    public function payments(): HasMany
     {
         return $this->hasMany(Payment::class, 'clinic_id');
     }
@@ -136,6 +167,14 @@ class ClinicRegistration extends Model
             'id',
             'user_id'
         );
+    }
+
+    /**
+     * Get the reviews for this clinic.
+     */
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(ClinicReview::class);
     }
 
     /**
@@ -197,32 +236,19 @@ class ClinicRegistration extends Model
 
     /**
      * Create the main clinic record.
+     * Note: This method is now a no-op since the clinics table has been eliminated.
+     * All data now resides in clinic_registrations.
      */
     protected function createClinicRecord(): void
     {
-        // Check if clinic already exists
-        if ($this->clinic) {
-            return;
-        }
-
-        Clinic::create([
-            'registration_id' => $this->id,
-            'name' => $this->clinic_name,
-            'license_number' => $this->license_number ?? 'LIC-' . $this->id,
-            'type' => 'general', // Default type
-            'description' => $this->clinic_description,
-            'services' => $this->services,
-            'specialties' => [], // Can be populated later
-            'phone' => $this->phone,
-            'email' => $this->email,
-            'website' => $this->website,
-            'social_media' => null,
-            'status' => 'active',
-        ]);
+        // No-op: clinics table no longer exists
+        // All clinic data is now stored directly in clinic_registrations
+        return;
     }
 
     /**
      * Create individual ClinicService records from the services array.
+     * Note: clinic_services.clinic_id now references clinic_registrations.id
      */
     protected function createClinicServices(): void
     {
@@ -230,22 +256,16 @@ class ClinicRegistration extends Model
             return;
         }
 
-        $clinic = $this->clinic;
-        if (!$clinic) {
-            return;
-        }
-
-        // Clear existing services
-        ClinicService::where('clinic_id', $clinic->id)->delete();
+        // Clear existing services (clinic_services.clinic_id references clinic_registrations.id)
+        ClinicService::where('clinic_id', $this->id)->delete();
 
         // Create new services
         foreach ($this->services as $serviceData) {
             ClinicService::create([
-                'clinic_id' => $clinic->id,
+                'clinic_id' => $this->id, // References clinic_registrations.id
                 'name' => $serviceData['name'] ?? '',
                 'description' => $serviceData['description'] ?? '',
                 'category' => $serviceData['category'] ?? 'other',
-                'base_price' => $serviceData['base_price'] ?? null,
                 'duration_minutes' => $serviceData['duration_minutes'] ?? 30,
                 'is_active' => true, // Start all services as active
                 'requires_appointment' => $serviceData['requires_appointment'] ?? true,
@@ -350,6 +370,7 @@ class ClinicRegistration extends Model
 
     /**
      * Create staff records from veterinarians data.
+     * Note: clinic_staff.clinic_id now references clinic_registrations.id
      */
     protected function createClinicStaff(): void
     {
@@ -357,13 +378,9 @@ class ClinicRegistration extends Model
             return;
         }
 
-        $clinic = $this->clinic;
-        if (!$clinic) {
-            return;
-        }
-
         // Clear existing staff records (except owner)
-        ClinicStaff::where('clinic_id', $clinic->id)
+        // clinic_staff.clinic_id references clinic_registrations.id
+        ClinicStaff::where('clinic_id', $this->id)
             ->where('role', '!=', 'owner')
             ->delete();
 
@@ -371,43 +388,51 @@ class ClinicRegistration extends Model
         foreach ($this->veterinarians as $vetData) {
             if (empty($vetData['name'])) continue;
 
+            // Get specializations - check both 'specializations' (plural) and 'specialization' (singular)
+            $specializations = [];
+            if (!empty($vetData['specializations'])) {
+                $specializations = is_array($vetData['specializations']) ? $vetData['specializations'] : [$vetData['specializations']];
+            } elseif (!empty($vetData['specialization'])) {
+                $specializations = [$vetData['specialization']];
+            }
+
             // Create staff record directly without user account
             ClinicStaff::create([
-                'clinic_id' => $clinic->id,
+                'clinic_id' => $this->id, // References clinic_registrations.id
                 'name' => $vetData['name'],
                 'email' => $vetData['email'] ?? null,
                 'phone' => $vetData['phone'] ?? null,
                 'role' => 'veterinarian',
                 'license_number' => $vetData['license_number'] ?? null,
-                'specializations' => !empty($vetData['specialization']) ? [$vetData['specialization']] : [],
+                'specializations' => $specializations,
                 'start_date' => now(),
-                'is_active' => true,
             ]);
         }
 
         // Add the clinic owner as a staff member if not already exists
-        $ownerExists = ClinicStaff::where('clinic_id', $clinic->id)
+        $ownerExists = ClinicStaff::where('clinic_id', $this->id)
             ->where('user_id', $this->user_id)
             ->exists();
 
         if (!$ownerExists && $this->user) {
             ClinicStaff::create([
-                'clinic_id' => $clinic->id,
+                'clinic_id' => $this->id, // References clinic_registrations.id
                 'user_id' => $this->user_id, // Keep user relationship for owner
                 'name' => $this->user->name,
                 'email' => $this->user->email,
                 'phone' => $this->user->phone,
                 'role' => 'owner',
-                'license_number' => null,
+                // Some deployments enforce NOT NULL on license_number; use empty string when missing
+                'license_number' => $this->user->license_number ?? '',
                 'specializations' => ['General Management'],
                 'start_date' => $this->created_at ?? now(),
-                'is_active' => true,
             ]);
         }
     }
 
     /**
      * Create operating hours records.
+     * Note: clinic_operating_hours.clinic_id now references clinic_registrations.id
      */
     protected function createOperatingHours(): void
     {
@@ -415,30 +440,50 @@ class ClinicRegistration extends Model
             return;
         }
 
-        $clinic = $this->clinic;
-        if (!$clinic) {
-            return;
-        }
+        // Clear existing operating hours (clinic_operating_hours.clinic_id references clinic_registrations.id)
+        ClinicOperatingHour::where('clinic_id', $this->id)->delete();
 
-        // Clear existing operating hours
-        ClinicOperatingHour::where('clinic_id', $clinic->id)->delete();
+        // Handle both formats: array of objects or keyed object
+        $operatingHours = $this->operating_hours;
+        
+        // If it's a keyed object (e.g., {monday: {open, close}, tuesday: {...}})
+        if (isset($operatingHours['monday']) || isset($operatingHours['tuesday'])) {
+            foreach ($operatingHours as $day => $hours) {
+                if (!is_array($hours)) continue;
+                
+                $day = strtolower($day);
+                $open = $hours['open'] ?? $hours['opening_time'] ?? null;
+                $close = $hours['close'] ?? $hours['closing_time'] ?? null;
+                $isClosed = empty($open) && empty($close);
 
-        // Create operating hours from registration data
-        foreach ($this->operating_hours as $hourData) {
-            if (empty($hourData['day'])) continue;
+                ClinicOperatingHour::create([
+                    'clinic_id' => $this->id, // References clinic_registrations.id
+                    'day_of_week' => $day,
+                    'is_closed' => $isClosed,
+                    'opening_time' => !$isClosed && !empty($open) ? $open : null,
+                    'closing_time' => !$isClosed && !empty($close) ? $close : null,
+                    'break_start_time' => null,
+                    'break_end_time' => null,
+                ]);
+            }
+        } else {
+            // Handle array format [{day: 'monday', opening_time, closing_time, ...}]
+            foreach ($operatingHours as $hourData) {
+                if (empty($hourData['day'])) continue;
 
-            $day = strtolower($hourData['day']);
-            $isClosed = $hourData['is_closed'] ?? false;
+                $day = strtolower($hourData['day']);
+                $isClosed = $hourData['is_closed'] ?? false;
 
-            ClinicOperatingHour::create([
-                'clinic_id' => $clinic->id,
-                'day_of_week' => $day,
-                'is_closed' => $isClosed,
-                'opening_time' => !$isClosed && !empty($hourData['opening_time']) ? $hourData['opening_time'] : null,
-                'closing_time' => !$isClosed && !empty($hourData['closing_time']) ? $hourData['closing_time'] : null,
-                'break_start_time' => !$isClosed && !empty($hourData['break_start']) ? $hourData['break_start'] : null,
-                'break_end_time' => !$isClosed && !empty($hourData['break_end']) ? $hourData['break_end'] : null,
-            ]);
+                ClinicOperatingHour::create([
+                    'clinic_id' => $this->id, // References clinic_registrations.id
+                    'day_of_week' => $day,
+                    'is_closed' => $isClosed,
+                    'opening_time' => !$isClosed && !empty($hourData['opening_time']) ? $hourData['opening_time'] : null,
+                    'closing_time' => !$isClosed && !empty($hourData['closing_time']) ? $hourData['closing_time'] : null,
+                    'break_start_time' => !$isClosed && !empty($hourData['break_start']) ? $hourData['break_start'] : null,
+                    'break_end_time' => !$isClosed && !empty($hourData['break_end']) ? $hourData['break_end'] : null,
+                ]);
+            }
         }
     }
 }

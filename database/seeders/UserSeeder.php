@@ -235,32 +235,65 @@ class UserSeeder extends Seeder
         $this->command->info('====================================');
 
         foreach ($users as $userData) {
-            // Create user
-            $user = User::create([
-                'email' => $userData['email'],
-                'password' => Hash::make($userData['password']),
-                'account_type' => 'user',
-                'is_admin' => false,
-                'is_verified' => true,
-                'email_verified_at' => now(),
-            ]);
+            $this->command->line("Seeding user: {$userData['email']}");
 
-            // Create user profile
-            $user->profile()->create($userData['profile']);
+            // Create or update user (idempotent)
+            $user = User::updateOrCreate(
+                ['email' => $userData['email']],
+                [
+                    'password' => Hash::make($userData['password']),
+                    'account_type' => 'user',
+                    'is_admin' => false,
+                    'is_verified' => true,
+                    'email_verified_at' => now(),
+                ]
+            );
 
-            // Create user address
-            $user->addresses()->create(array_merge($userData['address'], [
-                'type' => 'home',
-                'is_primary' => true,
-            ]));
+            // Create or update profile
+            if (method_exists($user, 'profile')) {
+                if (!$user->profile) {
+                    $user->profile()->create($userData['profile']);
+                } else {
+                    $user->profile->update($userData['profile']);
+                }
+            }
 
-            // Create emergency contact
-            $user->emergencyContacts()->create([
-                'name' => 'Emergency Contact for ' . $userData['profile']['first_name'],
-                'relationship' => 'friend',
-                'phone' => '09' . rand(100000000, 999999999),
-                'is_primary' => true,
-            ]);
+            // Create or update address (match by city + postal_code when possible)
+            if (method_exists($user, 'addresses') && isset($userData['address'])) {
+                $addressData = array_merge($userData['address'], [
+                    'type' => 'home',
+                    'is_primary' => true,
+                ]);
+
+                $query = $user->addresses();
+                if (!empty($userData['address']['city'])) {
+                    $query = $query->where('city', $userData['address']['city']);
+                }
+                if (!empty($userData['address']['postal_code'])) {
+                    $query = $query->where('postal_code', $userData['address']['postal_code']);
+                }
+
+                $existingAddress = $query->first();
+                if ($existingAddress) {
+                    $existingAddress->update($addressData);
+                } else {
+                    $user->addresses()->create($addressData);
+                }
+            }
+
+            // Create emergency contact if missing
+            if (method_exists($user, 'emergencyContacts')) {
+                $contactName = 'Emergency Contact for ' . ($userData['profile']['first_name'] ?? $user->name ?? 'User');
+                $existingContact = $user->emergencyContacts()->where('name', $contactName)->first();
+                if (!$existingContact) {
+                    $user->emergencyContacts()->create([
+                        'name' => $contactName,
+                        'relationship' => 'friend',
+                        'phone' => '09' . mt_rand(100000000, 999999999),
+                        'is_primary' => true,
+                    ]);
+                }
+            }
 
             $this->command->line("📧 {$userData['email']} | 🔑 {$userData['password']} | 👤 {$userData['profile']['first_name']} {$userData['profile']['last_name']}");
         }

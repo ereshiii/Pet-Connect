@@ -59,21 +59,18 @@ const currentPath = typeof window !== undefined ? window.location.pathname : '';
         <div class="flex flex-col lg:flex-row lg:space-x-12">
             <aside class="w-full max-w-xl lg:w-48">
                 <nav class="flex flex-col space-y-1 space-x-0">
-                    <Button
-                        v-for="item in sidebarNavItems"
-                        :key="toUrl(item.href)"
-                        variant="ghost"
-                        :class="[
-                            'w-full justify-start',
-                            { 'bg-muted': urlIsActive(item.href, currentPath) },
-                        ]"
-                        as-child
-                    >
-                        <Link :href="item.href">
-                            <component :is="item.icon" class="h-4 w-4" />
-                            {{ item.title }}
-                        </Link>
-                    </Button>
+                    <Link :href="item.href" v-for="item in sidebarNavItems" :key="toUrl(item.href)">
+                        <Button
+                            variant="ghost"
+                            :class="[
+                                'w-full justify-start gap-2',
+                                { 'bg-muted': urlIsActive(item.href, currentPath) },
+                            ]"
+                        >
+                            <component :is="item.icon" class="h-4 w-4 shrink-0" />
+                            <span>{{ item.title }}</span>
+                        </Button>
+                    </Link>
                 </nav>
             </aside>
 

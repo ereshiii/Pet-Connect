@@ -60,18 +60,21 @@ class ClinicScheduleController extends Controller
         // Get schedule statistics
         $stats = $this->getScheduleStats($clinicId, $currentWeek);
 
+        // Debug: Log what we're sending
+        \Log::info('ScheduleManagement data', [
+            'clinic_id' => $clinicId,
+            'operating_hours_count' => count($operatingHours),
+            'operating_hours_sample' => array_values($operatingHours)[0] ?? null,
+        ]);
+
         return Inertia::render('2clinicPages/schedule/ScheduleManagement', [
             'clinic' => [
                 'id' => $clinicRegistration->id,
                 'name' => $clinicRegistration->clinic_name,
+                'email' => $clinicRegistration->email,
+                'phone' => $clinicRegistration->phone,
             ],
-            'currentWeek' => $currentWeek,
-            'operatingHours' => $operatingHours,
-            'appointments' => $appointments,
-            'availableSlots' => $availableSlots,
-            'staff' => $staff,
-            'services' => $services,
-            'stats' => $stats,
+            'operatingHours' => array_values($operatingHours), // Convert to array
         ]);
     }
 
@@ -87,6 +90,7 @@ class ClinicScheduleController extends Controller
         }
 
         $clinicRegistration = $user->clinicRegistration;
+        
         $clinicId = $clinicRegistration->id;
 
         $request->validate([
@@ -221,21 +225,82 @@ class ClinicScheduleController extends Controller
      */
     private function initializeOperatingHoursFromRegistration(ClinicRegistration $clinicRegistration)
     {
+        $clinicId = $clinicRegistration->id;
+        
         // Check if operating hours already exist
-        if (ClinicOperatingHour::where('clinic_id', $clinicRegistration->id)->exists()) {
+        if (ClinicOperatingHour::where('clinic_id', $clinicId)->exists()) {
+            return;
+        }
+
+        // Check if registration has valid operating hours data
+        $hasValidHours = false;
+        if (!empty($clinicRegistration->operating_hours)) {
+            $operatingHours = $clinicRegistration->operating_hours;
+            
+            // Check if at least one day has valid times
+            foreach ($operatingHours as $day => $hours) {
+                if (is_array($hours)) {
+                    $open = $hours['open'] ?? $hours['opening_time'] ?? null;
+                    $close = $hours['close'] ?? $hours['closing_time'] ?? null;
+                    
+                    // Check if times are actually filled (not null, not empty string, not just whitespace)
+                    if (!empty($open) && !empty($close) && trim($open) !== '' && trim($close) !== '') {
+                        $hasValidHours = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // If no valid hours found in registration, create defaults
+        if (!$hasValidHours) {
+            \Log::info('No valid operating hours in registration, creating defaults', [
+                'clinic_id' => $clinicId,
+                'registration_hours' => $clinicRegistration->operating_hours
+            ]);
+            $this->createDefaultOperatingHours($clinicId);
             return;
         }
 
         // Create operating hours from registration data
-        if (!empty($clinicRegistration->operating_hours)) {
-            foreach ($clinicRegistration->operating_hours as $hourData) {
+        $operatingHours = $clinicRegistration->operating_hours;
+        
+        // Handle both formats: array of objects or keyed object
+        // If it's a keyed object (e.g., {monday: {open, close}, tuesday: {...}})
+        if (isset($operatingHours['monday']) || isset($operatingHours['tuesday'])) {
+            foreach ($operatingHours as $day => $hours) {
+                if (!is_array($hours)) continue;
+                
+                $day = strtolower($day);
+                $open = $hours['open'] ?? $hours['opening_time'] ?? null;
+                $close = $hours['close'] ?? $hours['closing_time'] ?? null;
+                
+                // Consider empty strings and whitespace as null
+                $open = (empty($open) || trim($open) === '') ? null : trim($open);
+                $close = (empty($close) || trim($close) === '') ? null : trim($close);
+                
+                $isClosed = ($open === null) || ($close === null);
+
+                ClinicOperatingHour::create([
+                    'clinic_id' => $clinicId,
+                    'day_of_week' => $day,
+                    'is_closed' => $isClosed,
+                    'opening_time' => !$isClosed ? $open : null,
+                    'closing_time' => !$isClosed ? $close : null,
+                    'break_start_time' => null,
+                    'break_end_time' => null,
+                ]);
+            }
+        } else {
+            // Handle array format [{day: 'monday', opening_time, closing_time, ...}]
+            foreach ($operatingHours as $hourData) {
                 if (empty($hourData['day'])) continue;
 
                 $day = strtolower($hourData['day']);
                 $isClosed = $hourData['is_closed'] ?? false;
 
                 ClinicOperatingHour::create([
-                    'clinic_id' => $clinicRegistration->id,
+                    'clinic_id' => $clinicId,
                     'day_of_week' => $day,
                     'is_closed' => $isClosed,
                     'opening_time' => !$isClosed && !empty($hourData['opening_time']) ? $hourData['opening_time'] : null,
@@ -244,9 +309,6 @@ class ClinicScheduleController extends Controller
                     'break_end_time' => !$isClosed && !empty($hourData['break_end']) ? $hourData['break_end'] : null,
                 ]);
             }
-        } else {
-            // Create default operating hours if none in registration
-            $this->createDefaultOperatingHours($clinicRegistration->id);
         }
     }
 
@@ -292,7 +354,7 @@ class ClinicScheduleController extends Controller
                 ->first();
                 
             $hours[$day] = [
-                'day' => $day,
+                'day_of_week' => $day,
                 'day_display' => ucfirst($day),
                 'is_closed' => $operatingHour ? $operatingHour->is_closed : true,
                 'opening_time' => $operatingHour && !$operatingHour->is_closed ? $operatingHour->opening_time : null,
@@ -428,7 +490,10 @@ class ClinicScheduleController extends Controller
     {
         $staff = ClinicStaff::with('user')
             ->where('clinic_id', $clinicId)
-            ->where('is_active', true)
+            ->where(function($query) {
+                $query->whereNull('end_date')
+                    ->orWhere('end_date', '>=', now());
+            })
             ->get();
 
         return $staff->map(function ($staffMember) {

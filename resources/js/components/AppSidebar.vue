@@ -18,18 +18,18 @@ import {
     clinics, 
     petsIndex, 
     appointmentCalendar,
+    bookingHistory,
     clinicDashboard, 
     clinicAppointments, 
+    clinicHistory,
     clinicPatients, 
     clinicScheduleManagement,
     clinicServices,
-    clinicBilling,
     clinicReports,
-    clinicInventory,
-    clinicStaff,
     adminDashboard
 } from '@/routes';
 import admin from '@/routes/admin';
+import user from '@/routes/user';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
@@ -51,16 +51,20 @@ import {
     Monitor,
     UserCog,
     Settings,
-    FileText,
-    Wrench,
     Home,
+    Wrench,
+    History as HistoryIcon,
+    Bell,
+    CreditCard,
+    FlaskConical,
+    FileText,
     MapPin,
     Clock,
-    History as HistoryIcon,
     Heart,
-    CreditCard,
-    Bell,
-    PawPrint
+    PawPrint,
+    Phone,
+    Images,
+    Activity
 } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 
@@ -69,162 +73,227 @@ const page = usePage();
 // More reactive approach to account type detection with explicit dependency tracking
 const currentUser = computed(() => {
     const user = page.props.auth?.user;
-    console.log('🧭 currentUser computed:', { user: user });
     return user;
 });
 
 const isClinic = computed(() => {
     const user = currentUser.value;
     const result = user?.is_clinic || user?.account_type === 'clinic';
-    console.log('🏥 isClinic computed:', { 
-        user: user, 
-        result: result, 
-        account_type: user?.account_type, 
-        is_clinic: user?.is_clinic,
-        timestamp: new Date().toISOString()
-    });
     return result;
 });
 
 const isAdmin = computed(() => {
     const user = currentUser.value;
     const result = user?.is_admin || user?.account_type === 'admin';
-    console.log('👑 isAdmin computed:', { 
-        user: user, 
-        result: result, 
-        account_type: user?.account_type, 
-        is_admin: user?.is_admin,
-        timestamp: new Date().toISOString()
-    });
     return result;
 });
 
-const userNavItems: NavItem[] = [
+const userNavItems = [
     {
-        title: 'Dashboard',
-        href: dashboard().url,
-        icon: Home,
+        category: 'Pet Management',
+        items: [
+            {
+                title: 'My Pets',
+                href: petsIndex().url,
+                icon: PawPrint,
+            },
+            {
+                title: 'Appointments',
+                href: appointmentCalendar().url,
+                icon: Calendar,
+            },
+        ]
     },
     {
-        title: 'Clinics',
-        href: clinics().url,
-        icon: Building2,
+        category: 'Services',
+        items: [
+            {
+                title: 'Find Clinics',
+                href: clinics().url,
+                icon: Building2,
+            },
+            {
+                title: 'Favorited Clinics',
+                href: user.favorites.index().url,
+                icon: Heart,
+            },
+        ]
     },
     {
-        title: 'Favorited Clinics',
-        href: '/user/favorited-clinics',
-        icon: Heart,
-    },
-    {
-        title: 'Schedule',
-        href: schedule().url,
-        icon: Clock,
-    },
-    {
-        title: 'Calendar',
-        href: appointmentCalendar().url,
-        icon: Calendar,
-    },
-    {
-        title: 'History',
-        href: history().url,
-        icon: HistoryIcon,
-    },
-     {
-        title: 'Pet',
-        href: petsIndex().url,
-        icon: PawPrint,
-    },
-];
-
-const clinicNavItems: NavItem[] = [
-    {
-        title: 'Dashboard',
-        href: clinicDashboard().url,
-        icon: Home,
-    },
-    {
-        title: 'Appointments',
-        href: clinicAppointments().url,
-        icon: Calendar,
-    },
-    {
-        title: 'History',
-        href: '/clinic/history',
-        icon: HistoryIcon,
-    },
-    {
-        title: 'Patients',
-        href: clinicPatients().url,
-        icon: Users,
-    },
-    {
-        title: 'Schedule Management',
-        href: clinicScheduleManagement().url,
-        icon: CalendarClock,
-    },
-    {
-        title: 'Services & Pricing',
-        href: clinicServices().url,
-        icon: Stethoscope,
-    },
-    {
-        title: 'Billing & Invoicing',
-        href: clinicBilling().url,
-        icon: DollarSign,
-    },
-    {
-        title: 'Reports & Analytics',
-        href: clinicReports().url,
-        icon: BarChart,
-    },
-    {
-        title: 'Inventory',
-        href: clinicInventory().url,
-        icon: Package,
-    },
-    {
-        title: 'Staff Management',
-        href: clinicStaff().url,
-        icon: UserCheck,
+        category: 'Booking',
+        items: [
+            {
+                title: 'Booking History',
+                href: bookingHistory().url,
+                icon: Clock,
+            },
+        ]
     },
 ];
 
-const adminNavItems: NavItem[] = [
+const clinicNavItems = [
     {
-        title: 'Admin Dashboard',
-        href: adminDashboard().url,
-        icon: Home,
+        category: 'Patient Management',
+        items: [
+            {
+                title: 'Appointments',
+                href: clinicAppointments().url,
+                icon: Calendar,
+            },
+            {
+                title: 'History',
+                href: clinicHistory().url,
+                icon: HistoryIcon,
+            },
+            {
+                title: 'Patients',
+                href: clinicPatients().url,
+                icon: Users,
+            },
+        ]
     },
     {
-        title: 'System Monitoring',
-        href: admin.systemMonitoring().url,
-        icon: Monitor,
+        category: 'Clinic Operations',
+        items: [
+            {
+                title: 'Schedule Management',
+                href: clinicScheduleManagement().url,
+                icon: CalendarClock,
+            },
+            {
+                title: 'Staff Management',
+                href: '/clinic/staff',
+                icon: UserCheck,
+            },
+            {
+                title: 'Services',
+                href: clinicServices().url,
+                icon: Stethoscope,
+            },
+        ]
     },
     {
-        title: 'User Management',
-        href: admin.userManagement().url,
-        icon: UserCog,
+        category: 'Clinic Profile',
+        items: [
+            {
+                title: 'Profile',
+                href: '/clinic/settings/clinic-profile',
+                icon: Building2,
+            },
+            {
+                title: 'Gallery',
+                href: '/clinic/settings/clinic-gallery',
+                icon: Images,
+            },
+        ]
     },
     {
-        title: 'Clinic Management',
-        href: '/admin/clinic-management',
-        icon: Building2,
+        category: 'Reports & Analytics',
+        items: [
+            {
+                title: 'Overview',
+                href: clinicReports().url,
+                icon: BarChart,
+            },
+            {
+                title: 'Patient Analytics',
+                href: '/clinic/reports/patients',
+                icon: Users,
+            },
+            {
+                title: 'Services Analytics',
+                href: '/clinic/reports/services',
+                icon: Stethoscope,
+            },
+            {
+                title: 'Clinic Reviews',
+                href: '/clinic/reports/reviews',
+                icon: Activity,
+            },
+        ]
+    },
+];
+
+const adminNavItems = [
+    {
+        category: 'User Management',
+        items: [
+            {
+                title: 'Overview',
+                href: '/admin/user-management/overview',
+                icon: Users,
+            },
+            {
+                title: 'Admins',
+                href: '/admin/user-management/admins',
+                icon: Shield,
+            },
+            {
+                title: 'Pet Owners',
+                href: '/admin/user-management/pet-owners',
+                icon: PawPrint,
+            },
+            {
+                title: 'Clinics',
+                href: '/admin/user-management/clinics',
+                icon: Building2,
+            },
+        ]
     },
     {
-        title: 'Reports & Analytics',
-        href: admin.reports().url,
-        icon: BarChart,
+        category: 'System Monitoring',
+        items: [
+            {
+                title: 'Overview',
+                href: '/admin/system-monitoring/overview',
+                icon: Activity,
+            },
+            {
+                title: 'Server',
+                href: '/admin/system-monitoring/server',
+                icon: Monitor,
+            },
+            {
+                title: 'Database',
+                href: '/admin/system-monitoring/database',
+                icon: Folder,
+            },
+            {
+                title: 'Security',
+                href: '/admin/system-monitoring/security',
+                icon: Shield,
+            },
+        ]
     },
     {
-        title: 'System Maintenance',
-        href: admin.systemMaintenance().url,
-        icon: Wrench,
+        category: 'Financial',
+        items: [
+            {
+                title: 'Subscriptions',
+                href: '/admin/financial/subscriptions',
+                icon: CreditCard,
+            },
+        ]
     },
     {
-        title: 'Security Center',
-        href: admin.securityCenter().url,
-        icon: Shield,
+        category: 'Tools',
+        items: [
+            {
+                title: 'Test Cards',
+                href: '/admin/testing-tools/mock-payment',
+                icon: DollarSign,
+            },
+            {
+                title: 'Subscription Removal',
+                href: '/admin/testing-tools/subscription-removal',
+                icon: CreditCard,
+            },
+            {
+                title: 'Account Reset',
+                href: '/admin/testing-tools/account-reset',
+                icon: FlaskConical,
+            },
+        ]
     },
 ];
 
@@ -232,13 +301,6 @@ const mainNavItems = computed(() => {
     // Ensure reactive dependencies are tracked
     const adminCheck = isAdmin.value;
     const clinicCheck = isClinic.value;
-    
-    console.log('🧭 mainNavItems computed:', { 
-        adminCheck, 
-        clinicCheck, 
-        resultType: adminCheck ? 'admin' : clinicCheck ? 'clinic' : 'user',
-        timestamp: new Date().toISOString()
-    });
     
     if (adminCheck) return adminNavItems;
     if (clinicCheck) return clinicNavItems;
@@ -250,29 +312,14 @@ const dashboardLink = computed(() => {
     const adminCheck = isAdmin.value;
     const clinicCheck = isClinic.value;
     
-    console.log('🏠 dashboardLink computed:', { 
-        adminCheck, 
-        clinicCheck,
-        timestamp: new Date().toISOString()
-    });
-    
     if (adminCheck) return adminDashboard().url;
     if (clinicCheck) return clinicDashboard().url;
     return dashboard().url;
 });
 
-const footerNavItems: NavItem[] = [
-    {
-        title: 'Subscriptions',
-        href: 'https://github.com/laravel/vue-starter-kit',
-        icon: CreditCard,
-    },
-    {
-        title: 'Notifications',
-        href: 'https://laravel.com/docs/starter-kits#vue',
-        icon: Bell,
-    },
-];
+const footerNavItems = computed<NavItem[]>(() => {
+    return [];
+});
 </script>
 
 <template>
@@ -280,8 +327,8 @@ const footerNavItems: NavItem[] = [
         <SidebarHeader>
             <SidebarMenu>
                 <SidebarMenuItem>
-                    <SidebarMenuButton size="lg" as-child>
-                        <Link :href="dashboardLink">
+                    <SidebarMenuButton size="lg">
+                        <Link :href="dashboardLink" class="flex w-full items-center gap-2">
                             <AppLogo />
                         </Link>
                     </SidebarMenuButton>
@@ -292,11 +339,6 @@ const footerNavItems: NavItem[] = [
         <SidebarContent>
             <NavMain :items="mainNavItems" />
         </SidebarContent>
-
-        <SidebarFooter>
-            <NavFooter :items="footerNavItems" />
-            <NavUser />
-        </SidebarFooter>
     </Sidebar>
     <slot />
 </template>

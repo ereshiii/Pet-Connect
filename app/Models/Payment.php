@@ -12,7 +12,7 @@ class Payment extends Model
 
     protected $fillable = [
         'invoice_id',
-        'clinic_id',
+        'clinic_id', // FK to clinic_registrations.id (transaction table pattern)
         'payment_number',
         'amount',
         'method',
@@ -41,6 +41,11 @@ class Payment extends Model
         return $this->belongsTo(Invoice::class);
     }
 
+    /**
+     * Get the clinic registration that owns this payment.
+     * Note: clinic_id references clinic_registrations.id (not clinics.id)
+     * This follows the dual-ID pattern where clinic_registrations.id is used for transactions.
+     */
     public function clinic(): BelongsTo
     {
         return $this->belongsTo(ClinicRegistration::class, 'clinic_id');
@@ -135,13 +140,20 @@ class Payment extends Model
         parent::boot();
 
         static::creating(function ($payment) {
+            // Set payment_date to now if not provided
+            if (!$payment->payment_date) {
+                $payment->payment_date = now();
+            }
+            
             if (!$payment->payment_number) {
                 $payment->payment_number = $payment->generatePaymentNumber();
             }
         });
 
         static::saved(function ($payment) {
-            $payment->invoice->updatePaymentStatus();
+            if ($payment->invoice) {
+                $payment->invoice->updatePaymentStatus();
+            }
         });
     }
 }

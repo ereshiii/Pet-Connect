@@ -37,6 +37,26 @@ class SystemSetting extends Model
     }
 
     /**
+     * Alias for cast_value - used by tests
+     */
+    public function getTypedValueAttribute()
+    {
+        return $this->getCastValueAttribute();
+    }
+
+    /**
+     * Get validation rules as array
+     */
+    public function getValidationRulesArrayAttribute(): ?array
+    {
+        if (!$this->validation_rules) {
+            return null;
+        }
+
+        return explode('|', $this->validation_rules);
+    }
+
+    /**
      * Set the setting value.
      */
     public function setCastValue($value): void
@@ -64,6 +84,14 @@ class SystemSetting extends Model
     }
 
     /**
+     * Alias for get() method - used by tests
+     */
+    public static function getValue(string $key, $default = null)
+    {
+        return static::get($key, $default);
+    }
+
+    /**
      * Set a setting value by key.
      */
     public static function set(string $key, $value, string $type = 'string'): void
@@ -71,6 +99,37 @@ class SystemSetting extends Model
         $setting = static::firstOrNew(['key' => $key]);
         $setting->type = $type;
         $setting->setCastValue($value);
+    }
+
+    /**
+     * Alias for set() method - used by tests
+     */
+    public static function setValue(string $key, $value, string $type = 'string'): void
+    {
+        static::set($key, $value, $type);
+    }
+
+    /**
+     * Get all settings as config array
+     */
+    public static function getAllAsConfig(): array
+    {
+        return static::all()
+            ->pluck('cast_value', 'key')
+            ->toArray();
+    }
+
+    /**
+     * Bulk update settings
+     */
+    public static function bulkUpdate(array $settings): void
+    {
+        foreach ($settings as $key => $value) {
+            $setting = static::where('key', $key)->first();
+            if ($setting) {
+                $setting->setCastValue($value);
+            }
+        }
     }
 
     /**

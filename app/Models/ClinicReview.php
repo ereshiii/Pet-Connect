@@ -11,8 +11,9 @@ class ClinicReview extends Model
     use HasFactory;
 
     protected $fillable = [
-        'clinic_id',
+        'clinic_registration_id',   // References clinic_registrations.id
         'user_id',
+        'appointment_id',           // References appointments.id (nullable)
         'rating',
         'comment',
         'response',
@@ -32,11 +33,21 @@ class ClinicReview extends Model
     ];
 
     /**
-     * Get the clinic that this review belongs to.
+     * Get the clinic registration that this review belongs to.
+     * Note: clinic_registration_id is the primary field for clinic association
      */
-    public function clinic(): BelongsTo
+    public function clinicRegistration(): BelongsTo
     {
-        return $this->belongsTo(Clinic::class);
+        return $this->belongsTo(ClinicRegistration::class);
+    }
+
+    /**
+     * Get the appointment associated with this review.
+     * Note: appointment_id is optional - reviews can be left without an appointment
+     */
+    public function appointment(): BelongsTo
+    {
+        return $this->belongsTo(Appointment::class);
     }
 
     /**

@@ -81,4 +81,16 @@ return [
     |
     */
     'test_mode' => env('APP_ENV') !== 'production',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Mock Mode
+    |--------------------------------------------------------------------------
+    |
+    | When enabled, all PayMongo calls will be simulated without making real
+    | API requests. Perfect for development without PayMongo account.
+    | Automatically enabled if API keys are not configured.
+    |
+    */
+    'mock_mode' => env('PAYMONGO_MOCK_MODE', true),
 ];

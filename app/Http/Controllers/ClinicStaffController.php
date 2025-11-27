@@ -30,36 +30,18 @@ class ClinicStaffController extends Controller
             abort(404, 'Clinic registration not found.');
         }
 
-        // Get the actual clinic record
-        $clinic = $clinicRegistration->clinic;
-        if (!$clinic) {
-            abort(404, 'Clinic not found. Registration may not be approved yet.');
-        }
-
-        $clinicId = $clinic->id;
+        // Use clinic registration ID directly (clinic_id now references clinic_registrations.id)
+        $clinicId = $clinicRegistration->id;
 
         // Initialize staff from registration if first time
         $this->initializeStaffFromRegistration($clinicRegistration);
 
         // Get filter parameters
-        $role = $request->get('role', 'all');
-        $status = $request->get('status', 'all');
         $search = $request->get('search', '');
 
-        // Build query
-        $query = ClinicStaff::where('clinic_id', $clinicId);
-
-        // Apply role filter
-        if ($role !== 'all') {
-            $query->where('role', $role);
-        }
-
-        // Apply status filter
-        if ($status === 'active') {
-            $query->where('is_active', true);
-        } elseif ($status === 'inactive') {
-            $query->where('is_active', false);
-        }
+        // Build query - only veterinarians
+        $query = ClinicStaff::where('clinic_id', $clinicId)
+            ->where('role', 'veterinarian');
 
         // Apply search filter
         if ($search) {
@@ -70,66 +52,64 @@ class ClinicStaffController extends Controller
             });
         }
 
-        // Get results
-        $staff = $query->orderBy('role')
-            ->orderBy('created_at')
+        // Get results - ordered by creation date
+        $staff = $query->orderBy('created_at', 'desc')
             ->get();
 
+        // Get total vet count for delete button disabling
+        $totalVets = ClinicStaff::where('clinic_id', $clinicId)
+            ->where('role', 'veterinarian')
+            ->count();
+
         // Transform staff data
-        $transformedStaff = $staff->map(function ($staffMember) {
+        $transformedStaff = $staff->map(function ($staffMember) use ($totalVets) {
             return [
                 'id' => $staffMember->id,
                 'name' => $staffMember->name,
                 'email' => $staffMember->email ?? '',
                 'phone' => $staffMember->phone ?? '',
-                'role' => $staffMember->role,
-                'role_display' => $staffMember->role_display,
                 'license_number' => $staffMember->license_number,
                 'specializations' => $staffMember->specializations ?? [],
                 'specializations_string' => $staffMember->specializations_string,
                 'start_date' => $staffMember->start_date,
                 'formatted_start_date' => $staffMember->start_date ? $staffMember->start_date->format('M j, Y') : '',
                 'years_of_service' => $staffMember->years_of_service,
-                'is_active' => $staffMember->is_active,
-                'status' => $staffMember->is_active ? 'active' : 'inactive',
                 'full_title' => $staffMember->full_title,
                 'created_at' => $staffMember->created_at,
                 'updated_at' => $staffMember->updated_at,
                 // Additional fields that the Vue component expects
                 'avatar' => null,
-                'department' => $this->mapRoleToDepartment($staffMember->role),
+                'department' => 'Veterinary',
                 'hire_date' => $staffMember->start_date ? $staffMember->start_date->format('Y-m-d') : null,
                 'emergency_contact' => null,
+                'is_auto_generated' => $staffMember->is_auto_generated ?? false,
+                'can_delete' => $totalVets > 1, // Can only delete if more than 1 vet exists
             ];
         });
 
         // Get statistics
         $stats = $this->getStaffStats($clinicId);
-        
-        // Get available roles
-        $roles = $this->getAvailableRoles();
 
-        // Mock additional data that the Vue component expects but we don't have yet
-        $mockData = [
-            'upcoming_shifts' => [],
-            'departments' => ['Veterinary', 'Reception', 'Administration', 'Grooming'],
-        ];
+        // Get subscription limits
+        $subscriptionService = app(\App\Services\SubscriptionService::class);
+        $usageStats = $subscriptionService->getUsageStats($user);
 
         return Inertia::render('2clinicPages/staff/StaffManagement', [
             'staff_members' => $transformedStaff,
             'stats' => $stats,
-            'roles' => $roles,
             'filters' => [
-                'role' => $role,
-                'status' => $status,
                 'search' => $search,
             ],
             'clinic' => [
-                'id' => $clinic->id,
-                'name' => $clinic->name,
+                'id' => $clinicRegistration->id,
+                'name' => $clinicRegistration->clinic_name,
             ],
-            'upcoming_shifts' => $mockData['upcoming_shifts'],
-            'departments' => $mockData['departments'],
+            'canAddStaff' => $usageStats['staff']['can_add'],
+            'staffLimit' => [
+                'current' => $usageStats['staff']['current'],
+                'max' => $usageStats['staff']['max'],
+                'unlimited' => $usageStats['staff']['unlimited'],
+            ],
         ]);
     }
 
@@ -146,35 +126,41 @@ class ClinicStaffController extends Controller
 
         $clinicRegistration = $user->clinicRegistration;
 
-        // Get the actual clinic record
-        $clinic = $clinicRegistration->clinic;
-        if (!$clinic) {
-            abort(404, 'Clinic not found. Registration may not be approved yet.');
+        if (!$clinicRegistration) {
+            abort(404, 'Clinic registration not found.');
+        }
+
+        // Check subscription limits
+        $subscriptionService = app(\App\Services\SubscriptionService::class);
+        if (!$subscriptionService->canAddStaff($user)) {
+            $limits = $subscriptionService->getUsageLimits($user);
+            $maxStaff = $limits['max_staff_accounts'] ?? 0;
+            
+            return back()->withErrors([
+                'error' => "You've reached your staff limit ({$maxStaff} staff members). Please upgrade your subscription to add more veterinarians."
+            ]);
         }
 
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'nullable|email|max:255',
             'phone' => 'nullable|string|max:20',
-            'role' => 'required|string|in:veterinarian,assistant,receptionist,admin',
-            'license_number' => 'nullable|string|max:100',
+            'license_number' => 'required|string|max:100',
             'specializations' => 'nullable|array',
             'specializations.*' => 'string|max:255',
             'start_date' => 'nullable|date',
-            'is_active' => 'boolean',
         ]);
 
-        // Create staff record directly without user account
+        // Create staff record directly without user account (all are veterinarians)
         ClinicStaff::create([
-            'clinic_id' => $clinic->id,
+            'clinic_id' => $clinicRegistration->id,
             'name' => $request->name,
             'email' => $request->email,
             'phone' => $request->phone,
-            'role' => $request->role,
+            'role' => 'veterinarian',
             'license_number' => $request->license_number,
             'specializations' => $request->specializations ?? [],
             'start_date' => $request->start_date ? Carbon::parse($request->start_date) : now(),
-            'is_active' => $request->is_active ?? true,
         ]);
 
         return back()->with('success', 'Staff member added successfully.');
@@ -193,26 +179,22 @@ class ClinicStaffController extends Controller
 
         $clinicRegistration = $user->clinicRegistration;
         
-        // Get the actual clinic record
-        $clinic = $clinicRegistration->clinic;
-        if (!$clinic) {
-            abort(404, 'Clinic not found. Registration may not be approved yet.');
+        if (!$clinicRegistration) {
+            abort(404, 'Clinic registration not found.');
         }
         
         $staffMember = ClinicStaff::where('id', $id)
-            ->where('clinic_id', $clinic->id)
+            ->where('clinic_id', $clinicRegistration->id)
             ->firstOrFail();
 
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'nullable|email|max:255',
             'phone' => 'nullable|string|max:20',
-            'role' => 'required|string|in:veterinarian,assistant,receptionist,admin',
-            'license_number' => 'nullable|string|max:100',
+            'license_number' => 'required|string|max:100',
             'specializations' => 'nullable|array',
             'specializations.*' => 'string|max:255',
             'start_date' => 'nullable|date',
-            'is_active' => 'boolean',
         ]);
 
         // Update staff record
@@ -220,18 +202,18 @@ class ClinicStaffController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'phone' => $request->phone,
-            'role' => $request->role,
             'license_number' => $request->license_number,
             'specializations' => $request->specializations ?? [],
             'start_date' => $request->start_date ? Carbon::parse($request->start_date) : $staffMember->start_date,
-            'is_active' => $request->is_active ?? true,
         ]);
 
         return back()->with('success', 'Staff member updated successfully.');
     }
 
     /**
-     * Delete a staff member.
+     * Delete a staff member (hard delete).
+     * Prevents deletion if only one veterinarian remains.
+     * If deleting the last vet, automatically creates a placeholder.
      */
     public function destroy($id)
     {
@@ -243,65 +225,44 @@ class ClinicStaffController extends Controller
 
         $clinicRegistration = $user->clinicRegistration;
         
-        // Get the actual clinic record
-        $clinic = $clinicRegistration->clinic;
-        if (!$clinic) {
-            abort(404, 'Clinic not found. Registration may not be approved yet.');
+        if (!$clinicRegistration) {
+            abort(404, 'Clinic registration not found.');
         }
         
-        $staffMember = ClinicStaff::where('id', $id)
-            ->where('clinic_id', $clinic->id)
-            ->firstOrFail();
+        try {
+            $staffMember = ClinicStaff::where('id', $id)
+                ->where('clinic_id', $clinicRegistration->id)
+                ->firstOrFail();
 
-        // Prevent deleting the clinic owner (if applicable)
-        if ($staffMember->role === 'owner') {
-            return back()->withErrors([
-                'staff' => 'Cannot delete the clinic owner.'
-            ]);
+            // Count total veterinarians at this clinic
+            $vetCount = ClinicStaff::where('clinic_id', $clinicRegistration->id)
+                ->where('role', 'veterinarian')
+                ->count();
+
+            // If only 1 vet exists (the one being deleted), create a placeholder before deletion
+            if ($vetCount === 1) {
+                // Create an auto-generated placeholder veterinarian
+                ClinicStaff::create([
+                    'clinic_id' => $clinicRegistration->id,
+                    'name' => 'Veterinarian (Auto-assigned)',
+                    'email' => null,
+                    'phone' => null,
+                    'role' => 'veterinarian',
+                    'license_number' => 'AUTO_' . strtoupper(uniqid()),
+                    'specializations' => [],
+                    'start_date' => now(),
+                    'is_auto_generated' => true,
+                ]);
+            }
+
+            // Hard delete - permanently remove from database
+            $staffMember->delete();
+
+            return redirect()->back()->with('success', 'Staff member deleted successfully.');
+        } catch (\Exception $e) {
+            \Log::error('Failed to delete staff member: ' . $e->getMessage());
+            return redirect()->back()->withErrors(['error' => 'Failed to delete staff member.']);
         }
-
-        // Soft delete by marking as inactive and setting end date
-        $staffMember->update([
-            'is_active' => false,
-            'end_date' => now(),
-        ]);
-
-        return back()->with('success', 'Staff member removed successfully.');
-    }
-
-    /**
-     * Toggle staff member status.
-     */
-    public function toggleStatus($id)
-    {
-        $user = Auth::user();
-        
-        if (!$user->isClinic()) {
-            abort(403, 'Access denied. Clinic account required.');
-        }
-
-        $clinicRegistration = $user->clinicRegistration;
-        
-        // Get the actual clinic record
-        $clinic = $clinicRegistration->clinic;
-        if (!$clinic) {
-            abort(404, 'Clinic not found. Registration may not be approved yet.');
-        }
-        
-        $staffMember = ClinicStaff::where('id', $id)
-            ->where('clinic_id', $clinic->id)
-            ->firstOrFail();
-
-        $newStatus = !$staffMember->is_active;
-        
-        $staffMember->update([
-            'is_active' => $newStatus,
-            'end_date' => $newStatus ? null : now(),
-        ]);
-
-        $status = $newStatus ? 'activated' : 'deactivated';
-        
-        return back()->with('success', "Staff member {$status} successfully.");
     }
 
     /**
@@ -309,13 +270,8 @@ class ClinicStaffController extends Controller
      */
     private function initializeStaffFromRegistration(ClinicRegistration $clinicRegistration)
     {
-        $clinic = $clinicRegistration->clinic;
-        if (!$clinic) {
-            return;
-        }
-
-        // Check if staff already exists
-        if (ClinicStaff::where('clinic_id', $clinic->id)->exists()) {
+        // Check if staff already exists for this clinic registration
+        if (ClinicStaff::where('clinic_id', $clinicRegistration->id)->exists()) {
             return;
         }
 
@@ -324,9 +280,9 @@ class ClinicStaffController extends Controller
             foreach ($clinicRegistration->veterinarians as $vetData) {
                 if (empty($vetData['name'])) continue;
 
-                // Create staff record directly without user account
+                // Create staff record directly without user account (all are vets)
                 ClinicStaff::create([
-                    'clinic_id' => $clinic->id,
+                    'clinic_id' => $clinicRegistration->id,
                     'name' => $vetData['name'],
                     'email' => $vetData['email'] ?? null,
                     'phone' => $vetData['phone'] ?? null,
@@ -334,25 +290,8 @@ class ClinicStaffController extends Controller
                     'license_number' => $vetData['license_number'] ?? null,
                     'specializations' => !empty($vetData['specialization']) ? [$vetData['specialization']] : [],
                     'start_date' => now(),
-                    'is_active' => true,
                 ]);
             }
-        }
-
-        // Add the clinic owner as a staff member
-        if ($clinicRegistration->user) {
-            ClinicStaff::create([
-                'clinic_id' => $clinic->id,
-                'user_id' => $clinicRegistration->user->id, // Keep user relationship for owner
-                'name' => $clinicRegistration->user->name,
-                'email' => $clinicRegistration->user->email,
-                'phone' => $clinicRegistration->user->phone,
-                'role' => 'owner',
-                'license_number' => null,
-                'specializations' => ['General Management'],
-                'start_date' => $clinicRegistration->created_at ?? now(),
-                'is_active' => true,
-            ]);
         }
     }
 
@@ -362,17 +301,6 @@ class ClinicStaffController extends Controller
     private function getStaffStats($clinicId): array
     {
         $totalStaff = ClinicStaff::where('clinic_id', $clinicId)->count();
-        $activeStaff = ClinicStaff::where('clinic_id', $clinicId)->where('is_active', true)->count();
-        $inactiveStaff = $totalStaff - $activeStaff;
-
-        // Get role distribution
-        $roleStats = ClinicStaff::where('clinic_id', $clinicId)
-            ->where('is_active', true)
-            ->select('role', DB::raw('count(*) as count'))
-            ->groupBy('role')
-            ->get()
-            ->pluck('count', 'role')
-            ->toArray();
 
         // Get recent hires (last 30 days)
         $recentHires = ClinicStaff::where('clinic_id', $clinicId)
@@ -381,17 +309,8 @@ class ClinicStaffController extends Controller
 
         return [
             'total_staff' => $totalStaff,
-            'active_staff' => $activeStaff,
-            'inactive_staff' => $inactiveStaff,
-            'role_stats' => $roleStats,
+            'veterinarians' => $totalStaff, // All staff are veterinarians
             'recent_hires' => $recentHires,
-            'veterinarians' => $roleStats['veterinarian'] ?? 0,
-            'assistants' => $roleStats['assistant'] ?? 0,
-            'receptionists' => $roleStats['receptionist'] ?? 0,
-            'admins' => $roleStats['admin'] ?? 0,
-            // Mock data that the Vue component expects
-            'on_duty_now' => 0,
-            'monthly_hours' => 0,
         ];
     }
 

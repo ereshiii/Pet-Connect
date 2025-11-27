@@ -51,8 +51,46 @@ interface Patient {
     updated_at: string;
 }
 
+interface MedicalRecord {
+    id: number;
+    date: string;
+    formatted_date: string;
+    type: string;
+    title: string;
+    description: string;
+    treatment: string;
+    medication: string;
+    veterinarian: string;
+    clinic_name: string;
+    is_own_clinic: boolean;
+    appointment?: {
+        id: number;
+        appointment_number: string;
+        scheduled_at: string;
+        service: string | null;
+    } | null;
+}
+
+interface VaccinationRecord {
+    id: number;
+    vaccine: string;
+    date: string;
+    formatted_date: string;
+    next_due: string;
+    status: string;
+    veterinarian: string;
+    clinic_name: string;
+    is_own_clinic: boolean;
+}
+
 interface Props {
     patient: Patient;
+    medical_records?: MedicalRecord[];
+    vaccination_records?: VaccinationRecord[];
+    clinic: {
+        id: number;
+        name: string;
+    };
 }
 
 const props = defineProps<Props>();
@@ -240,22 +278,6 @@ const calculateAge = (birthDate: string) => {
                 </div>
             </div>
 
-            <!-- Visit History -->
-            <div class="rounded-lg border bg-card p-6">
-                <h2 class="text-lg font-semibold mb-4">Visit History</h2>
-                <div class="grid gap-4 md:grid-cols-2">
-                    <div v-if="patient.last_visit">
-                        <p class="text-sm text-muted-foreground">Last Visit</p>
-                        <p class="font-medium">{{ formatDate(patient.last_visit) }}</p>
-                    </div>
-                    
-                    <div v-if="patient.next_appointment">
-                        <p class="text-sm text-muted-foreground">Next Appointment</p>
-                        <p class="font-medium">{{ formatDate(patient.next_appointment) }}</p>
-                    </div>
-                </div>
-            </div>
-
             <!-- Record Information -->
             <div class="rounded-lg border bg-card p-6">
                 <h2 class="text-lg font-semibold mb-4">Record Information</h2>
@@ -268,6 +290,130 @@ const calculateAge = (birthDate: string) => {
                     <div>
                         <p class="text-sm text-muted-foreground">Last Updated</p>
                         <p class="font-medium">{{ formatDate(patient.updated_at) }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Medical Records (Cross-Clinic) -->
+            <div v-if="medical_records && medical_records.length > 0" class="rounded-lg border bg-card p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold">Medical History</h2>
+                    <span class="text-sm text-muted-foreground">
+                        {{ medical_records.length }} record{{ medical_records.length !== 1 ? 's' : '' }}
+                    </span>
+                </div>
+                
+                <div class="space-y-4">
+                    <div v-for="record in medical_records" :key="record.id" 
+                         class="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+                        <div class="flex items-start justify-between mb-3">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <h3 class="font-semibold">{{ record.title }}</h3>
+                                    <span :class="[
+                                        'text-xs px-2 py-0.5 rounded-full font-medium',
+                                        record.type === 'emergency' ? 'bg-red-100 text-red-800' :
+                                        record.type === 'surgery' ? 'bg-purple-100 text-purple-800' :
+                                        record.type === 'vaccination' ? 'bg-blue-100 text-blue-800' :
+                                        'bg-gray-100 text-gray-800'
+                                    ]">
+                                        {{ record.type }}
+                                    </span>
+                                    <span v-if="record.appointment" 
+                                          class="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 font-medium">
+                                        📋 {{ record.appointment.appointment_number }}
+                                    </span>
+                                </div>
+                                <p class="text-sm text-muted-foreground">{{ record.formatted_date }} • Dr. {{ record.veterinarian }}</p>
+                            </div>
+                            <span :class="[
+                                'text-xs px-2.5 py-1 rounded-full font-medium whitespace-nowrap',
+                                record.is_own_clinic 
+                                    ? 'bg-green-100 text-green-800 border border-green-200' 
+                                    : 'bg-amber-100 text-amber-800 border border-amber-200'
+                            ]">
+                                {{ record.is_own_clinic ? '✓ ' + clinic.name : '🏥 ' + record.clinic_name }}
+                            </span>
+                        </div>
+                        
+                        <div class="space-y-2 text-sm">
+                            <div v-if="record.description">
+                                <span class="font-medium">Diagnosis:</span>
+                                <p class="text-muted-foreground">{{ record.description }}</p>
+                            </div>
+                            <div v-if="record.treatment">
+                                <span class="font-medium">Treatment:</span>
+                                <p class="text-muted-foreground">{{ record.treatment }}</p>
+                            </div>
+                            <div v-if="record.medication">
+                                <span class="font-medium">Medication:</span>
+                                <p class="text-muted-foreground">{{ record.medication }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vaccination Records (Cross-Clinic) -->
+            <div v-if="vaccination_records && vaccination_records.length > 0" class="rounded-lg border bg-card p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold">Vaccination History</h2>
+                    <span class="text-sm text-muted-foreground">
+                        {{ vaccination_records.length }} vaccination{{ vaccination_records.length !== 1 ? 's' : '' }}
+                    </span>
+                </div>
+                
+                <div class="space-y-3">
+                    <div v-for="vaccination in vaccination_records" :key="vaccination.id"
+                         class="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <h3 class="font-semibold">{{ vaccination.vaccine }}</h3>
+                                    <span :class="[
+                                        'text-xs px-2 py-0.5 rounded-full font-medium',
+                                        vaccination.status === 'valid' ? 'bg-green-100 text-green-800' :
+                                        vaccination.status === 'expired' ? 'bg-red-100 text-red-800' :
+                                        'bg-yellow-100 text-yellow-800'
+                                    ]">
+                                        {{ vaccination.status }}
+                                    </span>
+                                </div>
+                                <p class="text-sm text-muted-foreground mb-2">
+                                    Administered: {{ vaccination.formatted_date }} • Dr. {{ vaccination.veterinarian }}
+                                </p>
+                                <p class="text-sm text-muted-foreground">
+                                    Next due: {{ vaccination.next_due }}
+                                </p>
+                            </div>
+                            <span :class="[
+                                'text-xs px-2.5 py-1 rounded-full font-medium whitespace-nowrap',
+                                vaccination.is_own_clinic 
+                                    ? 'bg-green-100 text-green-800 border border-green-200' 
+                                    : 'bg-amber-100 text-amber-800 border border-amber-200'
+                            ]">
+                                {{ vaccination.is_own_clinic ? '✓ ' + clinic.name : '🏥 ' + vaccination.clinic_name }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Info Message about Cross-Clinic Records -->
+            <div v-if="(medical_records && medical_records.length > 0) || (vaccination_records && vaccination_records.length > 0)" 
+                 class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <div class="flex items-start gap-3">
+                    <svg class="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                        <p class="text-sm text-blue-900 dark:text-blue-100 font-medium mb-1">
+                            Complete Medical History
+                        </p>
+                        <p class="text-xs text-blue-700 dark:text-blue-300">
+                            This view includes medical records and vaccinations from all clinics for continuity of care. 
+                            Records from {{ clinic.name }} are marked with a green checkmark (✓).
+                        </p>
                     </div>
                 </div>
             </div>

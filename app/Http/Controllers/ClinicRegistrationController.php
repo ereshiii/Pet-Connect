@@ -39,6 +39,29 @@ class ClinicRegistrationController extends Controller
     {
         $user = Auth::user();
 
+        // Debug: Log what we're receiving
+        \Log::info('Registration form data:', [
+            'has_files' => $request->hasFile('certification_proofs'),
+            'all_files' => $request->allFiles(),
+            'certification_proofs_input' => $request->input('certification_proofs'),
+            'certification_proofs_file' => $request->file('certification_proofs'),
+            'content_type' => $request->header('Content-Type'),
+        ]);
+        
+        // Check each certification proof individually
+        if ($request->has('certification_proofs')) {
+            $certProofs = $request->input('certification_proofs');
+            if (is_array($certProofs)) {
+                foreach ($certProofs as $index => $proof) {
+                    \Log::info("Certification proof [{$index}]:", [
+                        'is_file' => $request->hasFile("certification_proofs.{$index}"),
+                        'type' => gettype($proof),
+                        'value' => is_string($proof) ? substr($proof, 0, 100) : 'not a string'
+                    ]);
+                }
+            }
+        }
+
         // Validate the request
         $validated = $request->validate([
             // Step 1: Clinic Information
@@ -68,8 +91,11 @@ class ClinicRegistrationController extends Controller
             // Step 5: Veterinarians
             'veterinarians' => 'required|array|min:1',
             'veterinarians.*.name' => 'required|string|max:255',
+            'veterinarians.*.email' => 'nullable|email|max:255',
+            'veterinarians.*.phone' => 'nullable|string|max:20',
             'veterinarians.*.license_number' => 'required|string|max:100',
-            'veterinarians.*.specialization' => 'nullable|string|max:255',
+            'veterinarians.*.specializations' => 'nullable|array',
+            'veterinarians.*.specializations.*' => 'string|max:255',
             
             // Step 6: Certifications
             'certification_proofs' => 'nullable|array',

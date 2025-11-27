@@ -3,32 +3,14 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
 import { clinicDashboard, clinicScheduleManagement } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
-import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { 
-    Calendar,
-    Clock,
-    Users,
-    DollarSign,
-    ChevronLeft,
-    ChevronRight,
-    Plus,
-    Settings,
-    BarChart3,
-    AlertCircle
-} from 'lucide-vue-next';
+import { ref, computed } from 'vue';
+import { Clock, Calendar, Save, AlertCircle, Lock, X } from 'lucide-vue-next';
+import { TimePicker } from '@/components/ui/time-picker';
 
 // TypeScript interfaces
-interface WeekDate {
-    date: string;
-    formatted_date: string;
-    day_name: string;
-    day_short: string;
-    is_today: boolean;
-    is_weekend: boolean;
-}
-
 interface OperatingHour {
-    day: string;
+    id?: number;
+    day_of_week: string;
     day_display: string;
     is_closed: boolean;
     opening_time: string | null;
@@ -38,72 +20,16 @@ interface OperatingHour {
     formatted_hours: string;
 }
 
-interface Appointment {
-    id: number;
-    time: string;
-    formatted_time: string;
-    duration: number;
-    status: string;
-    status_display: string;
-    appointment_type: string;
-    patient_name: string | null;
-    owner_name: string | null;
-    service: string;
-    staff: string | null;
-    notes: string | null;
-    is_slot: boolean;
-}
-
-interface TimeSlot {
-    time: string;
-    formatted_time: string;
-    is_available: boolean;
-    is_break: boolean;
-    is_booked: boolean;
-    is_past: boolean;
-}
-
-interface Staff {
-    id: number;
-    name: string;
-    role: string;
-    role_display: string;
-    specializations: string[];
-}
-
-interface Service {
-    id: number;
-    name: string;
-    duration: number;
-    price: number;
-    formatted_price: string;
-    category: string;
-}
-
-interface Stats {
-    total_slots: number;
-    booked_slots: number;
-    available_slots: number;
-    utilization_rate: number;
-    total_appointments: number;
-    confirmed_appointments: number;
-    pending_appointments: number;
-}
-
 interface Clinic {
     id: number;
     name: string;
+    email: string;
+    phone: string;
 }
 
 interface Props {
     clinic: Clinic;
-    currentWeek: WeekDate[];
-    operatingHours: Record<string, OperatingHour>;
-    appointments: Record<string, Appointment[]>;
-    availableSlots: Record<string, TimeSlot[]>;
-    staff: Staff[];
-    services: Service[];
-    stats: Stats;
+    operatingHours: OperatingHour[];
 }
 
 const props = defineProps<Props>();
@@ -114,759 +40,340 @@ const breadcrumbs: BreadcrumbItem[] = [
         href: clinicDashboard().url,
     },
     {
-        title: 'Schedule Management',
+        title: 'Operating Hours',
         href: clinicScheduleManagement().url,
     },
 ];
 
-// Reactive state
-const selectedDate = ref(props.currentWeek.find(d => d.is_today)?.date || props.currentWeek[0].date);
-const viewMode = ref<'week' | 'day'>('week');
-const showOperatingHoursModal = ref(false);
-const showCreateSlotModal = ref(false);
+// Days order
+const daysOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
-// Real-time update functionality
-const isAutoRefreshEnabled = ref(true);
-const refreshInterval = ref<number | null>(null);
-const lastUpdated = ref(new Date());
-const isRefreshing = ref(false);
-const newBookingAlert = ref(false);
-
-// Forms
-const operatingHoursForm = useForm({
-    hours: Object.values(props.operatingHours).map(hour => ({
-        day_of_week: hour.day,
-        is_closed: hour.is_closed,
-        opening_time: hour.opening_time ? hour.opening_time.substring(0, 5) : '09:00',
-        closing_time: hour.closing_time ? hour.closing_time.substring(0, 5) : '17:00',
-        break_start_time: hour.break_start_time ? hour.break_start_time.substring(0, 5) : '',
-        break_end_time: hour.break_end_time ? hour.break_end_time.substring(0, 5) : '',
-    }))
-});
-
-const createSlotForm = useForm({
-    appointment_date: selectedDate.value,
-    appointment_time: '09:00',
-    duration: 30,
-    service_id: null as number | null,
-    staff_id: null as number | null,
-    notes: '',
-    is_blocked: false,
-});
-
-// Computed properties
-const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat('en-PH', {
-        style: 'currency',
-        currency: 'PHP',
-    }).format(amount);
+// Generate time slots for TimePicker (every 30 minutes, 24-hour format in 12-hour display)
+const generateTimeSlots = () => {
+    const slots: string[] = [];
+    for (let hour = 0; hour <= 23; hour++) {
+        for (let minute = 0; minute < 60; minute += 30) {
+            const period = hour >= 12 ? 'PM' : 'AM';
+            const displayHour = hour % 12 || 12;
+            const displayMinute = minute.toString().padStart(2, '0');
+            slots.push(`${displayHour}:${displayMinute} ${period}`);
+        }
+    }
+    return slots;
 };
 
-const currentWeekStart = computed(() => {
-    return props.currentWeek[0]?.formatted_date || '';
+const allTimeSlots = generateTimeSlots();
+
+// Convert 12-hour time (9:00 AM) to 24-hour time (09:00)
+const convertTo24Hour = (time12h: string): string => {
+    if (!time12h) return '';
+    
+    // If already in 24-hour format, return as-is
+    if (!time12h.includes('AM') && !time12h.includes('PM')) {
+        return time12h;
+    }
+    
+    const [time, period] = time12h.split(' ');
+    let [hours, minutes] = time.split(':');
+    
+    if (period === 'PM' && hours !== '12') {
+        hours = String(parseInt(hours) + 12);
+    } else if (period === 'AM' && hours === '12') {
+        hours = '00';
+    }
+    
+    return `${hours.padStart(2, '0')}:${minutes}`;
+};
+
+// Convert 24-hour time (09:00) to 12-hour time (9:00 AM)
+const convertTo12Hour = (time24h: string): string => {
+    if (!time24h) return '';
+    
+    const [hours, minutes] = time24h.split(':');
+    const hour = parseInt(hours);
+    const period = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    
+    return `${displayHour}:${minutes} ${period}`;
+};
+
+// Initialize form with operating hours from database (convert to 12-hour format for display)
+const operatingHoursForm = useForm({
+    hours: daysOrder.map(day => {
+        const existingHour = props.operatingHours.find(h => h.day_of_week === day);
+        return {
+            day_of_week: day,
+            is_closed: existingHour?.is_closed ?? false,
+            opening_time: existingHour?.opening_time ? convertTo12Hour(existingHour.opening_time.substring(0, 5)) : '9:00 AM',
+            closing_time: existingHour?.closing_time ? convertTo12Hour(existingHour.closing_time.substring(0, 5)) : '5:00 PM',
+            break_start_time: existingHour?.break_start_time ? convertTo12Hour(existingHour.break_start_time.substring(0, 5)) : '',
+            break_end_time: existingHour?.break_end_time ? convertTo12Hour(existingHour.break_end_time.substring(0, 5)) : '',
+        };
+    })
 });
 
-const currentWeekEnd = computed(() => {
-    return props.currentWeek[6]?.formatted_date || '';
-});
-
-const selectedDayData = computed(() => {
-    return props.currentWeek.find(d => d.date === selectedDate.value);
-});
-
-const selectedDayAppointments = computed(() => {
-    return props.appointments[selectedDate.value] || [];
-});
-
-const selectedDaySlots = computed(() => {
-    return props.availableSlots[selectedDate.value] || [];
-});
+// Reactive state
+const savedMessage = ref(false);
 
 // Methods
-const navigateWeek = (direction: 'prev' | 'next') => {
-    const currentStart = props.currentWeek[0].date;
-    const newStart = new Date(currentStart);
-    newStart.setDate(newStart.getDate() + (direction === 'next' ? 7 : -7));
-    
-    router.get(clinicScheduleManagement().url, {
-        start_date: newStart.toISOString().split('T')[0]
-    });
-};
-
-const goToToday = () => {
-    router.get(clinicScheduleManagement().url);
-};
-
 const updateOperatingHours = () => {
-    operatingHoursForm.patch('/clinic/schedule/operating-hours', {
+    // Convert times from 12-hour to 24-hour format before submitting
+    const hoursData = operatingHoursForm.hours.map(hour => ({
+        ...hour,
+        opening_time: hour.is_closed ? null : convertTo24Hour(hour.opening_time),
+        closing_time: hour.is_closed ? null : convertTo24Hour(hour.closing_time),
+        break_start_time: hour.is_closed || !hour.break_start_time ? null : convertTo24Hour(hour.break_start_time),
+        break_end_time: hour.is_closed || !hour.break_end_time ? null : convertTo24Hour(hour.break_end_time),
+    }));
+    
+    operatingHoursForm.transform(() => ({ hours: hoursData })).patch('/clinic/schedule/operating-hours', {
         onSuccess: () => {
-            showOperatingHoursModal.value = false;
+            savedMessage.value = true;
+            setTimeout(() => {
+                savedMessage.value = false;
+            }, 3000);
         }
     });
 };
 
-const createAppointmentSlot = () => {
-    createSlotForm.post('/clinic/schedule/appointments', {
-        onSuccess: () => {
-            showCreateSlotModal.value = false;
-            createSlotForm.reset();
-        }
-    });
+const copyToAllDays = (sourceIndex: number) => {
+    const sourceDay = operatingHoursForm.hours[sourceIndex];
+    if (confirm('Copy these hours to all other days?')) {
+        operatingHoursForm.hours = operatingHoursForm.hours.map((day, index) => {
+            if (index === sourceIndex) return day;
+            return {
+                ...day,
+                is_closed: sourceDay.is_closed,
+                opening_time: sourceDay.opening_time,
+                closing_time: sourceDay.closing_time,
+                break_start_time: sourceDay.break_start_time,
+                break_end_time: sourceDay.break_end_time,
+            };
+        });
+    }
 };
 
-const getStatusColor = (status: string): string => {
-    const colors = {
-        'available': 'bg-green-100 text-green-800 border-green-200',
-        'blocked': 'bg-gray-100 text-gray-800 border-gray-200',
-        'pending': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-        'confirmed': 'bg-blue-100 text-blue-800 border-blue-200',
-        'in_progress': 'bg-purple-100 text-purple-800 border-purple-200',
-        'completed': 'bg-green-100 text-green-800 border-green-200',
-        'cancelled': 'bg-red-100 text-red-800 border-red-200',
-    };
-    return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800 border-gray-200';
-};
-
-const getSlotColor = (slot: TimeSlot): string => {
-    if (slot.is_past) return 'bg-gray-50 text-gray-400 border-gray-200';
-    if (slot.is_break) return 'bg-orange-50 text-orange-600 border-orange-200';
-    if (slot.is_booked) return 'bg-blue-50 text-blue-600 border-blue-200';
-    if (slot.is_available) return 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100 cursor-pointer';
-    return 'bg-gray-50 text-gray-500 border-gray-200';
-};
-
-// Real-time update methods
-const refreshSchedule = async () => {
-    if (isRefreshing.value) return;
+const copyToWeekdays = (sourceIndex: number) => {
+    const sourceDay = operatingHoursForm.hours[sourceIndex];
+    const weekdayIndices = [0, 1, 2, 3, 4]; // Monday to Friday
     
-    isRefreshing.value = true;
-    
-    try {
-        router.reload({
-            only: ['appointments', 'availableSlots', 'stats'],
-            onSuccess: (page) => {
-                lastUpdated.value = new Date();
-                
-                // Check for new bookings by comparing slot availability
-                const newSlots = page.props.availableSlots as typeof props.availableSlots;
-                const currentSlots = props.availableSlots;
-                
-                // Simple check for changes in booked slots
-                let hasNewBookings = false;
-                for (const date in newSlots) {
-                    const newDaySlots = newSlots[date] || [];
-                    const currentDaySlots = currentSlots[date] || [];
-                    
-                    const newBookedCount = newDaySlots.filter(slot => slot.is_booked).length;
-                    const currentBookedCount = currentDaySlots.filter(slot => slot.is_booked).length;
-                    
-                    if (newBookedCount > currentBookedCount) {
-                        hasNewBookings = true;
-                        break;
-                    }
-                }
-                
-                if (hasNewBookings) {
-                    newBookingAlert.value = true;
-                    setTimeout(() => {
-                        newBookingAlert.value = false;
-                    }, 5000);
-                }
-            },
-            onError: (errors) => {
-                console.error('Failed to refresh schedule:', errors);
-            },
-            onFinish: () => {
-                isRefreshing.value = false;
+    if (confirm('Copy these hours to all weekdays (Monday-Friday)?')) {
+        weekdayIndices.forEach(index => {
+            if (index !== sourceIndex) {
+                operatingHoursForm.hours[index] = {
+                    ...operatingHoursForm.hours[index],
+                    is_closed: sourceDay.is_closed,
+                    opening_time: sourceDay.opening_time,
+                    closing_time: sourceDay.closing_time,
+                    break_start_time: sourceDay.break_start_time,
+                    break_end_time: sourceDay.break_end_time,
+                };
             }
         });
-    } catch (error) {
-        console.error('Error refreshing schedule:', error);
-        isRefreshing.value = false;
     }
 };
 
-const toggleAutoRefresh = () => {
-    isAutoRefreshEnabled.value = !isAutoRefreshEnabled.value;
-    
-    if (isAutoRefreshEnabled.value) {
-        startAutoRefresh();
-    } else {
-        stopAutoRefresh();
-    }
+const getDayDisplay = (day: string): string => {
+    return day.charAt(0).toUpperCase() + day.slice(1);
 };
 
-const startAutoRefresh = () => {
-    if (refreshInterval.value) {
-        clearInterval(refreshInterval.value);
-    }
-    
-    refreshInterval.value = window.setInterval(() => {
-        if (isAutoRefreshEnabled.value && !document.hidden) {
-            refreshSchedule();
-        }
-    }, 30000); // Refresh every 30 seconds
-};
-
-const stopAutoRefresh = () => {
-    if (refreshInterval.value) {
-        clearInterval(refreshInterval.value);
-        refreshInterval.value = null;
-    }
-};
-
-const manualRefresh = () => {
-    refreshSchedule();
-};
-
-// Lifecycle hooks for real-time updates
-onMounted(() => {
-    if (isAutoRefreshEnabled.value) {
-        startAutoRefresh();
-    }
-    
-    // Listen for visibility changes
-    document.addEventListener('visibilitychange', () => {
-        if (document.hidden) {
-            stopAutoRefresh();
-        } else if (isAutoRefreshEnabled.value) {
-            startAutoRefresh();
-            refreshSchedule();
-        }
-    });
-    
-    // Listen for focus events
-    window.addEventListener('focus', () => {
-        if (isAutoRefreshEnabled.value) {
-            refreshSchedule();
-        }
-    });
-});
-
-onUnmounted(() => {
-    stopAutoRefresh();
-});
 </script>
 
 <template>
-    <Head title="Schedule Management" />
+    <Head title="Operating Hours Management" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-6">
-            <!-- Real-time Update Alert -->
+            <!-- Success Message -->
             <div 
-                v-if="newBookingAlert" 
-                class="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg flex items-center justify-between animate-pulse dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-400"
+                v-if="savedMessage" 
+                class="rounded-lg border bg-card p-4 border-green-500 dark:border-green-700"
             >
-                <div class="flex items-center">
-                    <span class="text-lg mr-2">📅</span>
-                    <span class="font-medium">New appointment has been booked! Schedule updated.</span>
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                            <span class="text-xl">✅</span>
+                        </div>
+                        <div>
+                            <p class="font-semibold text-green-800 dark:text-green-300">Success!</p>
+                            <p class="text-sm text-green-700 dark:text-green-400">Operating hours updated successfully</p>
+                        </div>
+                    </div>
+                    <button @click="savedMessage = false" class="text-muted-foreground hover:text-foreground">
+                        <X class="h-5 w-5" />
+                    </button>
                 </div>
-                <button @click="newBookingAlert = false" class="text-blue-600 hover:text-blue-800">
-                    ✕
-                </button>
             </div>
 
             <!-- Page Header -->
             <div class="flex items-center justify-between">
                 <div>
-                    <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">Schedule Management</h1>
-                    <p class="text-gray-600 dark:text-gray-400">
-                        Manage clinic appointments and availability for {{ props.clinic.name }} • 
-                        Last updated: {{ lastUpdated.toLocaleTimeString() }}
-                        <span class="ml-2" :class="isAutoRefreshEnabled ? 'text-green-600' : 'text-red-600'">
-                            {{ isAutoRefreshEnabled ? '🟢 Live updates enabled' : '🔴 Live updates paused' }}
-                        </span>
+                    <h1 class="text-2xl font-semibold text-foreground">Operating Hours</h1>
+                    <p class="text-muted-foreground">
+                        Manage your clinic's opening and closing hours for each day of the week
                     </p>
                 </div>
-                <div class="flex gap-2">
-                    <!-- Real-time Controls -->
-                    <div class="flex items-center gap-2 text-sm">
-                        <label class="flex items-center cursor-pointer">
-                            <input 
-                                type="checkbox" 
-                                v-model="isAutoRefreshEnabled" 
-                                @change="toggleAutoRefresh"
-                                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                            />
-                            <span class="ml-2">Auto-refresh</span>
-                        </label>
-                    </div>
-                    
-                    <button 
-                        @click="manualRefresh" 
-                        :disabled="isRefreshing"
-                        class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50 text-sm disabled:opacity-50 dark:border-gray-600 dark:hover:bg-gray-700"
-                    >
-                        <span :class="{ 'animate-spin': isRefreshing }">🔄</span>
-                        {{ isRefreshing ? 'Refreshing...' : 'Refresh' }}
-                    </button>
-
-                    <button 
-                        @click="showOperatingHoursModal = true"
-                        class="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700 text-sm font-medium"
-                    >
-                        <Settings class="h-4 w-4" />
-                        Operating Hours
-                    </button>
-                    <button 
-                        @click="showCreateSlotModal = true"
-                        class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
-                    >
-                        <Plus class="h-4 w-4" />
-                        Create Slot
-                    </button>
-                </div>
             </div>
 
-            <!-- Stats -->
-            <div class="grid gap-4 md:grid-cols-4">
-                <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+            <!-- Operating Hours Form -->
+            <form @submit.prevent="updateOperatingHours" class="rounded-lg border bg-card">
+                <div class="p-6 border-b">
                     <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Total Slots</p>
-                            <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ props.stats.total_slots }}</p>
+                        <h2 class="text-lg font-semibold">Weekly Schedule</h2>
+                        <div class="flex items-center gap-2 text-sm text-muted-foreground">
+                            <AlertCircle class="h-4 w-4" />
+                            <span>Set your clinic's operating hours for each day</span>
                         </div>
-                        <Calendar class="h-8 w-8 text-blue-600 dark:text-blue-400" />
-                    </div>
-                </div>
-                
-                <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Available Slots</p>
-                            <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ props.stats.available_slots }}</p>
-                        </div>
-                        <Clock class="h-8 w-8 text-green-600 dark:text-green-400" />
                     </div>
                 </div>
 
-                <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Booked Slots</p>
-                            <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ props.stats.booked_slots }}</p>
-                        </div>
-                        <Users class="h-8 w-8 text-purple-600 dark:text-purple-400" />
-                    </div>
-                </div>
-
-                <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Utilization Rate</p>
-                            <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ props.stats.utilization_rate }}%</p>
-                        </div>
-                        <BarChart3 class="h-8 w-8 text-orange-600 dark:text-orange-400" />
-                    </div>
-                </div>
-            </div>
-
-            <!-- Date Navigation -->
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-4">
-                    <div class="flex items-center gap-2">
-                        <button 
-                            @click="navigateWeek('prev')"
-                            class="p-2 border border-gray-300 rounded-md hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700"
-                        >
-                            <ChevronLeft class="h-4 w-4" />
-                        </button>
-                        <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                            {{ currentWeekStart }} - {{ currentWeekEnd }}
-                        </span>
-                        <button 
-                            @click="navigateWeek('next')"
-                            class="p-2 border border-gray-300 rounded-md hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700"
-                        >
-                            <ChevronRight class="h-4 w-4" />
-                        </button>
-                    </div>
-                    <button 
-                        @click="goToToday"
-                        class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
-                    >
-                        Today
-                    </button>
-                </div>
-                <div class="flex gap-2">
-                    <button 
-                        @click="viewMode = 'week'"
-                        :class="[
-                            'px-3 py-2 text-sm font-medium rounded-md',
-                            viewMode === 'week' 
-                                ? 'bg-blue-600 text-white' 
-                                : 'border border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700'
-                        ]"
-                    >
-                        Week View
-                    </button>
-                    <button 
-                        @click="viewMode = 'day'"
-                        :class="[
-                            'px-3 py-2 text-sm font-medium rounded-md',
-                            viewMode === 'day' 
-                                ? 'bg-blue-600 text-white' 
-                                : 'border border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700'
-                        ]"
-                    >
-                        Day View
-                    </button>
-                </div>
-            </div>
-
-            <!-- Week View -->
-            <div v-if="viewMode === 'week'" class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div class="grid grid-cols-8 border-b border-gray-200 dark:border-gray-700">
-                    <div class="p-4 bg-gray-50 dark:bg-gray-700">
-                        <span class="text-sm font-medium text-gray-900 dark:text-gray-100">Time</span>
-                    </div>
+                <div class="p-6 space-y-4">
                     <div 
-                        v-for="day in props.currentWeek" 
-                        :key="day.date"
-                        class="p-4 text-center border-l border-gray-200 dark:border-gray-700"
-                        :class="{ 'bg-blue-50 dark:bg-blue-900/20': day.is_today }"
+                        v-for="(dayHour, index) in operatingHoursForm.hours" 
+                        :key="dayHour.day_of_week"
+                        class="p-4 rounded-lg border transition-all duration-200"
+                        :class="dayHour.is_closed ? 'bg-muted/50' : 'hover:border-primary hover:shadow-md cursor-pointer'"
                     >
-                        <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ day.day_short }}</div>
-                        <div class="text-xs text-gray-600 dark:text-gray-400">{{ day.formatted_date }}</div>
-                    </div>
-                </div>
-
-                <!-- Time slots grid -->
-                <div class="max-h-96 overflow-y-auto">
-                    <div v-for="timeSlot in selectedDaySlots" :key="timeSlot.time" class="grid grid-cols-8 border-b border-gray-100 dark:border-gray-700">
-                        <div class="p-2 text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700">
-                            {{ timeSlot.formatted_time }}
-                        </div>
-                        <div 
-                            v-for="day in props.currentWeek" 
-                            :key="`${day.date}-${timeSlot.time}`"
-                            class="p-2 border-l border-gray-100 dark:border-gray-700 min-h-16"
-                        >
-                            <!-- Show appointments for this time slot -->
-                            <div 
-                                v-for="appointment in (props.appointments[day.date] || []).filter(apt => apt.time === timeSlot.time)"
-                                :key="appointment.id"
-                                :class="['p-2 rounded text-xs', getStatusColor(appointment.status)]"
-                            >
-                                <div class="font-medium">{{ appointment.patient_name || 'Available' }}</div>
-                                <div v-if="appointment.patient_name" class="text-xs opacity-75">{{ appointment.service }}</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Day View -->
-            <div v-if="viewMode === 'day'" class="grid gap-6 lg:grid-cols-4">
-                <!-- Day selector -->
-                <div class="lg:col-span-1">
-                    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-                        <h3 class="font-semibold mb-4 text-gray-900 dark:text-gray-100">Select Day</h3>
-                        <div class="space-y-2">
-                            <button 
-                                v-for="day in props.currentWeek" 
-                                :key="day.date"
-                                @click="selectedDate = day.date"
-                                :class="[
-                                    'w-full p-3 text-left rounded-md border',
-                                    selectedDate === day.date 
-                                        ? 'bg-blue-50 border-blue-200 text-blue-900 dark:bg-blue-900/20 dark:border-blue-700 dark:text-blue-100' 
-                                        : 'border-gray-200 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700',
-                                    day.is_today && 'ring-2 ring-blue-500'
-                                ]"
-                            >
-                                <div class="font-medium">{{ day.day_name }}</div>
-                                <div class="text-sm text-gray-600 dark:text-gray-400">{{ day.formatted_date }}</div>
-                                <div class="text-xs text-gray-500 dark:text-gray-500">
-                                    {{ (props.appointments[day.date] || []).length }} appointments
+                        <!-- Day Header -->
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                                    <Clock class="h-5 w-5 text-muted-foreground" />
                                 </div>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Day schedule -->
-                <div class="lg:col-span-3">
-                    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-                        <div class="flex items-center justify-between mb-6">
-                            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                                {{ selectedDayData?.day_name }} - {{ selectedDayData?.formatted_date }}
-                            </h3>
-                            <div class="text-sm text-gray-600 dark:text-gray-400">
-                                {{ selectedDayAppointments.length }} appointments
-                            </div>
-                        </div>
-
-                        <!-- Time slots for selected day -->
-                        <div class="space-y-2 max-h-96 overflow-y-auto">
-                            <div 
-                                v-for="slot in selectedDaySlots" 
-                                :key="slot.time"
-                                :class="['p-3 rounded-md border', getSlotColor(slot)]"
-                            >
-                                <div class="flex items-center justify-between">
-                                    <div class="font-medium">{{ slot.formatted_time }}</div>
-                                    <div class="text-xs">
-                                        <span v-if="slot.is_past">Past</span>
-                                        <span v-else-if="slot.is_break">Break</span>
-                                        <span v-else-if="slot.is_booked">Booked</span>
-                                        <span v-else-if="slot.is_available">Available</span>
-                                        <span v-else>Blocked</span>
-                                    </div>
+                                <div>
+                                    <h3 class="font-semibold">{{ getDayDisplay(dayHour.day_of_week) }}</h3>
+                                    <p class="text-sm text-muted-foreground" v-if="!dayHour.is_closed">Click to edit hours</p>
+                                    <p class="text-sm text-red-500 dark:text-red-400" v-else>Closed</p>
                                 </div>
-
-                                <!-- Show appointment if booked -->
-                                <div 
-                                    v-for="appointment in selectedDayAppointments.filter(apt => apt.time === slot.time)"
-                                    :key="appointment.id"
-                                    class="mt-2 p-2 bg-white dark:bg-gray-700 rounded border"
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <!-- Copy Options -->
+                                <button
+                                    v-if="!dayHour.is_closed"
+                                    type="button"
+                                    @click.stop="copyToWeekdays(index)"
+                                    class="text-xs px-3 py-1.5 border rounded-md hover:bg-muted text-muted-foreground transition-colors"
                                 >
-                                    <div class="font-medium text-gray-900 dark:text-gray-100">
-                                        {{ appointment.patient_name || 'Available Slot' }}
-                                    </div>
-                                    <div v-if="appointment.patient_name" class="text-sm text-gray-600 dark:text-gray-400">
-                                        Owner: {{ appointment.owner_name }}
-                                    </div>
-                                    <div class="text-sm text-gray-600 dark:text-gray-400">
-                                        Service: {{ appointment.service }}
-                                    </div>
-                                    <div v-if="appointment.staff" class="text-sm text-gray-600 dark:text-gray-400">
-                                        Staff: {{ appointment.staff }}
-                                    </div>
-                                    <div class="flex items-center justify-between mt-2">
-                                        <span :class="['px-2 py-1 text-xs rounded-full', getStatusColor(appointment.status)]">
-                                            {{ appointment.status_display }}
-                                        </span>
-                                        <span class="text-xs text-gray-500 dark:text-gray-400">{{ appointment.duration }}min</span>
-                                    </div>
+                                    Copy to Weekdays
+                                </button>
+                                <button
+                                    v-if="!dayHour.is_closed"
+                                    type="button"
+                                    @click.stop="copyToAllDays(index)"
+                                    class="text-xs px-3 py-1.5 border rounded-md hover:bg-muted text-muted-foreground transition-colors"
+                                >
+                                    Copy to All Days
+                                </button>
+                                
+                                <!-- Open/Closed Toggle Switch -->
+                                <div class="flex items-center gap-2">
+                                    <span class="text-sm font-medium" :class="!dayHour.is_closed ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'">
+                                        Open
+                                    </span>
+                                    <button
+                                        type="button"
+                                        @click="operatingHoursForm.hours[index].is_closed = !operatingHoursForm.hours[index].is_closed"
+                                        :class="[
+                                            'relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2',
+                                            dayHour.is_closed ? 'bg-red-600' : 'bg-green-600'
+                                        ]"
+                                    >
+                                        <span
+                                            :class="[
+                                                'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
+                                                dayHour.is_closed ? 'translate-x-6' : 'translate-x-1'
+                                            ]"
+                                        />
+                                    </button>
+                                    <span class="text-sm font-medium" :class="dayHour.is_closed ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'">
+                                        Closed
+                                    </span>
                                 </div>
                             </div>
-
-                            <!-- No slots message -->
-                            <div v-if="selectedDaySlots.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
-                                <Clock class="h-12 w-12 mx-auto mb-4 opacity-50" />
-                                <p>No time slots available for this day.</p>
-                                <p class="text-sm">Check operating hours or add available slots.</p>
-                            </div>
                         </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Quick Actions -->
-            <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-                <h2 class="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Quick Actions</h2>
-                <div class="grid gap-4 md:grid-cols-4">
-                    <button class="flex items-center gap-2 p-3 border border-gray-300 rounded-md hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700 text-sm">
-                        <Calendar class="h-4 w-4" />
-                        View All Appointments
-                    </button>
-                    <button 
-                        @click="showOperatingHoursModal = true"
-                        class="flex items-center gap-2 p-3 border border-gray-300 rounded-md hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700 text-sm"
-                    >
-                        <Clock class="h-4 w-4" />
-                        Set Break Time
-                    </button>
-                    <button class="flex items-center gap-2 p-3 border border-gray-300 rounded-md hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700 text-sm">
-                        <AlertCircle class="h-4 w-4" />
-                        Block Day Off
-                    </button>
-                    <button class="flex items-center gap-2 p-3 border border-gray-300 rounded-md hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700 text-sm">
-                        <BarChart3 class="h-4 w-4" />
-                        Schedule Report
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Operating Hours Modal -->
-        <div v-if="showOperatingHoursModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
-                <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Operating Hours</h3>
-                
-                <form @submit.prevent="updateOperatingHours">
-                    <div class="space-y-4">
-                        <div 
-                            v-for="(dayHour, index) in operatingHoursForm.hours" 
-                            :key="dayHour.day_of_week"
-                            class="p-4 border border-gray-200 dark:border-gray-600 rounded-md"
-                        >
-                            <div class="flex items-center justify-between mb-3">
-                                <label class="font-medium text-gray-900 dark:text-gray-100">
-                                    {{ dayHour.day_of_week.charAt(0).toUpperCase() + dayHour.day_of_week.slice(1) }}
+                        
+                        <!-- Time Inputs -->
+                        <div v-if="!dayHour.is_closed" class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-1">
+                                    Opening Time <span class="text-red-500">*</span>
                                 </label>
-                                <input 
-                                    v-model="operatingHoursForm.hours[index].is_closed"
-                                    type="checkbox"
-                                    class="rounded"
+                                <TimePicker
+                                    v-model="operatingHoursForm.hours[index].opening_time"
+                                    :available-slots="allTimeSlots"
+                                    placeholder="Select opening time"
                                 />
-                                <span class="text-sm text-gray-600 dark:text-gray-400">Closed</span>
                             </div>
-                            
-                            <div v-if="!dayHour.is_closed" class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">Opening Time</label>
-                                    <input 
-                                        v-model="operatingHoursForm.hours[index].opening_time"
-                                        type="time"
-                                        class="w-full p-2 border border-gray-300 rounded-md dark:border-gray-600 dark:bg-gray-700"
-                                    />
-                                </div>
-                                <div>
-                                    <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">Closing Time</label>
-                                    <input 
-                                        v-model="operatingHoursForm.hours[index].closing_time"
-                                        type="time"
-                                        class="w-full p-2 border border-gray-300 rounded-md dark:border-gray-600 dark:bg-gray-700"
-                                    />
-                                </div>
-                                <div>
-                                    <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">Break Start (Optional)</label>
-                                    <input 
-                                        v-model="operatingHoursForm.hours[index].break_start_time"
-                                        type="time"
-                                        class="w-full p-2 border border-gray-300 rounded-md dark:border-gray-600 dark:bg-gray-700"
-                                    />
-                                </div>
-                                <div>
-                                    <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">Break End (Optional)</label>
-                                    <input 
-                                        v-model="operatingHoursForm.hours[index].break_end_time"
-                                        type="time"
-                                        class="w-full p-2 border border-gray-300 rounded-md dark:border-gray-600 dark:bg-gray-700"
-                                    />
-                                </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-1">
+                                    Closing Time <span class="text-red-500">*</span>
+                                </label>
+                                <TimePicker
+                                    v-model="operatingHoursForm.hours[index].closing_time"
+                                    :available-slots="allTimeSlots"
+                                    placeholder="Select closing time"
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-1">
+                                    Break Start <span class="text-muted-foreground text-xs">(optional)</span>
+                                </label>
+                                <TimePicker
+                                    v-model="operatingHoursForm.hours[index].break_start_time"
+                                    :available-slots="allTimeSlots"
+                                    placeholder="Select break start"
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-1">
+                                    Break End <span class="text-muted-foreground text-xs">(optional)</span>
+                                </label>
+                                <TimePicker
+                                    v-model="operatingHoursForm.hours[index].break_end_time"
+                                    :available-slots="allTimeSlots"
+                                    placeholder="Select break end"
+                                />
                             </div>
                         </div>
-                    </div>
-                    
-                    <div class="flex justify-end gap-3 mt-6">
-                        <button 
-                            type="button"
-                            @click="showOperatingHoursModal = false"
-                            class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-                        >
-                            Cancel
-                        </button>
-                        <button 
-                            type="submit"
-                            :disabled="operatingHoursForm.processing"
-                            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-                        >
-                            {{ operatingHoursForm.processing ? 'Saving...' : 'Save Changes' }}
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
 
-        <!-- Create Slot Modal -->
-        <div v-if="showCreateSlotModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
-                <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Create Appointment Slot</h3>
+                        <!-- Closed Message -->
+                        <div v-else class="text-center py-8 text-muted-foreground">
+                            <div class="h-12 w-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-2">
+                                <Lock class="h-6 w-6 text-muted-foreground" />
+                            </div>
+                            <p class="text-sm">Clinic is closed on this day</p>
+                        </div>
+                    </div>
+                </div>
                 
-                <form @submit.prevent="createAppointmentSlot">
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date</label>
-                            <input 
-                                v-model="createSlotForm.appointment_date"
-                                type="date"
-                                required
-                                class="w-full p-2 border border-gray-300 rounded-md dark:border-gray-600 dark:bg-gray-700"
-                            />
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Time</label>
-                            <input 
-                                v-model="createSlotForm.appointment_time"
-                                type="time"
-                                required
-                                class="w-full p-2 border border-gray-300 rounded-md dark:border-gray-600 dark:bg-gray-700"
-                            />
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Duration (minutes)</label>
-                            <select 
-                                v-model="createSlotForm.duration"
-                                class="w-full p-2 border border-gray-300 rounded-md dark:border-gray-600 dark:bg-gray-700"
-                            >
-                                <option value="15">15 minutes</option>
-                                <option value="30">30 minutes</option>
-                                <option value="45">45 minutes</option>
-                                <option value="60">1 hour</option>
-                                <option value="90">1.5 hours</option>
-                                <option value="120">2 hours</option>
-                            </select>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Service (Optional)</label>
-                            <select 
-                                v-model="createSlotForm.service_id"
-                                class="w-full p-2 border border-gray-300 rounded-md dark:border-gray-600 dark:bg-gray-700"
-                            >
-                                <option :value="null">General Consultation</option>
-                                <option v-for="service in props.services" :key="service.id" :value="service.id">
-                                    {{ service.name }} ({{ service.duration }}min)
-                                </option>
-                            </select>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Staff (Optional)</label>
-                            <select 
-                                v-model="createSlotForm.staff_id"
-                                class="w-full p-2 border border-gray-300 rounded-md dark:border-gray-600 dark:bg-gray-700"
-                            >
-                                <option :value="null">Any Available Staff</option>
-                                <option v-for="staffMember in props.staff" :key="staffMember.id" :value="staffMember.id">
-                                    {{ staffMember.name }} ({{ staffMember.role_display }})
-                                </option>
-                            </select>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notes</label>
-                            <textarea 
-                                v-model="createSlotForm.notes"
-                                rows="3"
-                                class="w-full p-2 border border-gray-300 rounded-md dark:border-gray-600 dark:bg-gray-700"
-                                placeholder="Optional notes for this slot..."
-                            ></textarea>
-                        </div>
-                        
-                        <div class="flex items-center">
-                            <input 
-                                v-model="createSlotForm.is_blocked"
-                                type="checkbox"
-                                class="rounded mr-2"
-                            />
-                            <label class="text-sm text-gray-700 dark:text-gray-300">Block this slot (make unavailable for booking)</label>
-                        </div>
+                <!-- Submit Button -->
+                <div class="p-6 border-t flex justify-end">
+                    <button 
+                        type="submit"
+                        :disabled="operatingHoursForm.processing"
+                        class="btn btn-primary flex items-center gap-2"
+                    >
+                        <Save class="h-5 w-5" />
+                        {{ operatingHoursForm.processing ? 'Saving Changes...' : 'Save Operating Hours' }}
+                    </button>
+                </div>
+            </form>
+
+            <!-- Help Section -->
+            <div class="rounded-lg border bg-card p-6">
+                <div class="flex items-center gap-2 mb-4">
+                    <div class="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                        <span class="text-lg">💡</span>
                     </div>
-                    
-                    <div class="flex justify-end gap-3 mt-6">
-                        <button 
-                            type="button"
-                            @click="showCreateSlotModal = false"
-                            class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-                        >
-                            Cancel
-                        </button>
-                        <button 
-                            type="submit"
-                            :disabled="createSlotForm.processing"
-                            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-                        >
-                            {{ createSlotForm.processing ? 'Creating...' : 'Create Slot' }}
-                        </button>
-                    </div>
-                </form>
+                    <h3 class="font-semibold">Tips & Guidelines</h3>
+                </div>
+                <ul class="space-y-2 text-sm text-muted-foreground">
+                    <li>• Use "Copy to Weekdays" to quickly set the same hours for Monday through Friday</li>
+                    <li>• Use "Copy to All Days" to apply hours to the entire week</li>
+                    <li>• Break times are optional - leave them blank if your clinic doesn't have break hours</li>
+                    <li>• Toggle the switch to "Closed" for days when your clinic is not operating</li>
+                    <li>• These hours will be displayed to pet owners when they book appointments</li>
+                </ul>
             </div>
         </div>
     </AppLayout>

@@ -165,57 +165,6 @@ const formatRevenue = (amount: number) => {
                 </div>
             </div>
 
-            <!-- Statistics Cards -->
-            <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card>
-                    <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle class="text-sm font-medium">Total History</CardTitle>
-                        <Calendar class="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div class="text-2xl font-bold">{{ stats.total }}</div>
-                        <p class="text-xs text-muted-foreground">All historical appointments</p>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle class="text-sm font-medium">Completed</CardTitle>
-                        <CheckCircle class="h-4 w-4 text-green-600" />
-                    </CardHeader>
-                    <CardContent>
-                        <div class="text-2xl font-bold text-green-600">{{ stats.completed }}</div>
-                        <p class="text-xs text-muted-foreground">
-                            {{ stats.completion_rate }}% completion rate
-                        </p>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle class="text-sm font-medium">Revenue</CardTitle>
-                        <TrendingUp class="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div class="text-2xl font-bold text-green-600">{{ stats.formatted_revenue }}</div>
-                        <p class="text-xs text-muted-foreground">From completed appointments</p>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle class="text-sm font-medium">Cancelled/No-Show</CardTitle>
-                        <XCircle class="h-4 w-4 text-red-600" />
-                    </CardHeader>
-                    <CardContent>
-                        <div class="text-2xl font-bold text-red-600">{{ stats.cancelled + stats.no_show }}</div>
-                        <p class="text-xs text-muted-foreground">
-                            {{ stats.cancelled }} cancelled, {{ stats.no_show }} no-show
-                        </p>
-                    </CardContent>
-                </Card>
-            </div>
-
             <!-- Filters -->
             <Card>
                 <CardHeader>
@@ -291,7 +240,8 @@ const formatRevenue = (amount: number) => {
                         <div
                             v-for="appointment in filteredAppointments"
                             :key="appointment.id"
-                            class="border rounded-lg p-4 hover:bg-muted/50 transition-colors"
+                            class="border rounded-lg p-4 hover:bg-muted/50 transition-colors cursor-pointer"
+                            @click="$inertia.visit(`/clinic/appointments/${appointment.id}`)"
                         >
                             <div class="flex items-start justify-between">
                                 <div class="flex-1 space-y-2">
@@ -338,20 +288,9 @@ const formatRevenue = (amount: number) => {
                                             <span class="font-medium">{{ appointment.service.name }}</span>
                                         </div>
                                     </div>
-
-                                    <!-- Notes (if any) -->
-                                    <div v-if="appointment.notes" class="text-sm text-muted-foreground bg-muted/50 p-2 rounded">
-                                        <strong>Notes:</strong> {{ appointment.notes }}
-                                    </div>
                                 </div>
 
-                                <!-- Cost -->
-                                <div v-if="appointment.actual_cost && appointment.status === 'completed'" class="text-right">
-                                    <div class="text-lg font-bold text-green-600">
-                                        {{ formatRevenue(appointment.actual_cost) }}
-                                    </div>
-                                    <div class="text-xs text-muted-foreground">Revenue</div>
-                                </div>
+
                             </div>
                         </div>
                     </div>

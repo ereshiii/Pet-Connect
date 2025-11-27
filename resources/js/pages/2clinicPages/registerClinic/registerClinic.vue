@@ -2,10 +2,13 @@
 import AppLayout from '@/layouts/AppLayout.vue';
 import ProgressIndicator from '@/components/ProgressIndicator.vue';
 import PinAddressLocation from './pinAddressLocation.vue';
+import TimePicker from '@/components/ui/time-picker/TimePicker.vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
 import { clinicDashboard } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed, watch, onBeforeUnmount } from 'vue';
+import { philippineAddressData } from '@/utils/philippineAddress';
+import axios from 'axios';
 
 interface Props {
     user: any;
@@ -55,14 +58,13 @@ const form = useForm({
         saturday: { open: '', close: '' },
         sunday: { open: '', close: '' }
     },
-    is_24_hours: false,
+    is_emergency_clinic: false,
     
     // Step 4: Services
     services: [] as Array<{
         name: string;
         category: string;
         description: string;
-        base_price: number | null;
         duration_minutes: number;
         requires_appointment: boolean;
         is_emergency_service: boolean;
@@ -71,13 +73,14 @@ const form = useForm({
     // Step 5: Veterinarians
     veterinarians: [{
         name: '',
+        email: '',
+        phone: '',
         license_number: '',
-        specialization: ''
+        specializations: [] as string[]
     }],
     
     // Step 6: Certifications
-    certification_proofs: [] as File[],
-    additional_info: '',
+    certification_proofs: [] as File[]
 });
 
 // Initialize form with existing data if available
@@ -87,7 +90,7 @@ onMounted(() => {
         form.clinic_name = reg.clinic_name || '';
         form.clinic_description = reg.clinic_description || '';
         form.website = reg.website || '';
-        form.email = reg.email || '';
+        form.email = reg.email || props.user.email; // Use saved email or fall back to user's account email
         form.phone = reg.phone || '';
         form.region = reg.region || '';
         form.province = reg.province || '';
@@ -98,35 +101,48 @@ onMounted(() => {
         form.latitude = reg.latitude || null;
         form.longitude = reg.longitude || null;
         form.operating_hours = reg.operating_hours || form.operating_hours;
-        form.is_24_hours = reg.is_24_hours || false;
+        form.is_emergency_clinic = reg.is_emergency_clinic || false;
         form.services = reg.services || [];
-        form.veterinarians = reg.veterinarians || [{name: '', license_number: '', specialization: ''}];
-        form.additional_info = reg.additional_info || '';
-    } else {
-        // Pre-fill email from user account
+        form.veterinarians = reg.veterinarians || [{name: '', email: '', phone: '', license_number: '', specializations: []}];
+    }
+    
+    // Always ensure email is pre-filled from user account if empty
+    if (!form.email) {
         form.email = props.user.email;
     }
 });
 
-const philippineRegions = [
-    'National Capital Region (NCR)',
-    'Cordillera Administrative Region (CAR)',
-    'Ilocos Region (Region I)',
-    'Cagayan Valley (Region II)',
-    'Central Luzon (Region III)',
-    'Calabarzon (Region IV-A)',
-    'Mimaropa (Region IV-B)',
-    'Bicol Region (Region V)',
-    'Western Visayas (Region VI)',
-    'Central Visayas (Region VII)',
-    'Eastern Visayas (Region VIII)',
-    'Zamboanga Peninsula (Region IX)',
-    'Northern Mindanao (Region X)',
-    'Davao Region (Region XI)',
-    'Soccsksargen (Region XII)',
-    'Caraga Region (Region XIII)',
-    'Bangsamoro Autonomous Region in Muslim Mindanao (BARMM)'
-];
+// Computed address filters
+const availableProvinces = computed(() => {
+    if (!form.region) return [];
+    return philippineAddressData.getProvincesByRegion(form.region);
+});
+
+const availableCities = computed(() => {
+    if (!form.province) return [];
+    return philippineAddressData.getCitiesByProvince(form.province);
+});
+
+const availableBarangays = computed(() => {
+    if (!form.city) return [];
+    return philippineAddressData.getBarangaysByCity(form.province, form.city);
+});
+
+// Watch for region changes to reset dependent fields
+const handleRegionChange = () => {
+    form.province = '';
+    form.city = '';
+    form.barangay = '';
+};
+
+const handleProvinceChange = () => {
+    form.city = '';
+    form.barangay = '';
+};
+
+const handleCityChange = () => {
+    form.barangay = '';
+};
 
 const serviceCategories = {
     'consultation': 'Consultation',
@@ -141,27 +157,28 @@ const serviceCategories = {
 };
 
 const commonServices = [
-    { name: 'General Consultation', category: 'consultation', suggested_price: 500, duration: 30 },
-    { name: 'Wellness Check-up', category: 'consultation', suggested_price: 400, duration: 20 },
-    { name: 'Rabies Vaccination', category: 'vaccination', suggested_price: 300, duration: 15 },
-    { name: 'Annual Vaccination Package', category: 'vaccination', suggested_price: 1200, duration: 30 },
-    { name: 'Spay/Neuter Surgery', category: 'surgery', suggested_price: 3000, duration: 120 },
-    { name: 'Dental Cleaning', category: 'dental', suggested_price: 1500, duration: 60 },
-    { name: 'Tooth Extraction', category: 'dental', suggested_price: 800, duration: 45 },
-    { name: 'Basic Grooming', category: 'grooming', suggested_price: 400, duration: 60 },
-    { name: 'Full Grooming Package', category: 'grooming', suggested_price: 800, duration: 120 },
-    { name: 'Overnight Boarding', category: 'boarding', suggested_price: 500, duration: 1440 },
-    { name: 'Emergency Consultation', category: 'emergency', suggested_price: 1000, duration: 30 },
-    { name: 'X-Ray Imaging', category: 'diagnostic', suggested_price: 800, duration: 30 },
-    { name: 'Blood Work Panel', category: 'diagnostic', suggested_price: 1200, duration: 20 },
-    { name: 'Microchipping', category: 'other', suggested_price: 600, duration: 15 },
-    { name: 'Deworming Treatment', category: 'other', suggested_price: 200, duration: 10 },
-    { name: 'Flea & Tick Treatment', category: 'other', suggested_price: 300, duration: 15 }
+    { name: 'General Consultation', category: 'consultation', duration: 30 },
+    { name: 'Wellness Check-up', category: 'consultation', duration: 20 },
+    { name: 'Rabies Vaccination', category: 'vaccination', duration: 15 },
+    { name: 'Annual Vaccination Package', category: 'vaccination', duration: 30 },
+    { name: 'Spay/Neuter Surgery', category: 'surgery', duration: 120 },
+    { name: 'Dental Cleaning', category: 'dental', duration: 60 },
+    { name: 'Tooth Extraction', category: 'dental', duration: 45 },
+    { name: 'Basic Grooming', category: 'grooming', duration: 60 },
+    { name: 'Full Grooming Package', category: 'grooming', duration: 120 },
+    { name: 'Overnight Boarding', category: 'boarding', duration: 1440 },
+    { name: 'Emergency Consultation', category: 'emergency', duration: 30 },
+    { name: 'X-Ray Imaging', category: 'diagnostic', duration: 30 },
+    { name: 'Blood Work Panel', category: 'diagnostic', duration: 20 },
+    { name: 'Microchipping', category: 'other', duration: 15 },
+    { name: 'Deworming Treatment', category: 'other', duration: 10 },
+    { name: 'Flea & Tick Treatment', category: 'other', duration: 15 }
 ];
 
 
 
-const timeSlots = [
+// Generate all time slots for TimePicker
+const allTimeSlots = [
     '6:00 AM', '6:30 AM', '7:00 AM', '7:30 AM', '8:00 AM', '8:30 AM',
     '9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM',
     '12:00 PM', '12:30 PM', '1:00 PM', '1:30 PM', '2:00 PM', '2:30 PM',
@@ -173,6 +190,9 @@ const timeSlots = [
 const currentStep = ref(1);
 const totalSteps = 6;
 
+// Refs for veterinarian specialization inputs
+const vetSpecInputs = ref<Record<number, HTMLInputElement>>({});
+
 const stepLabels = [
     'Clinic Info',
     'Address',
@@ -181,6 +201,44 @@ const stepLabels = [
     'Veterinarians',
     'Certifications'
 ];
+
+// Auto-save functionality
+let autoSaveTimeout: ReturnType<typeof setTimeout> | null = null;
+const isAutoSaving = ref(false);
+
+const autoSave = () => {
+    if (autoSaveTimeout) {
+        clearTimeout(autoSaveTimeout);
+    }
+    
+    autoSaveTimeout = setTimeout(async () => {
+        // Only auto-save if there's meaningful data
+        if (form.clinic_name || form.email || form.phone) {
+            isAutoSaving.value = true;
+            try {
+                // Use axios instead of Inertia form.post to avoid flash messages
+                await axios.post('/clinic/register/save-progress', form.data());
+            } catch (error) {
+                // Silently handle errors
+                console.error('Auto-save failed:', error);
+            } finally {
+                isAutoSaving.value = false;
+            }
+        }
+    }, 2000); // Auto-save after 2 seconds of inactivity
+};
+
+// Watch form data for changes to trigger auto-save
+watch(() => form.data(), () => {
+    autoSave();
+}, { deep: true });
+
+// Save on page unload
+onBeforeUnmount(() => {
+    if (autoSaveTimeout) {
+        clearTimeout(autoSaveTimeout);
+    }
+});
 
 const nextStep = () => {
     if (currentStep.value < totalSteps) {
@@ -208,7 +266,6 @@ const addService = () => {
         name: '',
         category: 'consultation',
         description: '',
-        base_price: null,
         duration_minutes: 30,
         requires_appointment: true,
         is_emergency_service: false
@@ -226,7 +283,6 @@ const addCommonService = (service: any) => {
             name: service.name,
             category: service.category,
             description: '',
-            base_price: service.suggested_price,
             duration_minutes: service.duration,
             requires_appointment: true,
             is_emergency_service: service.category === 'emergency'
@@ -237,21 +293,44 @@ const addCommonService = (service: any) => {
 const addVeterinarian = () => {
     form.veterinarians.push({
         name: '',
+        email: '',
+        phone: '',
         license_number: '',
-        specialization: ''
+        specializations: []
     });
+};
+
+const addSpecialization = (vetIndex: number, specialization: string) => {
+    if (specialization.trim()) {
+        form.veterinarians[vetIndex].specializations.push(specialization.trim());
+    }
+};
+
+const removeSpecialization = (vetIndex: number, specIndex: number) => {
+    form.veterinarians[vetIndex].specializations.splice(specIndex, 1);
 };
 
 const removeVeterinarian = (index: number) => {
     if (form.veterinarians.length > 1) {
-        form.veterinarians.splice(index, 1);
+        const vetName = form.veterinarians[index].name || 'this veterinarian';
+        const confirmed = confirm(
+            `Remove ${vetName}?\\n\\n` +
+            `This will remove this veterinarian from the registration form.\\n` +
+            `Click OK to confirm.`
+        );
+        
+        if (confirmed) {
+            form.veterinarians.splice(index, 1);
+        }
+    } else {
+        alert('At least one veterinarian is required for clinic registration.');
     }
 };
 
 const getDuplicateServiceWarning = (serviceName: string, currentIndex: number) => {
     if (!serviceName || serviceName.trim() === '') return '';
     
-    const duplicates = form.services.filter((service, index) => 
+    const duplicates = (form.services || []).filter((service, index) => 
         service.name.toLowerCase().trim() === serviceName.toLowerCase().trim() && index !== currentIndex
     );
     
@@ -263,28 +342,17 @@ const getDuplicateServiceWarning = (serviceName: string, currentIndex: number) =
 };
 
 const getServiceCategories = () => {
+    if (!form.services || !Array.isArray(form.services)) return [];
     const categories = [...new Set(form.services.map(service => service.category))];
     return categories.filter(category => category && category.trim() !== '');
 };
 
 const getServicesByCategory = (category: string) => {
+    if (!form.services || !Array.isArray(form.services)) return [];
     return form.services.filter(service => service.category === category);
 };
 
-const getServicePriceRange = () => {
-    const pricesWithValues = form.services
-        .map(service => service.base_price)
-        .filter(price => price !== null && price !== undefined && price > 0) as number[];
-    
-    if (pricesWithValues.length === 0) {
-        return { min: null, max: null };
-    }
-    
-    return {
-        min: Math.min(...pricesWithValues),
-        max: Math.max(...pricesWithValues)
-    };
-};
+
 
 // Handle location updates from the pin address component
 const handleLocationUpdate = ({ latitude, longitude }: { latitude: number; longitude: number }) => {
@@ -293,27 +361,102 @@ const handleLocationUpdate = ({ latitude, longitude }: { latitude: number; longi
 };
 
 const submit = () => {
-    // Save progress or submit final registration
-    form.post('/clinic/register', {
-        forceFormData: true,
+    // Clear auto-save timeout before submitting
+    if (autoSaveTimeout) {
+        clearTimeout(autoSaveTimeout);
+    }
+    
+    // Convert operating hours from 12-hour format (9:00 AM) to 24-hour format (09:00)
+    const convertTo24Hour = (time12h: string | null): string | null => {
+        if (!time12h) return null;
+        
+        // If already in 24-hour format (no AM/PM), return as-is
+        if (!time12h.includes('AM') && !time12h.includes('PM')) {
+            return time12h;
+        }
+        
+        const [time, period] = time12h.split(' ');
+        let [hours, minutes] = time.split(':');
+        
+        if (period === 'PM' && hours !== '12') {
+            hours = String(parseInt(hours) + 12);
+        } else if (period === 'AM' && hours === '12') {
+            hours = '00';
+        }
+        
+        return `${hours.padStart(2, '0')}:${minutes}`;
+    };
+    
+    // Convert all operating hours to 24-hour format
+    const convertedOperatingHours: any = {};
+    Object.keys(form.operating_hours).forEach(day => {
+        convertedOperatingHours[day] = {
+            open: convertTo24Hour(form.operating_hours[day as keyof typeof form.operating_hours].open),
+            close: convertTo24Hour(form.operating_hours[day as keyof typeof form.operating_hours].close),
+        };
+    });
+    
+    // Create FormData manually to ensure files are preserved
+    const formData = new FormData();
+    
+    // Add all form fields except operating_hours and certification_proofs
+    Object.keys(form.data()).forEach(key => {
+        if (key === 'operating_hours' || key === 'certification_proofs') return;
+        
+        const value = form[key as keyof typeof form];
+        
+        if (Array.isArray(value)) {
+            // Handle arrays (services, veterinarians)
+            value.forEach((item, index) => {
+                if (typeof item === 'object' && item !== null) {
+                    Object.keys(item).forEach(subKey => {
+                        const subValue = item[subKey];
+                        if (Array.isArray(subValue)) {
+                            // Handle nested arrays (specializations)
+                            subValue.forEach((nestedItem, nestedIndex) => {
+                                formData.append(`${key}[${index}][${subKey}][${nestedIndex}]`, nestedItem);
+                            });
+                        } else if (subValue !== null && subValue !== undefined) {
+                            formData.append(`${key}[${index}][${subKey}]`, subValue);
+                        }
+                    });
+                } else if (value !== null && value !== undefined) {
+                    formData.append(`${key}[${index}]`, item);
+                }
+            });
+        } else if (value !== null && value !== undefined && typeof value !== 'function') {
+            formData.append(key, value);
+        }
+    });
+    
+    // Add converted operating hours
+    Object.keys(convertedOperatingHours).forEach(day => {
+        if (convertedOperatingHours[day].open) {
+            formData.append(`operating_hours[${day}][open]`, convertedOperatingHours[day].open);
+        }
+        if (convertedOperatingHours[day].close) {
+            formData.append(`operating_hours[${day}][close]`, convertedOperatingHours[day].close);
+        }
+    });
+    
+    // Add certification proof files
+    form.certification_proofs.forEach((file, index) => {
+        formData.append(`certification_proofs[${index}]`, file);
+    });
+    
+    // Debug: Check what we're sending
+    console.log('FormData entries:');
+    for (let pair of formData.entries()) {
+        console.log(pair[0], ':', pair[1] instanceof File ? `File(${pair[1].name})` : pair[1]);
+    }
+    
+    // Submit using router.post with raw FormData
+    router.post('/clinic/register', formData, {
         onSuccess: () => {
             router.visit('/clinic/registration-prompt');
         },
         onError: (errors) => {
             console.error('Registration submission errors:', errors);
-        }
-    });
-};
-
-const saveProgress = () => {
-    // Save incomplete registration progress
-    form.post('/clinic/register/save-progress', {
-        onSuccess: () => {
-            // Show success message
-            alert('Progress saved successfully!');
-        },
-        onError: () => {
-            alert('Error saving progress. Please try again.');
         }
     });
 };
@@ -337,19 +480,23 @@ const cancel = () => {
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-6">
             <!-- Header -->
-            <div class="bg-white dark:bg-gray-800 rounded-xl border border-sidebar-border/70 dark:border-sidebar-border p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <div>
-                        <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">Register New Clinic</h1>
-                        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Complete the form to register your veterinary clinic</p>
+            <div class="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900 rounded-xl border border-blue-200/50 dark:border-blue-900/30 shadow-sm p-8">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center gap-3">
+                        <div class="p-3 bg-blue-600 dark:bg-blue-500 rounded-xl shadow-lg">
+                            <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                            </svg>
+                        </div>
+                        <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">Register New Clinic</h1>
                     </div>
-                    <div class="flex gap-3">
-                        <button @click="saveProgress" type="button" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 font-medium text-sm transition-colors dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600">
-                            Save Progress
-                        </button>
-                        <button @click="cancel" type="button" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 font-medium text-sm transition-colors dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600">
-                            Cancel
-                        </button>
+                    <!-- Auto-save indicator -->
+                    <div v-if="isAutoSaving" class="flex items-center gap-2 px-4 py-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                        <svg class="animate-spin h-4 w-4 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span class="text-sm text-blue-700 dark:text-blue-300 font-medium">Saving...</span>
                     </div>
                 </div>
 
@@ -365,205 +512,361 @@ const cancel = () => {
             <div class="bg-white dark:bg-gray-800 rounded-xl border border-sidebar-border/70 dark:border-sidebar-border p-6">
                 <form @submit.prevent="submit">
                     <!-- Step 1: Clinic Information -->
-                    <div v-if="currentStep === 1" class="space-y-6">
-                        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Clinic Information</h2>
+                    <div v-if="currentStep === 1" class="space-y-8">
+                        <div class="flex items-center gap-3 mb-6">
+                            <div class="p-2.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                                <svg class="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Clinic Information</h2>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">Basic information about your veterinary clinic</p>
+                            </div>
+                        </div>
                         
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <!-- Clinic Name -->
-                            <div>
-                                <label for="clinic_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Clinic Name *
+                            <div class="group">
+                                <label for="clinic_name" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2.5">
+                                    <span class="flex items-center gap-2">
+                                        <svg class="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                        </svg>
+                                        Clinic Name
+                                        <span class="text-red-500">*</span>
+                                    </span>
                                 </label>
                                 <input 
                                     v-model="form.clinic_name" 
                                     type="text" 
                                     id="clinic_name" 
                                     required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                    class="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 transition-all duration-200 group-hover:border-gray-300 dark:group-hover:border-gray-500"
                                     placeholder="Enter clinic name"
                                 />
-                                <div v-if="form.errors.clinic_name" class="mt-1 text-sm text-red-600">{{ form.errors.clinic_name }}</div>
+                                <div v-if="form.errors.clinic_name" class="mt-2 text-sm text-red-600 flex items-center gap-1.5">
+                                    <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                    </svg>
+                                    {{ form.errors.clinic_name }}
+                                </div>
                             </div>
 
                             <!-- Email -->
-                            <div>
-                                <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Email Address *
+                            <div class="group">
+                                <label for="email" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2.5">
+                                    <span class="flex items-center gap-2">
+                                        <svg class="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                        </svg>
+                                        Email Address
+                                        <span class="text-red-500">*</span>
+                                    </span>
                                 </label>
                                 <input 
                                     v-model="form.email" 
                                     type="email" 
                                     id="email" 
                                     required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                    class="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 transition-all duration-200 group-hover:border-gray-300 dark:group-hover:border-gray-500"
                                     placeholder="clinic@example.com"
                                 />
-                                <div v-if="form.errors.email" class="mt-1 text-sm text-red-600">{{ form.errors.email }}</div>
+                                <div v-if="form.errors.email" class="mt-2 text-sm text-red-600 flex items-center gap-1.5">
+                                    <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                    </svg>
+                                    {{ form.errors.email }}
+                                </div>
                             </div>
 
                             <!-- Phone -->
-                            <div>
-                                <label for="phone" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Phone Number *
+                            <div class="group">
+                                <label for="phone" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2.5">
+                                    <span class="flex items-center gap-2">
+                                        <svg class="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                        </svg>
+                                        Phone Number
+                                        <span class="text-red-500">*</span>
+                                    </span>
                                 </label>
                                 <input 
                                     v-model="form.phone" 
                                     type="tel" 
                                     id="phone" 
                                     required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                    class="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 transition-all duration-200 group-hover:border-gray-300 dark:group-hover:border-gray-500"
                                     placeholder="(02) 123-4567"
                                 />
-                                <div v-if="form.errors.phone" class="mt-1 text-sm text-red-600">{{ form.errors.phone }}</div>
+                                <div v-if="form.errors.phone" class="mt-2 text-sm text-red-600 flex items-center gap-1.5">
+                                    <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                    </svg>
+                                    {{ form.errors.phone }}
+                                </div>
                             </div>
 
                             <!-- Website -->
-                            <div>
-                                <label for="website" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Website (Optional)
+                            <div class="group">
+                                <label for="website" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2.5">
+                                    <span class="flex items-center gap-2">
+                                        <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                                        </svg>
+                                        Website
+                                        <span class="text-xs text-gray-500">(Optional)</span>
+                                    </span>
                                 </label>
                                 <input 
                                     v-model="form.website" 
                                     type="url" 
                                     id="website"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                    class="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 transition-all duration-200 group-hover:border-gray-300 dark:group-hover:border-gray-500"
                                     placeholder="https://www.example.com"
                                 />
-                                <div v-if="form.errors.website" class="mt-1 text-sm text-red-600">{{ form.errors.website }}</div>
+                                <div v-if="form.errors.website" class="mt-2 text-sm text-red-600 flex items-center gap-1.5">
+                                    <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                    </svg>
+                                    {{ form.errors.website }}
+                                </div>
                             </div>
                         </div>
 
                         <!-- Description -->
-                        <div>
-                            <label for="clinic_description" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Clinic Description
+                        <div class="group">
+                            <label for="clinic_description" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2.5">
+                                <span class="flex items-center gap-2">
+                                    <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
+                                    </svg>
+                                    Clinic Description
+                                </span>
                             </label>
                             <textarea 
                                 v-model="form.clinic_description" 
                                 id="clinic_description"
-                                rows="4"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-                                placeholder="Describe your clinic, mission, and what makes you unique"
+                                rows="5"
+                                class="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 transition-all duration-200 resize-none group-hover:border-gray-300 dark:group-hover:border-gray-500"
+                                placeholder="Describe your clinic, mission, and what makes you unique..."
                             ></textarea>
-                            <div v-if="form.errors.clinic_description" class="mt-1 text-sm text-red-600">{{ form.errors.clinic_description }}</div>
+                            <div v-if="form.errors.clinic_description" class="mt-2 text-sm text-red-600 flex items-center gap-1.5">
+                                <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                </svg>
+                                {{ form.errors.clinic_description }}
+                            </div>
                         </div>
                     </div>
 
                     <!-- Step 2: Address Information -->
-                    <div v-if="currentStep === 2" class="space-y-6">
-                        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Address Information</h2>
+                    <div v-if="currentStep === 2" class="space-y-8">
+                        <div class="flex items-center gap-3 mb-6">
+                            <div class="p-2.5 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                                <svg class="h-6 w-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Address Information</h2>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">Complete address details for your clinic location</p>
+                            </div>
+                        </div>
                         
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <!-- Country -->
-                            <div>
-                                <label for="country" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Country *
+                            <div class="group">
+                                <label for="country" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2.5">
+                                    <span class="flex items-center gap-2">
+                                        <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        Country
+                                        <span class="text-red-500">*</span>
+                                    </span>
                                 </label>
                                 <input 
                                     v-model="form.country" 
                                     id="country" 
                                     type="text"
                                     readonly
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-600 cursor-not-allowed dark:border-gray-600 dark:bg-gray-600 dark:text-gray-300"
+                                    class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl shadow-sm bg-gray-50 dark:bg-gray-600/50 text-gray-600 dark:text-gray-300 cursor-not-allowed"
                                 />
                             </div>
 
                             <!-- Region -->
-                            <div>
-                                <label for="region" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Region *
+                            <div class="group">
+                                <label for="region" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2.5">
+                                    <span class="flex items-center gap-2">
+                                        <svg class="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                                        </svg>
+                                        Region
+                                        <span class="text-red-500">*</span>
+                                    </span>
                                 </label>
                                 <select 
                                     v-model="form.region" 
+                                    @change="handleRegionChange"
                                     id="region" 
                                     required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                    class="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 transition-all duration-200 group-hover:border-gray-300 dark:group-hover:border-gray-500 cursor-pointer"
                                 >
                                     <option value="">Select Region</option>
-                                    <option v-for="region in philippineRegions" :key="region" :value="region">{{ region }}</option>
+                                    <option v-for="region in philippineAddressData.regions" :key="region" :value="region">{{ region }}</option>
                                 </select>
-                                <div v-if="form.errors.region" class="mt-1 text-sm text-red-600">{{ form.errors.region }}</div>
+                                <div v-if="form.errors.region" class="mt-2 text-sm text-red-600 flex items-center gap-1.5">
+                                    <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                    </svg>
+                                    {{ form.errors.region }}
+                                </div>
                             </div>
 
                             <!-- Province -->
-                            <div>
-                                <label for="province" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Province *
+                            <div class="group">
+                                <label for="province" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2.5">
+                                    <span class="flex items-center gap-2">
+                                        <svg class="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                        </svg>
+                                        Province
+                                        <span class="text-red-500">*</span>
+                                    </span>
                                 </label>
-                                <input 
+                                <select 
                                     v-model="form.province" 
-                                    type="text" 
+                                    @change="handleProvinceChange"
                                     id="province" 
                                     required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-                                    placeholder="Province name"
-                                />
-                                <div v-if="form.errors.province" class="mt-1 text-sm text-red-600">{{ form.errors.province }}</div>
+                                    :disabled="!form.region"
+                                    class="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-gray-800 transition-all duration-200 group-hover:border-gray-300 dark:group-hover:border-gray-500 cursor-pointer"
+                                >
+                                    <option value="">{{ form.region ? 'Select Province' : 'Select Region first' }}</option>
+                                    <option v-for="province in availableProvinces" :key="province" :value="province">{{ province }}</option>
+                                </select>
+                                <div v-if="form.errors.province" class="mt-2 text-sm text-red-600 flex items-center gap-1.5">
+                                    <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                    </svg>
+                                    {{ form.errors.province }}
+                                </div>
                             </div>
 
                             <!-- City -->
-                            <div>
-                                <label for="city" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    City/Municipality *
+                            <div class="group">
+                                <label for="city" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2.5">
+                                    <span class="flex items-center gap-2">
+                                        <svg class="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                        </svg>
+                                        City/Municipality
+                                        <span class="text-red-500">*</span>
+                                    </span>
                                 </label>
-                                <input 
+                                <select 
                                     v-model="form.city" 
-                                    type="text" 
+                                    @change="handleCityChange"
                                     id="city" 
                                     required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-                                    placeholder="City or Municipality"
-                                />
-                                <div v-if="form.errors.city" class="mt-1 text-sm text-red-600">{{ form.errors.city }}</div>
+                                    :disabled="!form.province"
+                                    class="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-gray-800 transition-all duration-200 group-hover:border-gray-300 dark:group-hover:border-gray-500 cursor-pointer"
+                                >
+                                    <option value="">{{ form.province ? 'Select City/Municipality' : 'Select Province first' }}</option>
+                                    <option v-for="city in availableCities" :key="city" :value="city">{{ city }}</option>
+                                </select>
+                                <div v-if="form.errors.city" class="mt-2 text-sm text-red-600 flex items-center gap-1.5">
+                                    <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                    </svg>
+                                    {{ form.errors.city }}
+                                </div>
                             </div>
 
                             <!-- Barangay -->
-                            <div>
-                                <label for="barangay" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Barangay *
+                            <div class="group">
+                                <label for="barangay" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2.5">
+                                    <span class="flex items-center gap-2">
+                                        <svg class="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                                        </svg>
+                                        Barangay
+                                        <span class="text-red-500">*</span>
+                                    </span>
                                 </label>
-                                <input 
+                                <select 
                                     v-model="form.barangay" 
-                                    type="text" 
                                     id="barangay" 
                                     required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-                                    placeholder="Barangay name"
-                                />
-                                <div v-if="form.errors.barangay" class="mt-1 text-sm text-red-600">{{ form.errors.barangay }}</div>
+                                    :disabled="!form.city"
+                                    class="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-gray-800 transition-all duration-200 group-hover:border-gray-300 dark:group-hover:border-gray-500 cursor-pointer"
+                                >
+                                    <option value="">{{ form.city ? 'Select Barangay' : 'Select City first' }}</option>
+                                    <option v-for="barangay in availableBarangays" :key="barangay" :value="barangay">{{ barangay }}</option>
+                                </select>
+                                <div v-if="form.errors.barangay" class="mt-2 text-sm text-red-600 flex items-center gap-1.5">
+                                    <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                    </svg>
+                                    {{ form.errors.barangay }}
+                                </div>
                             </div>
 
                             <!-- Postal Code -->
-                            <div>
-                                <label for="postal_code" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Postal Code *
+                            <div class="group">
+                                <label for="postal_code" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2.5">
+                                    <span class="flex items-center gap-2">
+                                        <svg class="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                                        </svg>
+                                        Postal Code
+                                        <span class="text-red-500">*</span>
+                                    </span>
                                 </label>
                                 <input 
                                     v-model="form.postal_code" 
                                     type="text" 
                                     id="postal_code" 
                                     required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                    class="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 transition-all duration-200 group-hover:border-gray-300 dark:group-hover:border-gray-500"
                                     placeholder="e.g. 1234"
                                 />
-                                <div v-if="form.errors.postal_code" class="mt-1 text-sm text-red-600">{{ form.errors.postal_code }}</div>
+                                <div v-if="form.errors.postal_code" class="mt-2 text-sm text-red-600 flex items-center gap-1.5">
+                                    <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                    </svg>
+                                    {{ form.errors.postal_code }}
+                                </div>
                             </div>
                         </div>
 
                         <!-- Street Address -->
-                        <div>
-                            <label for="street_address" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Street Address *
+                        <div class="group">
+                            <label for="street_address" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2.5">
+                                <span class="flex items-center gap-2">
+                                    <svg class="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                                    </svg>
+                                    Street Address
+                                    <span class="text-red-500">*</span>
+                                </span>
                             </label>
                             <input 
                                 v-model="form.street_address" 
                                 type="text" 
                                 id="street_address" 
                                 required
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                class="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 transition-all duration-200 group-hover:border-gray-300 dark:group-hover:border-gray-500"
                                 placeholder="Building number, street name, subdivision, etc."
                             />
-                            <div v-if="form.errors.street_address" class="mt-1 text-sm text-red-600">{{ form.errors.street_address }}</div>
+                            <div v-if="form.errors.street_address" class="mt-2 text-sm text-red-600 flex items-center gap-1.5">
+                                <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                </svg>
+                                {{ form.errors.street_address }}
+                            </div>
                         </div>
 
                         <!-- Pin Location on Map -->
@@ -581,131 +884,258 @@ const cancel = () => {
                     </div>
 
                     <!-- Step 3: Operating Hours -->
-                    <div v-if="currentStep === 3" class="space-y-6">
-                        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Operating Hours</h2>
+                    <div v-if="currentStep === 3" class="space-y-8">
+                        <div class="flex items-start justify-between mb-6">
+                            <div class="flex items-center gap-3">
+                                <div class="p-2.5 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                                    <svg class="h-6 w-6 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Operating Hours</h2>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">This step is optional but recommended</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Helpful Note -->
+                        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-xl p-5 shadow-sm">
+                            <div class="flex items-start gap-4">
+                                <div class="flex-shrink-0 mt-0.5">
+                                    <div class="p-2 bg-blue-100 dark:bg-blue-800/50 rounded-lg">
+                                        <svg class="h-5 w-5 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                        </svg>
+                                    </div>
+                                </div>
+                                <div class="flex-1">
+                                    <h4 class="text-base font-bold text-blue-900 dark:text-blue-100 mb-2">💡 Speed up approval by adding hours</h4>
+                                    <p class="text-sm text-blue-800 dark:text-blue-200 leading-relaxed">
+                                        Providing your operating hours helps us verify your clinic faster and allows pet owners to book appointments immediately after approval. You can always update these later in your clinic settings.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                         
-                        <!-- 24 Hours Option -->
-                        <div class="mb-6">
-                            <label class="flex items-center">
+                        <!-- Emergency Clinic Option -->
+                        <div class="bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+                            <label class="flex items-start cursor-pointer group">
                                 <input 
-                                    v-model="form.is_24_hours" 
+                                    v-model="form.is_emergency_clinic" 
                                     type="checkbox" 
-                                    class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                    class="mt-1 h-5 w-5 text-red-600 focus:ring-red-500 focus:ring-4 focus:ring-red-500/20 border-gray-300 dark:border-gray-600 rounded transition-all cursor-pointer"
                                 />
-                                <span class="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">We operate 24 hours a day</span>
+                                <div class="ml-4 flex-1">
+                                    <span class="text-base font-semibold text-gray-900 dark:text-gray-100 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">We accept emergency cases</span>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                        🚨 Your clinic will be listed in the Emergency Clinic directory and prioritized in search results during urgent pet care situations
+                                    </p>
+                                </div>
                             </label>
                         </div>
 
-                        <!-- Daily Hours (hidden if 24 hours is selected) -->
-                        <div v-if="!form.is_24_hours" class="space-y-4">
+                        <!-- Daily Hours -->
+                        <div class="space-y-5">
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                <svg class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                Weekly Schedule
+                            </h3>
                             <!-- Monday -->
-                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                                <label class="font-medium">Monday</label>
-                                <select v-model="form.operating_hours.monday.open" class="px-3 py-2 border border-gray-300 rounded-md dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
-                                    <option value="">Closed</option>
-                                    <option v-for="time in timeSlots" :key="time" :value="time">{{ time }}</option>
-                                </select>
-                                <span class="text-center">to</span>
-                                <select v-model="form.operating_hours.monday.close" class="px-3 py-2 border border-gray-300 rounded-md dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
-                                    <option value="">Closed</option>
-                                    <option v-for="time in timeSlots" :key="time" :value="time">{{ time }}</option>
-                                </select>
+                            <div class="bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-all duration-200">
+                                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+                                    <label class="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                        <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                        Monday
+                                    </label>
+                                    <TimePicker 
+                                        v-model="form.operating_hours.monday.open" 
+                                        :available-slots="allTimeSlots"
+                                        placeholder="Opening time"
+                                    />
+                                    <span class="text-center text-gray-500 dark:text-gray-400 font-medium">to</span>
+                                    <TimePicker 
+                                        v-model="form.operating_hours.monday.close" 
+                                        :available-slots="allTimeSlots"
+                                        placeholder="Closing time"
+                                    />
+                                </div>
                             </div>
 
                             <!-- Tuesday -->
-                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                                <label class="font-medium">Tuesday</label>
-                                <select v-model="form.operating_hours.tuesday.open" class="px-3 py-2 border border-gray-300 rounded-md dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
-                                    <option value="">Closed</option>
-                                    <option v-for="time in timeSlots" :key="time" :value="time">{{ time }}</option>
-                                </select>
-                                <span class="text-center">to</span>
-                                <select v-model="form.operating_hours.tuesday.close" class="px-3 py-2 border border-gray-300 rounded-md dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
-                                    <option value="">Closed</option>
-                                    <option v-for="time in timeSlots" :key="time" :value="time">{{ time }}</option>
-                                </select>
+                            <div class="bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-all duration-200">
+                                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+                                    <label class="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                        <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                        Tuesday
+                                    </label>
+                                    <TimePicker 
+                                        v-model="form.operating_hours.tuesday.open" 
+                                        :available-slots="allTimeSlots"
+                                        placeholder="Opening time"
+                                    />
+                                    <span class="text-center text-gray-500 dark:text-gray-400 font-medium">to</span>
+                                    <TimePicker 
+                                        v-model="form.operating_hours.tuesday.close" 
+                                        :available-slots="allTimeSlots"
+                                        placeholder="Closing time"
+                                    />
+                                </div>
                             </div>
 
                             <!-- Wednesday -->
-                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                                <label class="font-medium">Wednesday</label>
-                                <select v-model="form.operating_hours.wednesday.open" class="px-3 py-2 border border-gray-300 rounded-md dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
-                                    <option value="">Closed</option>
-                                    <option v-for="time in timeSlots" :key="time" :value="time">{{ time }}</option>
-                                </select>
-                                <span class="text-center">to</span>
-                                <select v-model="form.operating_hours.wednesday.close" class="px-3 py-2 border border-gray-300 rounded-md dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
-                                    <option value="">Closed</option>
-                                    <option v-for="time in timeSlots" :key="time" :value="time">{{ time }}</option>
-                                </select>
+                            <div class="bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-all duration-200">
+                                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+                                    <label class="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                        <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                        Wednesday
+                                    </label>
+                                    <TimePicker 
+                                        v-model="form.operating_hours.wednesday.open" 
+                                        :available-slots="allTimeSlots"
+                                        placeholder="Opening time"
+                                    />
+                                    <span class="text-center text-gray-500 dark:text-gray-400 font-medium">to</span>
+                                    <TimePicker 
+                                        v-model="form.operating_hours.wednesday.close" 
+                                        :available-slots="allTimeSlots"
+                                        placeholder="Closing time"
+                                    />
+                                </div>
                             </div>
 
                             <!-- Thursday -->
-                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                                <label class="font-medium">Thursday</label>
-                                <select v-model="form.operating_hours.thursday.open" class="px-3 py-2 border border-gray-300 rounded-md dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
-                                    <option value="">Closed</option>
-                                    <option v-for="time in timeSlots" :key="time" :value="time">{{ time }}</option>
-                                </select>
-                                <span class="text-center">to</span>
-                                <select v-model="form.operating_hours.thursday.close" class="px-3 py-2 border border-gray-300 rounded-md dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
-                                    <option value="">Closed</option>
-                                    <option v-for="time in timeSlots" :key="time" :value="time">{{ time }}</option>
-                                </select>
+                            <div class="bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-all duration-200">
+                                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+                                    <label class="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                        <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                        Thursday
+                                    </label>
+                                    <TimePicker 
+                                        v-model="form.operating_hours.thursday.open" 
+                                        :available-slots="allTimeSlots"
+                                        placeholder="Opening time"
+                                    />
+                                    <span class="text-center text-gray-500 dark:text-gray-400 font-medium">to</span>
+                                    <TimePicker 
+                                        v-model="form.operating_hours.thursday.close" 
+                                        :available-slots="allTimeSlots"
+                                        placeholder="Closing time"
+                                    />
+                                </div>
                             </div>
 
                             <!-- Friday -->
-                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                                <label class="font-medium">Friday</label>
-                                <select v-model="form.operating_hours.friday.open" class="px-3 py-2 border border-gray-300 rounded-md dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
-                                    <option value="">Closed</option>
-                                    <option v-for="time in timeSlots" :key="time" :value="time">{{ time }}</option>
-                                </select>
-                                <span class="text-center">to</span>
-                                <select v-model="form.operating_hours.friday.close" class="px-3 py-2 border border-gray-300 rounded-md dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
-                                    <option value="">Closed</option>
-                                    <option v-for="time in timeSlots" :key="time" :value="time">{{ time }}</option>
-                                </select>
+                            <div class="bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-all duration-200">
+                                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+                                    <label class="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                        <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                        Friday
+                                    </label>
+                                    <TimePicker 
+                                        v-model="form.operating_hours.friday.open" 
+                                        :available-slots="allTimeSlots"
+                                        placeholder="Opening time"
+                                    />
+                                    <span class="text-center text-gray-500 dark:text-gray-400 font-medium">to</span>
+                                    <TimePicker 
+                                        v-model="form.operating_hours.friday.close" 
+                                        :available-slots="allTimeSlots"
+                                        placeholder="Closing time"
+                                    />
+                                </div>
                             </div>
 
                             <!-- Saturday -->
-                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                                <label class="font-medium">Saturday</label>
-                                <select v-model="form.operating_hours.saturday.open" class="px-3 py-2 border border-gray-300 rounded-md dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
-                                    <option value="">Closed</option>
-                                    <option v-for="time in timeSlots" :key="time" :value="time">{{ time }}</option>
-                                </select>
-                                <span class="text-center">to</span>
-                                <select v-model="form.operating_hours.saturday.close" class="px-3 py-2 border border-gray-300 rounded-md dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
-                                    <option value="">Closed</option>
-                                    <option v-for="time in timeSlots" :key="time" :value="time">{{ time }}</option>
-                                </select>
+                            <div class="bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-all duration-200">
+                                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+                                    <label class="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                        <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                        Saturday
+                                    </label>
+                                    <TimePicker 
+                                        v-model="form.operating_hours.saturday.open" 
+                                        :available-slots="allTimeSlots"
+                                        placeholder="Opening time"
+                                    />
+                                    <span class="text-center text-gray-500 dark:text-gray-400 font-medium">to</span>
+                                    <TimePicker 
+                                        v-model="form.operating_hours.saturday.close" 
+                                        :available-slots="allTimeSlots"
+                                        placeholder="Closing time"
+                                    />
+                                </div>
                             </div>
 
                             <!-- Sunday -->
-                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                                <label class="font-medium">Sunday</label>
-                                <select v-model="form.operating_hours.sunday.open" class="px-3 py-2 border border-gray-300 rounded-md dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
-                                    <option value="">Closed</option>
-                                    <option v-for="time in timeSlots" :key="time" :value="time">{{ time }}</option>
-                                </select>
-                                <span class="text-center">to</span>
-                                <select v-model="form.operating_hours.sunday.close" class="px-3 py-2 border border-gray-300 rounded-md dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
-                                    <option value="">Closed</option>
-                                    <option v-for="time in timeSlots" :key="time" :value="time">{{ time }}</option>
-                                </select>
+                            <div class="bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-all duration-200">
+                                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+                                    <label class="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                        <div class="w-2 h-2 bg-orange-500 rounded-full"></div>
+                                        Sunday
+                                    </label>
+                                    <TimePicker 
+                                        v-model="form.operating_hours.sunday.open" 
+                                        :available-slots="allTimeSlots"
+                                        placeholder="Opening time"
+                                    />
+                                    <span class="text-center text-gray-500 dark:text-gray-400 font-medium">to</span>
+                                    <TimePicker 
+                                        v-model="form.operating_hours.sunday.close" 
+                                        :available-slots="allTimeSlots"
+                                        placeholder="Closing time"
+                                    />
+                                </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Step 4: Services -->
-                    <div v-if="currentStep === 4" class="space-y-6">
-                        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Services & Pricing</h2>
+                    <div v-if="currentStep === 4" class="space-y-8">
+                        <div class="flex items-start justify-between mb-6">
+                            <div class="flex items-center gap-3">
+                                <div class="p-2.5 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
+                                    <svg class="h-6 w-6 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Services Offered</h2>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">This step is optional but recommended</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Helpful Note -->
+                        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-xl p-5 shadow-sm">
+                            <div class="flex items-start gap-4">
+                                <div class="flex-shrink-0 mt-0.5">
+                                    <div class="p-2 bg-blue-100 dark:bg-blue-800/50 rounded-lg">
+                                        <svg class="h-5 w-5 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                        </svg>
+                                    </div>
+                                </div>
+                                <div class="flex-1">
+                                    <h4 class="text-base font-bold text-blue-900 dark:text-blue-100 mb-2">💡 Add services to speed up approval</h4>
+                                    <p class="text-sm text-blue-800 dark:text-blue-200 leading-relaxed">
+                                        Adding your services during registration helps us verify your clinic capabilities faster. Don't worry about pricing now - you can edit service details and add pricing later in the Services Management page.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                         
                         <!-- Quick Add Common Services -->
-                        <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 mb-6">
-                            <h3 class="text-md font-medium text-gray-900 dark:text-gray-100 mb-3">Quick Add Common Services</h3>
-                            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Click to add commonly offered veterinary services with suggested pricing</p>
+                        <div class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800/50 dark:to-gray-900/50 rounded-xl border-2 border-gray-200 dark:border-gray-700 p-6 shadow-sm">
+                            <div class="flex items-center gap-3 mb-4">
+                                <svg class="h-6 w-6 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                </svg>
+                                <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100">Quick Add Common Services</h3>
+                            </div>
+                            <p class="text-sm text-gray-600 dark:text-gray-400 mb-5">Click to add commonly offered veterinary services. You can edit details and add pricing later.</p>
                             
                             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                                 <button
@@ -714,11 +1144,12 @@ const cancel = () => {
                                     @click="addCommonService(service)"
                                     type="button"
                                     :disabled="form.services.some(s => s.name === service.name)"
-                                    class="text-left p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    class="group text-left p-4 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:bg-white dark:hover:bg-gray-700 hover:border-emerald-500 dark:hover:border-emerald-500 hover:shadow-lg transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-gray-200 dark:disabled:hover:border-gray-700 disabled:hover:shadow-none bg-white dark:bg-gray-800/50"
                                 >
-                                    <div class="font-medium text-sm">{{ service.name }}</div>
-                                    <div class="text-xs text-gray-500 dark:text-gray-400">
-                                        {{ serviceCategories[service.category] }} • ₱{{ service.suggested_price?.toLocaleString() }} • {{ service.duration }}min
+                                    <div class="font-semibold text-sm text-gray-900 dark:text-gray-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 mb-1">{{ service.name }}</div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                                        <span class="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded-md">{{ serviceCategories[service.category] }}</span>
+                                        <span>• {{ service.duration }} min</span>
                                     </div>
                                 </button>
                             </div>
@@ -726,38 +1157,34 @@ const cancel = () => {
 
                         <!-- Custom Services -->
                         <div>
-                            <div class="flex items-center justify-between mb-4">
-                                <h3 class="text-md font-medium text-gray-900 dark:text-gray-100">Your Services</h3>
+                            <div class="flex items-center justify-between mb-5">
+                                <div class="flex items-center gap-3">
+                                    <svg class="h-6 w-6 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100">Your Services</h3>
+                                </div>
                                 <button 
                                     @click="addService"
                                     type="button"
-                                    class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium text-sm transition-colors"
+                                    class="group flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white rounded-xl hover:from-emerald-700 hover:to-emerald-600 font-semibold text-sm transition-all duration-200 shadow-md hover:shadow-lg"
                                 >
-                                    + Add Custom Service
+                                    <svg class="h-5 w-5 transition-transform group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                    </svg>
+                                    Add Custom Service
                                 </button>
                             </div>
 
-                            <div v-if="form.services.length === 0" class="text-center py-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
+                            <div v-if="!form.services || form.services.length === 0" class="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50/50 dark:bg-gray-800/50">
                                 <div class="text-gray-500 dark:text-gray-400">
-                                    <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                    </svg>
-                                    <p class="text-lg font-medium mb-2">No services added yet</p>
-                                    <p class="text-sm">Add at least one service to continue. Use the quick add buttons above or create custom services.</p>
-                                </div>
-                            </div>
-
-                            <div v-if="form.services.length > 0 && form.services.length < 3" class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mb-4">
-                                <div class="flex items-start">
-                                    <svg class="h-5 w-5 text-amber-400 mt-0.5 mr-3" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
-                                    </svg>
-                                    <div>
-                                        <h4 class="text-sm font-medium text-amber-800 dark:text-amber-200">Consider adding more services</h4>
-                                        <p class="text-sm text-amber-700 dark:text-amber-300 mt-1">
-                                            Most successful clinics offer 3+ services. This helps attract more clients and showcase your expertise.
-                                        </p>
+                                    <div class="mx-auto w-20 h-20 mb-4 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center">
+                                        <svg class="h-10 w-10 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                        </svg>
                                     </div>
+                                    <p class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">No services added yet</p>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">You can skip this step and add services later, or use the quick add buttons above to get started.</p>
                                 </div>
                             </div>
 
@@ -765,15 +1192,21 @@ const cancel = () => {
                                 <div 
                                     v-for="(service, index) in form.services" 
                                     :key="index"
-                                    class="border border-gray-200 dark:border-gray-700 rounded-lg p-4"
+                                    class="border-2 border-gray-200 dark:border-gray-700 rounded-xl p-5 bg-white dark:bg-gray-800 hover:shadow-lg transition-shadow duration-200"
                                 >
-                                    <div class="flex items-center justify-between mb-4">
-                                        <h4 class="font-medium text-gray-900 dark:text-gray-100">Service {{ index + 1 }}</h4>
+                                    <div class="flex items-center justify-between mb-5">
+                                        <h4 class="font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                            <span class="flex items-center justify-center w-7 h-7 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-lg text-sm font-bold">{{ index + 1 }}</span>
+                                            Service {{ index + 1 }}
+                                        </h4>
                                         <button 
                                             @click="removeService(index)"
                                             type="button"
-                                            class="text-red-600 hover:text-red-800 text-sm"
+                                            class="flex items-center gap-1.5 px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-sm font-semibold transition-all duration-200"
                                         >
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
                                             Remove
                                         </button>
                                     </div>
@@ -812,23 +1245,6 @@ const cancel = () => {
                                                 </option>
                                             </select>
                                             <div v-if="form.errors[`services.${index}.category`]" class="mt-1 text-sm text-red-600">{{ form.errors[`services.${index}.category`] }}</div>
-                                        </div>
-
-                                        <!-- Base Price -->
-                                        <div>
-                                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                                Base Price (₱)
-                                            </label>
-                                            <input 
-                                                v-model.number="service.base_price"
-                                                type="number" 
-                                                step="0.01"
-                                                min="0"
-                                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-                                                placeholder="0.00"
-                                            />
-                                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Leave empty for "Price on request"</p>
-                                            <div v-if="form.errors[`services.${index}.base_price`]" class="mt-1 text-sm text-red-600">{{ form.errors[`services.${index}.base_price`] }}</div>
                                         </div>
 
                                         <!-- Duration -->
@@ -883,125 +1299,168 @@ const cancel = () => {
                             </div>
                         </div>
 
-                        <!-- Services Summary -->
-                        <div v-if="form.services.length > 0" class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
-                            <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-3">Services Overview</h4>
-                            
-                            <!-- Summary Stats -->
-                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                                <div class="text-center">
-                                    <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ form.services.length }}</div>
-                                    <div class="text-xs text-gray-500 dark:text-gray-400">Total Services</div>
-                                </div>
-                                <div class="text-center">
-                                    <div class="text-2xl font-bold text-red-600 dark:text-red-400">{{ form.services.filter(s => s.is_emergency_service).length }}</div>
-                                    <div class="text-xs text-gray-500 dark:text-gray-400">Emergency</div>
-                                </div>
-                                <div class="text-center">
-                                    <div class="text-2xl font-bold text-green-600 dark:text-green-400">{{ form.services.filter(s => !s.requires_appointment).length }}</div>
-                                    <div class="text-xs text-gray-500 dark:text-gray-400">Walk-in</div>
-                                </div>
-                                <div class="text-center">
-                                    <div class="text-2xl font-bold text-purple-600 dark:text-purple-400">{{ getServiceCategories().length }}</div>
-                                    <div class="text-xs text-gray-500 dark:text-gray-400">Categories</div>
-                                </div>
-                            </div>
 
-                            <!-- Price Range -->
-                            <div v-if="getServicePriceRange().min !== null" class="mb-4 p-3 bg-white dark:bg-gray-700 rounded-lg">
-                                <h5 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">Price Range</h5>
-                                <div class="text-sm text-gray-600 dark:text-gray-400">
-                                    <span v-if="getServicePriceRange().min === getServicePriceRange().max">
-                                        Fixed: ₱{{ getServicePriceRange().min?.toLocaleString() }}
-                                    </span>
-                                    <span v-else>
-                                        ₱{{ getServicePriceRange().min?.toLocaleString() }} - ₱{{ getServicePriceRange().max?.toLocaleString() }}
-                                    </span>
-                                    <span v-if="form.services.some(s => s.base_price === null || s.base_price === 0)" class="ml-2 text-amber-600">
-                                        (+ custom pricing)
-                                    </span>
-                                </div>
-                            </div>
-
-                            <!-- Categories Breakdown -->
-                            <div v-if="getServiceCategories().length > 1">
-                                <h5 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">By Category</h5>
-                                <div class="flex flex-wrap gap-2">
-                                    <span 
-                                        v-for="category in getServiceCategories()" 
-                                        :key="category"
-                                        class="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded-full"
-                                    >
-                                        {{ serviceCategories[category] }} ({{ getServicesByCategory(category).length }})
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
                     </div>
 
                     <!-- Step 5: Veterinarians -->
-                    <div v-if="currentStep === 5" class="space-y-6">
-                        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Veterinarian Information</h2>
+                    <div v-if="currentStep === 5" class="space-y-8">
+                        <div class="flex items-start justify-between mb-6">
+                            <div class="flex items-center gap-3">
+                                <div class="p-2.5 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+                                    <svg class="h-6 w-6 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Veterinarian Information</h2>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">At least one veterinarian is required</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Helpful Note -->
+                        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-xl p-5 shadow-sm">
+                            <div class="flex items-start gap-4">
+                                <div class="flex-shrink-0 mt-0.5">
+                                    <div class="p-2 bg-blue-100 dark:bg-blue-800/50 rounded-lg">
+                                        <svg class="h-5 w-5 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                        </svg>
+                                    </div>
+                                </div>
+                                <div class="flex-1">
+                                    <h4 class="text-base font-bold text-blue-900 dark:text-blue-100 mb-2">💡 Editable later in Staff Management</h4>
+                                    <p class="text-sm text-blue-800 dark:text-blue-200 leading-relaxed">
+                                        Add your veterinarians here to complete registration. You can edit their details, add more vets, and manage staff roles later in the Staff Management section.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                         
                         <div class="space-y-6">
-                            <div v-for="(vet, index) in form.veterinarians" :key="index" class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                                <div class="flex justify-between items-center mb-4">
-                                    <h3 class="text-md font-medium text-gray-900 dark:text-gray-100">
+                            <div v-for="(vet, index) in form.veterinarians" :key="index" class="border-2 border-gray-200 dark:border-gray-700 rounded-xl p-6 bg-white dark:bg-gray-800 hover:shadow-lg transition-shadow duration-200">
+                                <div class="flex justify-between items-center mb-6">
+                                    <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                        <span class="flex items-center justify-center w-8 h-8 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-lg text-sm font-bold">{{ index + 1 }}</span>
                                         Veterinarian {{ index + 1 }}
                                     </h3>
                                     <button 
-                                        v-if="form.veterinarians.length > 1"
+                                        v-if="form.veterinarians && form.veterinarians.length > 1"
                                         @click="removeVeterinarian(index)"
                                         type="button"
-                                        class="text-red-600 hover:text-red-800 text-sm font-medium"
+                                        class="flex items-center gap-1.5 px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-sm font-semibold transition-all duration-200"
                                     >
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
                                         Remove
                                     </button>
                                 </div>
                                 
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <!-- Name -->
-                                    <div>
-                                        <label :for="`vet_name_${index}`" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                            Full Name *
-                                        </label>
-                                        <input 
-                                            v-model="vet.name" 
-                                            type="text" 
-                                            :id="`vet_name_${index}`"
-                                            required
-                                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-                                            placeholder="Dr. Juan Dela Cruz"
-                                        />
+                                <div class="space-y-4">
+                                    <!-- Name and License Number -->
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label :for="`vet_name_${index}`" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                Full Name *
+                                            </label>
+                                            <input 
+                                                v-model="vet.name" 
+                                                type="text" 
+                                                :id="`vet_name_${index}`"
+                                                required
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                                placeholder="Dr. Juan Dela Cruz"
+                                            />
+                                            <div v-if="form.errors[`veterinarians.${index}.name`]" class="mt-1 text-sm text-red-600">{{ form.errors[`veterinarians.${index}.name`] }}</div>
+                                        </div>
+
+                                        <div>
+                                            <label :for="`vet_license_${index}`" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                PRC License Number *
+                                            </label>
+                                            <input 
+                                                v-model="vet.license_number" 
+                                                type="text" 
+                                                :id="`vet_license_${index}`"
+                                                required
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                                placeholder="License Number"
+                                            />
+                                            <div v-if="form.errors[`veterinarians.${index}.license_number`]" class="mt-1 text-sm text-red-600">{{ form.errors[`veterinarians.${index}.license_number`] }}</div>
+                                        </div>
                                     </div>
 
-                                    <!-- License Number -->
-                                    <div>
-                                        <label :for="`vet_license_${index}`" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                            License Number *
-                                        </label>
-                                        <input 
-                                            v-model="vet.license_number" 
-                                            type="text" 
-                                            :id="`vet_license_${index}`"
-                                            required
-                                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-                                            placeholder="PRC License Number"
-                                        />
+                                    <!-- Email and Phone -->
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label :for="`vet_email_${index}`" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                Email Address
+                                            </label>
+                                            <input 
+                                                v-model="vet.email" 
+                                                type="email" 
+                                                :id="`vet_email_${index}`"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                                placeholder="email@example.com"
+                                            />
+                                            <div v-if="form.errors[`veterinarians.${index}.email`]" class="mt-1 text-sm text-red-600">{{ form.errors[`veterinarians.${index}.email`] }}</div>
+                                        </div>
+
+                                        <div>
+                                            <label :for="`vet_phone_${index}`" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                Phone Number
+                                            </label>
+                                            <input 
+                                                v-model="vet.phone" 
+                                                type="tel" 
+                                                :id="`vet_phone_${index}`"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                                placeholder="(02) 123-4567"
+                                            />
+                                            <div v-if="form.errors[`veterinarians.${index}.phone`]" class="mt-1 text-sm text-red-600">{{ form.errors[`veterinarians.${index}.phone`] }}</div>
+                                        </div>
                                     </div>
 
-                                    <!-- Specialization -->
+                                    <!-- Specializations -->
                                     <div>
-                                        <label :for="`vet_specialization_${index}`" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                            Specialization
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                            Specializations (Optional)
                                         </label>
-                                        <input 
-                                            v-model="vet.specialization" 
-                                            type="text" 
-                                            :id="`vet_specialization_${index}`"
-                                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-                                            placeholder="e.g. Small Animal Medicine"
-                                        />
+                                        <div class="flex gap-2 mb-2">
+                                            <input 
+                                                :ref="el => { if (el) vetSpecInputs[index] = el as HTMLInputElement; }"
+                                                type="text" 
+                                                @keyup.enter="(e) => { addSpecialization(index, (e.target as HTMLInputElement).value); (e.target as HTMLInputElement).value = ''; }"
+                                                class="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                                placeholder="e.g., Small Animal Medicine, Surgery (Press Enter to add)"
+                                            />
+                                            <button 
+                                                @click="() => { const input = vetSpecInputs[index]; if (input) { addSpecialization(index, input.value); input.value = ''; } }"
+                                                type="button"
+                                                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
+                                            >
+                                                Add
+                                            </button>
+                                        </div>
+                                        <div v-if="vet.specializations && vet.specializations.length > 0" class="flex flex-wrap gap-2">
+                                            <span 
+                                                v-for="(spec, specIndex) in (vet.specializations || [])" 
+                                                :key="specIndex"
+                                                class="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm"
+                                            >
+                                                {{ spec }}
+                                                <button 
+                                                    @click="removeSpecialization(index, specIndex)"
+                                                    type="button"
+                                                    class="hover:bg-blue-200 dark:hover:bg-blue-800 rounded-full p-0.5"
+                                                >
+                                                    <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                                    </svg>
+                                                </button>
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1010,117 +1469,241 @@ const cancel = () => {
                             <button 
                                 @click="addVeterinarian"
                                 type="button"
-                                class="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-colors dark:border-gray-600 dark:text-gray-400"
+                                class="group w-full px-6 py-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl text-gray-600 dark:text-gray-400 hover:border-indigo-500 dark:hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition-all duration-200 font-semibold flex items-center justify-center gap-2"
                             >
-                                + Add Another Veterinarian
+                                <svg class="h-5 w-5 transition-transform group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                </svg>
+                                Add Another Veterinarian
                             </button>
                         </div>
                     </div>
 
-                    <!-- Step 6: Certifications & Additional Info -->
-                    <div v-if="currentStep === 6" class="space-y-6">
-                        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Certifications & Additional Information</h2>
+                    <!-- Step 6: Certifications -->
+                    <div v-if="currentStep === 6" class="space-y-8">
+                        <div class="flex items-center gap-3 mb-6">
+                            <div class="p-2.5 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
+                                <svg class="h-6 w-6 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Certification Documents</h2>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">Upload all required certification and licensing documents</p>
+                            </div>
+                        </div>
                         
                         <!-- Certifications -->
                         <div>
-                            <h3 class="text-md font-medium text-gray-900 dark:text-gray-100 mb-3">Certification Proofs</h3>
-                            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Upload all certification documents, licenses, and permits (PDF or image files)</p>
+                            <div class="flex items-center gap-2 mb-4">
+                                <svg class="h-5 w-5 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                </svg>
+                                <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100">Upload Certification Proofs</h3>
+                            </div>
+                            <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">Upload all certification documents, licenses, and permits (PDF or image files)</p>
                             
-                            <div>
-                                <label for="certification_proofs" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Upload Certification Documents *
+                            <div class="bg-white dark:bg-gray-800 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-8 hover:border-amber-500 dark:hover:border-amber-500 transition-all duration-200 hover:bg-amber-50/30 dark:hover:bg-amber-900/5">
+                                <label for="certification_proofs" class="block cursor-pointer">
+                                    <div class="flex flex-col items-center text-center">
+                                        <div class="p-4 bg-amber-100 dark:bg-amber-900/30 rounded-full mb-4">
+                                            <svg class="h-10 w-10 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                            </svg>
+                                        </div>
+                                        <p class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">Click to upload or drag and drop</p>
+                                        <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">PDF, JPG, PNG, GIF (Max: 10MB per file)</p>
+                                        <p class="text-xs text-gray-400 dark:text-gray-500">You can select multiple files</p>
+                                    </div>
+                                    <input 
+                                        id="certification_proofs"
+                                        type="file" 
+                                        multiple
+                                        accept=".pdf,.jpg,.jpeg,.png,.gif"
+                                        @change="handleCertificationProofUpload"
+                                        class="hidden"
+                                    />
                                 </label>
-                                <input 
-                                    id="certification_proofs"
-                                    type="file" 
-                                    multiple
-                                    accept=".pdf,.jpg,.jpeg,.png,.gif"
-                                    @change="handleCertificationProofUpload"
-                                    class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900/20 dark:file:text-blue-400"
-                                />
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                    Accepted formats: PDF, JPG, PNG, GIF (Max: 10MB per file). You can select multiple files.
-                                </p>
-                                <div v-if="form.certification_proofs.length > 0" class="mt-2">
-                                    <p class="text-sm text-green-600">{{ form.certification_proofs.length }} file(s) selected</p>
+                                <div v-if="form.certification_proofs.length > 0" class="mt-6 pt-6 border-t-2 border-gray-200 dark:border-gray-700">
+                                    <div class="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border-2 border-green-200 dark:border-green-800">
+                                        <div class="flex-shrink-0">
+                                            <svg class="h-8 w-8 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        </div>
+                                        <div class="flex-1">
+                                            <p class="text-base font-bold text-green-900 dark:text-green-100">{{ form.certification_proofs.length }} file(s) selected</p>
+                                            <p class="text-sm text-green-700 dark:text-green-300">Files ready for upload</p>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div v-if="form.errors.certification_proofs" class="mt-1 text-sm text-red-600">{{ form.errors.certification_proofs }}</div>
+                                <div v-if="form.errors.certification_proofs" class="mt-4 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border-2 border-red-200 dark:border-red-800">
+                                    <p class="text-sm text-red-600 dark:text-red-400 flex items-center gap-2">
+                                        <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                        </svg>
+                                        {{ form.errors.certification_proofs }}
+                                    </p>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Additional Information -->
-                        <div>
-                            <label for="additional_info" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Additional Information
-                            </label>
-                            <textarea 
-                                v-model="form.additional_info" 
-                                id="additional_info"
-                                rows="4"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-                                placeholder="Any additional information you'd like to share about your clinic"
-                            ></textarea>
-                            <div v-if="form.errors.additional_info" class="mt-1 text-sm text-red-600">{{ form.errors.additional_info }}</div>
-                        </div>
-
                         <!-- Review Summary -->
-                        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-6">
-                            <h3 class="font-semibold mb-4">Registration Summary</h3>
+                        <div class="bg-gradient-to-br from-slate-50 to-blue-50 dark:from-gray-800 dark:to-gray-900 rounded-xl border-2 border-slate-200 dark:border-slate-700 p-6 shadow-md">
+                            <div class="flex items-center gap-3 mb-6">
+                                <div class="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                                    <svg class="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                                    </svg>
+                                </div>
+                                <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">Registration Summary</h3>
+                            </div>
                             
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
-                                <div>
-                                    <p><strong>Clinic Name:</strong> {{ form.clinic_name }}</p>
-                                    <p><strong>Email:</strong> {{ form.email }}</p>
-                                    <p><strong>Phone:</strong> {{ form.phone }}</p>
-                                    <p><strong>Address:</strong> {{ form.street_address }}, {{ form.barangay }}, {{ form.city }}, {{ form.province }}</p>
-                                    <p><strong>Operating Hours:</strong> {{ form.is_24_hours ? '24 Hours' : 'Set Schedule' }}</p>
+                                <div class="space-y-3">
+                                    <div class="flex items-start gap-2">
+                                        <svg class="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                        </svg>
+                                        <div class="flex-1">
+                                            <p class="font-semibold text-gray-700 dark:text-gray-300">Clinic Name:</p>
+                                            <p class="text-gray-900 dark:text-gray-100">{{ form.clinic_name }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-start gap-2">
+                                        <svg class="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                        </svg>
+                                        <div class="flex-1">
+                                            <p class="font-semibold text-gray-700 dark:text-gray-300">Email:</p>
+                                            <p class="text-gray-900 dark:text-gray-100">{{ form.email }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-start gap-2">
+                                        <svg class="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                        </svg>
+                                        <div class="flex-1">
+                                            <p class="font-semibold text-gray-700 dark:text-gray-300">Phone:</p>
+                                            <p class="text-gray-900 dark:text-gray-100">{{ form.phone }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-start gap-2">
+                                        <svg class="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                        <div class="flex-1">
+                                            <p class="font-semibold text-gray-700 dark:text-gray-300">Address:</p>
+                                            <p class="text-gray-900 dark:text-gray-100">{{ form.street_address }}, {{ form.barangay }}, {{ form.city }}, {{ form.province }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-start gap-2">
+                                        <svg class="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                        </svg>
+                                        <div class="flex-1">
+                                            <p class="font-semibold text-gray-700 dark:text-gray-300">Emergency Clinic:</p>
+                                            <p class="text-gray-900 dark:text-gray-100">{{ form.is_emergency_clinic ? 'Yes ✅' : 'No' }}</p>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p><strong>Services:</strong> {{ form.services.length }} configured</p>
-                                    <p><strong>Emergency Services:</strong> {{ form.services.filter(s => s.is_emergency_service).length }}</p>
-                                    <p><strong>Walk-in Services:</strong> {{ form.services.filter(s => !s.requires_appointment).length }}</p>
-                                    <p><strong>Veterinarians:</strong> {{ form.veterinarians.length }} listed</p>
-                                    <p><strong>Certification Files:</strong> {{ form.certification_proofs.length }} uploaded</p>
+                                <div class="space-y-3">
+                                    <div class="flex items-start gap-2">
+                                        <svg class="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                        </svg>
+                                        <div class="flex-1">
+                                            <p class="font-semibold text-gray-700 dark:text-gray-300">Services:</p>
+                                            <p class="text-gray-900 dark:text-gray-100">{{ (form.services && form.services.length > 0) ? form.services.length + ' configured' : 'Not configured yet' }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-start gap-2">
+                                        <svg class="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                        </svg>
+                                        <div class="flex-1">
+                                            <p class="font-semibold text-gray-700 dark:text-gray-300">Emergency Services:</p>
+                                            <p class="text-gray-900 dark:text-gray-100">{{ (form.services || []).filter(s => s.is_emergency_service).length }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-start gap-2">
+                                        <svg class="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                        <div class="flex-1">
+                                            <p class="font-semibold text-gray-700 dark:text-gray-300">Walk-in Services:</p>
+                                            <p class="text-gray-900 dark:text-gray-100">{{ (form.services || []).filter(s => !s.requires_appointment).length }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-start gap-2">
+                                        <svg class="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                        </svg>
+                                        <div class="flex-1">
+                                            <p class="font-semibold text-gray-700 dark:text-gray-300">Veterinarians:</p>
+                                            <p class="text-gray-900 dark:text-gray-100">{{ (form.veterinarians || []).length }} listed</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-start gap-2">
+                                        <svg class="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        <div class="flex-1">
+                                            <p class="font-semibold text-gray-700 dark:text-gray-300">Certification Files:</p>
+                                            <p class="text-gray-900 dark:text-gray-100">{{ form.certification_proofs.length }} uploaded</p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
                             <!-- Services List -->
-                            <div v-if="form.services.length > 0" class="mt-6">
-                                <h4 class="font-medium mb-3">Services Overview:</h4>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
-                                    <div v-for="service in form.services" :key="service.name" class="flex justify-between items-center p-2 bg-white dark:bg-gray-600 rounded">
-                                        <span>{{ service.name }}</span>
-                                        <span class="text-gray-600 dark:text-gray-300">{{ service.base_price ? '₱' + service.base_price.toLocaleString() : 'Price on request' }}</span>
+                            <div v-if="form.services && form.services.length > 0" class="mt-6">
+                                <h4 class="font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                                    <svg class="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                    </svg>
+                                    Services Overview:
+                                </h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                                    <div v-for="service in form.services" :key="service.name" class="flex justify-between items-center p-3 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 hover:shadow-md transition-shadow">
+                                        <span class="font-medium text-gray-900 dark:text-gray-100">{{ service.name }}</span>
+                                        <span class="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md text-xs font-semibold">{{ service.duration_minutes }} min</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
-                            <div class="flex">
-                                <div class="flex-shrink-0">
-                                    <svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
-                                    </svg>
-                                </div>
-                                <div class="ml-3">
-                                    <h3 class="text-sm font-medium text-yellow-800 dark:text-yellow-200">Please Note</h3>
-                                    <div class="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
-                                        <p>Your clinic registration will be reviewed by our team. You will receive an email confirmation once approved, typically within 1-2 business days.</p>
+                        <div class="bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 border-2 border-yellow-200 dark:border-yellow-800 rounded-xl p-5 shadow-sm">
+                            <div class="flex items-start gap-4">
+                                <div class="flex-shrink-0 mt-0.5">
+                                    <div class="p-2 bg-yellow-100 dark:bg-yellow-800/50 rounded-lg">
+                                        <svg class="h-6 w-6 text-yellow-600 dark:text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                                        </svg>
                                     </div>
+                                </div>
+                                <div class="flex-1">
+                                    <h3 class="text-base font-bold text-yellow-900 dark:text-yellow-100 mb-2">📋 Please Note</h3>
+                                    <p class="text-sm text-yellow-800 dark:text-yellow-200 leading-relaxed">
+                                        Your clinic registration will be reviewed by our team. You will receive an email confirmation once approved, typically within <strong>1-2 business days</strong>.
+                                    </p>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Navigation Buttons -->
-                    <div class="flex justify-between pt-6 border-t border-gray-200 dark:border-gray-700">
+                    <div class="flex justify-between items-center pt-8 border-t-2 border-gray-200 dark:border-gray-700">
                         <button 
                             v-if="currentStep > 1"
                             @click="prevStep" 
                             type="button" 
-                            class="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 font-medium transition-colors dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600"
+                            class="group flex items-center gap-2 px-6 py-3 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 font-semibold transition-all duration-200 hover:shadow-md"
                         >
+                            <svg class="h-5 w-5 transition-transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                            </svg>
                             Previous
                         </button>
                         <div v-else></div>
@@ -1129,8 +1712,11 @@ const cancel = () => {
                             <button 
                                 @click="cancel" 
                                 type="button" 
-                                class="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 font-medium transition-colors dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600"
+                                class="group flex items-center gap-2 px-6 py-3 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 font-semibold transition-all duration-200 hover:shadow-md"
                             >
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
                                 Cancel
                             </button>
                             
@@ -1138,17 +1724,27 @@ const cancel = () => {
                                 v-if="currentStep < totalSteps"
                                 @click="nextStep" 
                                 type="button" 
-                                class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium transition-colors"
+                                class="group flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl hover:from-blue-700 hover:to-blue-600 font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
                             >
                                 Next
+                                <svg class="h-5 w-5 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                </svg>
                             </button>
                             
                             <button 
                                 v-if="currentStep === totalSteps"
                                 type="submit" 
                                 :disabled="form.processing" 
-                                class="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                class="group flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 font-bold transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-lg"
                             >
+                                <svg v-if="!form.processing" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <svg v-else class="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
                                 <span v-if="form.processing">Submitting...</span>
                                 <span v-else>Submit Registration</span>
                             </button>

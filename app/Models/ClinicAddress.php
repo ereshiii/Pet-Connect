@@ -31,11 +31,13 @@ class ClinicAddress extends Model
     ];
 
     /**
-     * Get the clinic that owns this address.
+     * Get the clinic registration that owns this address.
+     * Note: This table is deprecated and will be removed.
+     * Address data is stored directly in clinic_registrations.
      */
     public function clinic(): BelongsTo
     {
-        return $this->belongsTo(Clinic::class);
+        return $this->belongsTo(ClinicRegistration::class, 'clinic_id');
     }
 
     /**

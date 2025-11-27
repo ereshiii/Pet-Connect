@@ -127,6 +127,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Check if user has a primary emergency contact.
+     */
+    public function hasPrimaryEmergencyContact(): bool
+    {
+        return $this->emergencyContacts()->where('is_primary', true)->exists();
+    }
+
+    /**
      * Get the user's pets.
      */
     public function pets(): HasMany
@@ -203,6 +211,22 @@ class User extends Authenticatable
     public function invoices(): HasMany
     {
         return $this->hasMany(Invoice::class, 'owner_id');
+    }
+
+    /**
+     * Get the user's payment methods.
+     */
+    public function paymentMethods(): HasMany
+    {
+        return $this->hasMany(PaymentMethod::class);
+    }
+
+    /**
+     * Get the user's default payment method.
+     */
+    public function defaultPaymentMethod(): HasOne
+    {
+        return $this->hasOne(PaymentMethod::class)->where('is_default', true);
     }
 
     /**
@@ -711,5 +735,34 @@ class User extends Authenticatable
     public function getBioAttribute(): ?string
     {
         return $this->profile?->bio;
+    }
+
+    /**
+     * Check if user has completed their profile setup.
+     *
+     * @return bool
+     */
+    public function hasCompletedProfile(): bool
+    {
+        // Admins and clinics don't need profile completion
+        if ($this->isAdmin() || $this->isClinic()) {
+            return true;
+        }
+
+        // Check if profile_completed_at is set
+        if ($this->profile?->profile_completed_at) {
+            return true;
+        }
+
+        // Check required fields
+        $hasRequiredFields = $this->profile?->phone 
+            && $this->profile?->address 
+            && $this->profile?->city 
+            && $this->profile?->province;
+
+        // Check if user has at least one pet
+        $hasPet = $this->pets()->exists();
+
+        return $hasRequiredFields && $hasPet;
     }
 }

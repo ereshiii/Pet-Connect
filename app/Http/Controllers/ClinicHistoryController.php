@@ -28,6 +28,7 @@ class ClinicHistoryController extends Controller
             abort(404, 'Clinic registration not found.');
         }
 
+        // Use clinic registration ID directly (clinic_id now references clinic_registrations.id)
         $clinicId = $clinicRegistration->id;
 
         // Get filter parameters

@@ -15,8 +15,19 @@ class AddressController extends Controller
      */
     public function edit(Request $request): Response
     {
+        $address = $request->user()->primaryAddress;
+        
         return Inertia::render('settings/Address', [
-            'address' => $request->user()->primaryAddress,
+            'address' => $address ? [
+                'address_line_1' => $address->address_line_1,
+                'address_line_2' => $address->address_line_2,
+                'city' => $address->city,
+                'state' => $address->state,
+                'postal_code' => $address->postal_code,
+                'country' => $address->country,
+                'latitude' => $address->latitude,
+                'longitude' => $address->longitude,
+            ] : null,
         ]);
     }
 
@@ -32,6 +43,8 @@ class AddressController extends Controller
             'state' => ['required', 'string', 'max:100'],
             'postal_code' => ['required', 'string', 'max:20'],
             'country' => ['nullable', 'string', 'max:100'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
         ]);
 
         $user = $request->user();

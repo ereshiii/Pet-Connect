@@ -51,6 +51,11 @@ class Invoice extends Model
     ];
 
     // Relationships
+    /**
+     * Get the clinic registration that owns this invoice.
+     * Note: clinic_id references clinic_registrations.id (not clinics.id)
+     * This follows the dual-ID pattern where clinic_registrations.id is used for transactions.
+     */
     public function clinic(): BelongsTo
     {
         return $this->belongsTo(ClinicRegistration::class, 'clinic_id');

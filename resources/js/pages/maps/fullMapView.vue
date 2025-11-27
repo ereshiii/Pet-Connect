@@ -233,16 +233,16 @@ onUnmounted(() => {
             >
                 <!-- Legend -->
                 <template #legend>
-                    <div v-if="showControls" class="absolute bottom-4 left-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-3 text-xs z-[9999]">
-                        <h6 class="font-semibold mb-2 text-gray-900 dark:text-gray-100">Legend</h6>
+                    <div v-if="showControls" class="absolute bottom-4 left-4 bg-gray-900 border border-gray-800 rounded-lg shadow-lg p-3 text-xs z-[9999]">
+                        <h6 class="font-semibold mb-2 text-white">Legend</h6>
                         <div class="space-y-1">
                             <div class="flex items-center gap-2">
                                 <div class="w-3 h-3 bg-blue-600 rounded-full"></div>
-                                <span class="text-gray-700 dark:text-gray-300">Veterinary Clinic</span>
+                                <span class="text-gray-300">Veterinary Clinic</span>
                             </div>
                             <div class="flex items-center gap-2">
                                 <div class="w-3 h-3 bg-green-600 rounded-full"></div>
-                                <span class="text-gray-700 dark:text-gray-300">Your Location</span>
+                                <span class="text-gray-300">Your Location</span>
                             </div>
                         </div>
                     </div>
@@ -253,14 +253,14 @@ onUnmounted(() => {
             <div v-if="showControls" class="absolute top-4 left-4 right-4 z-[9999]">
                 <div class="flex justify-between items-start">
                     <!-- Left: Title and Stats -->
-                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 max-w-md">
-                        <h1 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                    <div class="bg-gray-900 border border-gray-800 rounded-lg shadow-lg p-4 max-w-md">
+                        <h1 class="text-lg font-semibold text-white mb-1">
                             Clinic Locations - Fullscreen
                         </h1>
-                        <p class="text-sm text-gray-600 dark:text-gray-400">
+                        <p class="text-sm text-gray-400">
                             {{ filteredClinics.length }} of {{ props.clinics.length }} clinics shown
                         </p>
-                        <div v-if="serviceFilter || ratingFilter" class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                        <div v-if="serviceFilter || ratingFilter" class="mt-2 text-xs text-gray-400">
                             <span v-if="serviceFilter">Category: {{ serviceFilter }}</span>
                             <span v-if="ratingFilter" class="ml-2">Rating: {{ ratingFilter }}+</span>
                         </div>
@@ -269,15 +269,15 @@ onUnmounted(() => {
                     <!-- Right: Action Buttons -->
                     <div class="flex gap-2">
                         <button @click="toggleMiniFilters" 
-                                class="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 p-3 rounded-lg shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                class="bg-gray-900 border border-gray-800 text-gray-300 p-3 rounded-lg shadow-lg hover:bg-gray-800 transition-colors">
                             <Icon name="filter" class="w-5 h-5" />
                         </button>
                         <button @click="toggleControls" 
-                                class="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 p-3 rounded-lg shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                class="bg-gray-900 border border-gray-800 text-gray-300 p-3 rounded-lg shadow-lg hover:bg-gray-800 transition-colors">
                             <Icon :name="showControls ? 'eyeOff' : 'eye'" class="w-5 h-5" />
                         </button>
                         <button @click="exitFullscreen" 
-                                class="bg-red-600 text-white p-3 rounded-lg shadow-lg hover:bg-red-700 transition-colors">
+                                class="bg-gradient-to-r from-red-600 to-red-700 text-white p-3 rounded-lg shadow-lg hover:from-red-700 hover:to-red-800 transition-colors">
                             <Icon name="x" class="w-5 h-5" />
                         </button>
                     </div>
@@ -286,10 +286,10 @@ onUnmounted(() => {
 
             <!-- Mini Filters Panel (Overlay) -->
             <div v-if="showMiniFilters && showControls" 
-                 class="absolute top-28 left-4 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 z-[9999]">
+                 class="absolute top-28 left-4 w-80 bg-gray-900 border border-gray-800 rounded-lg shadow-xl p-4 z-[9999]">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Quick Filters</h3>
-                    <button @click="toggleMiniFilters" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                    <h3 class="text-sm font-semibold text-white">Quick Filters</h3>
+                    <button @click="toggleMiniFilters" class="text-gray-400 hover:text-gray-300">
                         <Icon name="x" class="w-4 h-4" />
                     </button>
                 </div>
@@ -297,9 +297,9 @@ onUnmounted(() => {
                 <div class="space-y-3">
                     <!-- Category Filter -->
                     <div>
-                        <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Category</label>
+                        <label class="block text-xs font-medium text-gray-300 mb-1">Category</label>
                         <select v-model="serviceFilter" 
-                                class="w-full px-2 py-1 border border-gray-300 rounded text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
+                                class="w-full px-2 py-1 border border-gray-700 rounded text-xs bg-gray-800 text-gray-100">
                             <option value="">All categories</option>
                             <option value="consultation">Consultation</option>
                             <option value="vaccination">Vaccination</option>
@@ -319,9 +319,9 @@ onUnmounted(() => {
 
                     <!-- Rating Filter -->
                     <div>
-                        <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Minimum rating</label>
+                        <label class="block text-xs font-medium text-gray-300 mb-1">Minimum rating</label>
                         <select v-model="ratingFilter" 
-                                class="w-full px-2 py-1 border border-gray-300 rounded text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
+                                class="w-full px-2 py-1 border border-gray-700 rounded text-xs bg-gray-800 text-gray-100">
                             <option value="">Any rating</option>
                             <option value="5">5 stars</option>
                             <option value="4">4+ stars</option>
@@ -333,11 +333,11 @@ onUnmounted(() => {
                     <!-- Filter Buttons -->
                     <div class="flex gap-2 pt-2">
                         <button @click="applyFilters" 
-                                class="flex-1 bg-blue-600 text-white py-1 px-2 rounded text-xs hover:bg-blue-700">
+                                class="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-1 px-2 rounded text-xs hover:from-blue-700 hover:to-purple-700">
                             Apply
                         </button>
                         <button @click="clearFilters" 
-                                class="flex-1 border border-gray-300 text-gray-700 py-1 px-2 rounded text-xs hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
+                                class="flex-1 border border-gray-700 text-gray-300 py-1 px-2 rounded text-xs hover:bg-gray-800">
                             Clear
                         </button>
                     </div>
@@ -346,40 +346,40 @@ onUnmounted(() => {
 
             <!-- Selected Clinic Info (Bottom Right) -->
             <div v-if="selectedClinic && showControls" 
-                 class="absolute bottom-4 right-4 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 z-[9999]">
+                 class="absolute bottom-4 right-4 w-80 bg-gray-900 border border-gray-800 rounded-lg shadow-xl p-4 z-[9999]">
                 <div class="flex justify-between items-start mb-2">
-                    <h4 class="font-semibold text-gray-900 dark:text-gray-100 text-sm">Selected Clinic</h4>
-                    <button @click="selectedClinic = null" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                    <h4 class="font-semibold text-white text-sm">Selected Clinic</h4>
+                    <button @click="selectedClinic = null" class="text-gray-400 hover:text-gray-300">
                         <Icon name="x" class="w-4 h-4" />
                     </button>
                 </div>
                 
-                <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
-                    <h5 class="font-semibold text-blue-900 dark:text-blue-100 text-sm">{{ selectedClinic.name }}</h5>
-                    <p class="text-blue-700 dark:text-blue-300 text-xs mt-1">📍 {{ selectedClinic.address }}</p>
+                <div class="bg-gray-800 border border-gray-700 rounded-lg p-3">
+                    <h5 class="font-semibold text-white text-sm">{{ selectedClinic.name }}</h5>
+                    <p class="text-gray-300 text-xs mt-1">📍 {{ selectedClinic.address }}</p>
                     <div class="flex items-center mt-2 text-xs">
-                        <span class="text-yellow-500">{{ selectedClinic.stars }}</span>
-                        <span class="text-blue-700 dark:text-blue-300 ml-1">({{ Number(selectedClinic.rating || 0).toFixed(1) }})</span>
-                        <span class="text-blue-600 dark:text-blue-400 ml-2">{{ selectedClinic.total_reviews }} reviews</span>
+                        <span class="text-yellow-400">{{ selectedClinic.stars }}</span>
+                        <span class="text-gray-300 ml-1">({{ Number(selectedClinic.rating || 0).toFixed(1) }})</span>
+                        <span class="text-gray-400 ml-2">{{ selectedClinic.total_reviews }} reviews</span>
                     </div>
                     <div class="flex items-center mt-1 text-xs">
                         <span :class="selectedClinic.status_color">{{ selectedClinic.status }}</span>
-                        <span v-if="selectedClinic.is_open_24_7" class="ml-2 bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs dark:bg-green-900 dark:text-green-200">
+                        <span v-if="selectedClinic.is_open_24_7" class="ml-2 bg-green-900 text-green-200 px-2 py-1 rounded-full text-xs">
                             24/7
                         </span>
                     </div>
-                    <div class="text-xs text-gray-600 dark:text-gray-400 mt-2">
+                    <div class="text-xs text-gray-400 mt-2">
                         <span class="font-medium">Categories:</span>
                         {{ selectedClinic.services?.slice(0, 3).join(', ') }}
                         <span v-if="selectedClinic.services?.length > 3">...</span>
                     </div>
                     <div class="flex gap-2 mt-3">
                         <button @click="bookSelectedClinic" 
-                                class="flex-1 bg-blue-600 text-white py-2 px-3 rounded text-xs hover:bg-blue-700">
+                                class="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2 px-3 rounded-lg text-xs hover:from-blue-700 hover:to-purple-700">
                             Book Appointment
                         </button>
                         <button @click="viewSelectedClinicDetails" 
-                                class="flex-1 border border-blue-300 text-blue-700 py-2 px-3 rounded text-xs hover:bg-blue-100 dark:border-blue-600 dark:text-blue-300 dark:hover:bg-blue-800">
+                                class="flex-1 border border-gray-600 text-gray-300 py-2 px-3 rounded-lg text-xs hover:bg-gray-700">
                             View Details
                         </button>
                     </div>
@@ -389,7 +389,7 @@ onUnmounted(() => {
             <!-- Hide/Show Controls Toggle (Always Visible) -->
             <button v-if="!showControls" 
                     @click="toggleControls"
-                    class="absolute top-4 right-4 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 p-3 rounded-full shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors z-[10000]">
+                    class="absolute top-4 right-4 bg-gray-900 border border-gray-800 text-gray-300 p-3 rounded-full shadow-lg hover:bg-gray-800 transition-colors z-[10000]">
                 <Icon name="eye" class="w-5 h-5" />
             </button>
         </div>

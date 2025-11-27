@@ -3,7 +3,19 @@ import { dashboard, login, register } from '@/routes';
 import { Head, Link } from '@inertiajs/vue3';
 import { ref, onMounted } from 'vue';
 import { useAppearance } from '@/composables/useAppearance';
-import { Monitor, Moon, Sun } from 'lucide-vue-next';
+import { 
+    Monitor, 
+    Moon, 
+    Sun, 
+    Building2, 
+    Calendar, 
+    Heart, 
+    MessageCircle, 
+    BarChart3, 
+    AlertCircle,
+    Check,
+    Sparkles
+} from 'lucide-vue-next';
 
 withDefaults(
     defineProps<{
@@ -37,86 +49,93 @@ const getCurrentThemeIcon = () => {
 // Features data
 const features = ref([
     {
-        icon: '🏥',
+        icon: Building2,
         title: 'Find Veterinary Clinics',
         description: 'Discover trusted veterinary clinics near you with real-time availability and verified reviews.'
     },
     {
-        icon: '📅',
+        icon: Calendar,
         title: 'Easy Appointment Booking',
         description: 'Schedule appointments with your preferred veterinarians in just a few clicks.'
     },
     {
-        icon: '🐕',
+        icon: Heart,
         title: 'Pet Health Records',
         description: 'Keep track of your pet\'s medical history, vaccinations, and health milestones.'
     },
     {
-        icon: '💬',
-        title: 'Direct Communication',
-        description: 'Connect directly with veterinarians for quick consultations and follow-ups.'
+        icon: BarChart3,
+        title: 'Clinic Management Dashboard',
+        description: 'Comprehensive dashboard for clinics to manage appointments, patients, and staff efficiently.'
     },
     {
-        icon: '📊',
-        title: 'Health Analytics',
-        description: 'Monitor your pet\'s health trends and receive personalized care recommendations.'
+        icon: MessageCircle,
+        title: 'Review & Rating System',
+        description: 'Share your experiences and read reviews from other pet owners to make informed decisions.'
     },
     {
-        icon: '🚨',
-        title: 'Emergency Services',
-        description: 'Access 24/7 emergency veterinary services when your pet needs immediate care.'
+        icon: AlertCircle,
+        title: 'Real-time Appointment Tracking',
+        description: 'Track your appointment status and receive notifications for upcoming visits and updates.'
     }
 ]);
 
-// Pricing plans
+// Clinic Subscription Plans
 const pricingPlans = ref([
     {
-        name: 'Free',
+        name: 'Basic Clinic',
         price: '₱0',
-        period: 'forever',
-        description: 'Perfect for pet owners getting started',
+        period: 'month',
+        description: 'Free forever plan for small veterinary practices',
+        trialDays: 'Free forever',
         features: [
-            'Up to 2 pets',
-            'Basic health tracking',
-            'Clinic search & reviews',
-            'Basic appointment booking',
-            'Community support'
+            'Dashboard Access',
+            'Appointment Management',
+            'Schedule Management'
         ],
+        limits: ['1 staff account', 'Up to 3 services'],
         popular: false,
-        cta: 'Get Started Free'
+        cta: 'Get Started Free',
+        badge: null
     },
     {
-        name: 'Premium',
-        price: '₱199',
-        period: 'per month',
-        description: 'Best for dedicated pet parents',
+        name: 'Professional',
+        price: '₱599',
+        period: 'month',
+        description: 'Enhanced features for growing veterinary practices',
+        trialDays: '14-day free trial',
         features: [
-            'Unlimited pets',
-            'Advanced health tracking',
-            'Priority appointment booking',
-            'Telemedicine consultations',
-            'Health reports & analytics',
-            'Export medical records',
-            'Priority customer support'
+            'Dashboard Access',
+            'Appointment Management',
+            'Schedule Management',
+            'Analytics & Insights',
+            'Appointment History',
+            'Patient Records'
         ],
+        limits: ['3 staff accounts', 'Up to 10 services'],
         popular: true,
-        cta: 'Start Premium Trial'
+        cta: 'Subscribe Now',
+        badge: 'Most Popular'
     },
     {
-        name: 'Clinic Basic',
-        price: '₱899',
-        period: 'per month',
-        description: 'For growing veterinary practices',
+        name: 'Pro Plus',
+        price: '₱1,499',
+        period: 'month',
+        description: 'Advanced features for professional veterinary practices',
+        trialDays: '30-day free trial',
         features: [
-            'Up to 100 appointments/month',
-            'Basic clinic management',
-            'Patient records system',
-            'Online booking calendar',
-            'Basic analytics',
-            'Email support'
+            'Dashboard Access',
+            'Appointment Management',
+            'Schedule Management',
+            'Analytics & Insights',
+            'Appointment History',
+            'Patient Records',
+            'Report Generation'
         ],
+        limits: ['Unlimited staff accounts', 'Unlimited services'],
         popular: false,
-        cta: 'Start Clinic Trial'
+        cta: 'Subscribe Now',
+        badge: null
     }
 ]);
 
@@ -179,9 +198,9 @@ const scrollToSection = (sectionId: string) => {
         <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
     </Head>
 
-    <div class="min-h-screen bg-white dark:bg-gray-900">
+    <div class="min-h-screen bg-white dark:bg-[hsl(0,0%,3.9%)]">
         <!-- Navigation Header -->
-        <nav class="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100 dark:bg-gray-900/95 dark:border-gray-800">
+        <nav class="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100 dark:bg-[hsl(240,5.9%,10%)]/95 dark:border-[hsl(0,0%,14.9%)]">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between items-center h-16">
                     <!-- Logo -->
@@ -266,7 +285,7 @@ const scrollToSection = (sectionId: string) => {
         </nav>
 
         <!-- Hero Section -->
-        <section class="pt-16 bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
+        <section class="pt-16 bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-[hsl(240,5.9%,10%)] dark:via-[hsl(0,0%,3.9%)] dark:to-[hsl(240,5.9%,8%)]">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
                 <div class="grid lg:grid-cols-2 gap-12 items-center">
                     <!-- Hero Content -->
@@ -286,13 +305,14 @@ const scrollToSection = (sectionId: string) => {
                             <Link
                                 v-if="canRegister"
                                 :href="register()"
-                                class="bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-all transform hover:scale-105 text-center"
+                                class="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all transform hover:scale-105 text-center shadow-lg flex items-center justify-center gap-2"
                             >
+                                <Sparkles class="h-5 w-5" />
                                 Start Free Today
                             </Link>
                             <button
                                 @click="scrollToSection('features')"
-                                class="border border-blue-600 text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-600 hover:text-white transition-all text-center dark:border-blue-400 dark:text-blue-400"
+                                class="border-2 border-blue-600 text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-600 hover:text-white transition-all text-center dark:border-blue-400 dark:text-blue-400 dark:hover:bg-blue-600 dark:hover:text-white"
                             >
                                 Learn More
                             </button>
@@ -334,7 +354,7 @@ const scrollToSection = (sectionId: string) => {
         </section>
 
         <!-- Features Section -->
-        <section id="features" class="py-20 bg-white dark:bg-gray-900">
+        <section id="features" class="py-20 bg-white dark:bg-[hsl(0,0%,3.9%)]">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="text-center mb-16">
                     <h2 class="text-4xl font-bold text-gray-900 dark:text-white mb-4">
@@ -349,10 +369,14 @@ const scrollToSection = (sectionId: string) => {
                     <div
                         v-for="(feature, index) in features"
                         :key="index"
-                        class="bg-gray-50 dark:bg-gray-800 rounded-xl p-8 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1"
+                        class="bg-gray-50 dark:bg-[hsl(0,0%,7%)] rounded-xl p-8 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1"
                         :class="{ 'ring-2 ring-blue-500': activeFeature === index }"
                     >
-                        <div class="text-4xl mb-4">{{ feature.icon }}</div>
+                        <div class="mb-4">
+                            <div class="inline-flex p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg">
+                                <component :is="feature.icon" class="h-6 w-6 text-white" />
+                            </div>
+                        </div>
                         <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-3">
                             {{ feature.title }}
                         </h3>
@@ -365,14 +389,14 @@ const scrollToSection = (sectionId: string) => {
         </section>
 
         <!-- Pricing Section -->
-        <section id="pricing" class="py-20 bg-gray-50 dark:bg-gray-800">
+        <section id="pricing" class="py-20 bg-gray-50 dark:bg-[hsl(240,5.9%,10%)]">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="text-center mb-16">
                     <h2 class="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-                        Simple, Transparent Pricing
+                        Clinic Subscription Plans
                     </h2>
                     <p class="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-                        Choose the perfect plan for your needs. Start free and upgrade as you grow.
+                        For Veterinary Clinics Only - Choose the perfect plan for your practice. Start free and upgrade as you grow.
                     </p>
                 </div>
 
@@ -380,59 +404,72 @@ const scrollToSection = (sectionId: string) => {
                     <div
                         v-for="(plan, index) in pricingPlans"
                         :key="index"
-                        class="bg-white dark:bg-gray-900 rounded-xl p-8 shadow-lg relative"
-                        :class="{ 'ring-2 ring-blue-500 scale-105': plan.popular }"
+                        class="bg-white dark:bg-[hsl(0,0%,3.9%)] rounded-xl p-8 shadow-lg relative border-2 flex flex-col"
+                        :class="plan.popular ? 'border-blue-500' : 'border-transparent dark:border-[hsl(0,0%,14.9%)]'"
                     >
-                        <div v-if="plan.popular" class="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                        <!-- Badge -->
+                        <div v-if="plan.badge" class="absolute -top-3 left-1/2 transform -translate-x-1/2">
                             <span class="bg-blue-600 text-white px-4 py-1 rounded-full text-sm font-semibold">
-                                Most Popular
+                                {{ plan.badge }}
                             </span>
                         </div>
 
-                        <div class="text-center mb-8">
+                        <div class="mb-8">
                             <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                                 {{ plan.name }}
                             </h3>
-                            <div class="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-1">
-                                {{ plan.price }}
-                            </div>
-                            <div class="text-gray-600 dark:text-gray-300">
-                                {{ plan.period }}
-                            </div>
-                            <p class="text-gray-600 dark:text-gray-300 mt-4">
+                            <p class="text-gray-600 dark:text-gray-400 text-sm mb-6">
                                 {{ plan.description }}
                             </p>
+                            <div class="mb-1">
+                                <span class="text-4xl font-bold text-blue-600 dark:text-blue-400">{{ plan.price }}</span>
+                                <span class="text-gray-600 dark:text-gray-400 ml-1">/ {{ plan.period }}</span>
+                            </div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400">
+                                {{ plan.trialDays }}
+                            </div>
                         </div>
 
-                        <ul class="space-y-3 mb-8">
-                            <li
-                                v-for="feature in plan.features"
-                                :key="feature"
-                                class="flex items-center text-gray-700 dark:text-gray-300"
-                            >
-                                <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
-                                </svg>
-                                {{ feature }}
-                            </li>
-                        </ul>
+                        <div class="mb-8 flex-grow">
+                            <p class="text-sm font-semibold text-gray-900 dark:text-white mb-4">Features included:</p>
+                            <ul class="space-y-3">
+                                <li
+                                    v-for="feature in plan.features"
+                                    :key="feature"
+                                    class="flex items-start text-gray-700 dark:text-gray-300"
+                                >
+                                    <Check class="w-5 h-5 text-green-500 mr-3 mt-0.5 flex-shrink-0" />
+                                    <span class="text-sm">{{ feature }}</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div v-if="plan.limits && plan.limits.length > 0" class="mb-6 text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                            <p v-for="limit in plan.limits" :key="limit">{{ limit }}</p>
+                        </div>
 
                         <Link
                             :href="register()"
-                            class="w-full text-center py-3 px-6 rounded-lg font-semibold transition-colors block"
+                            class="w-full text-center py-3 px-6 rounded-lg font-semibold transition-all transform hover:scale-105 block mt-auto"
                             :class="plan.popular 
-                                ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                                : 'bg-gray-100 text-gray-900 hover:bg-gray-200 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600'"
+                                ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 shadow-lg' 
+                                : 'bg-gray-100 text-gray-900 hover:bg-gray-200 dark:bg-[hsl(0,0%,14.9%)] dark:text-white dark:hover:bg-[hsl(0,0%,20%)]'"
                         >
                             {{ plan.cta }}
                         </Link>
                     </div>
                 </div>
+
+                <!-- Note about pet owners -->
+                <div class="text-center mt-12 text-sm text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+                    <p class="font-medium">Note: These subscription plans are exclusively for veterinary clinics.</p>
+                    <p class="mt-2">Pet owners can use PetConnect for free to book appointments, manage pet health records, and connect with clinics.</p>
+                </div>
             </div>
         </section>
 
         <!-- Testimonials Section -->
-        <section class="py-20 bg-white dark:bg-gray-900">
+        <section class="py-20 bg-white dark:bg-[hsl(0,0%,3.9%)]">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="text-center mb-16">
                     <h2 class="text-4xl font-bold text-gray-900 dark:text-white mb-4">
@@ -447,7 +484,7 @@ const scrollToSection = (sectionId: string) => {
                     <div
                         v-for="testimonial in testimonials"
                         :key="testimonial.name"
-                        class="bg-gray-50 dark:bg-gray-800 rounded-xl p-8"
+                        class="bg-gray-50 dark:bg-[hsl(0,0%,7%)] rounded-xl p-8"
                     >
                         <div class="flex items-center mb-4">
                             <div class="text-3xl mr-4">{{ testimonial.avatar }}</div>
@@ -472,7 +509,7 @@ const scrollToSection = (sectionId: string) => {
         </section>
 
         <!-- About Section -->
-        <section id="about" class="py-20 bg-blue-50 dark:bg-gray-800">
+        <section id="about" class="py-20 bg-blue-50 dark:bg-[hsl(240,5.9%,10%)]">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="grid lg:grid-cols-2 gap-12 items-center">
                     <div>
@@ -504,7 +541,7 @@ const scrollToSection = (sectionId: string) => {
                     </div>
                     
                     <div class="relative">
-                        <div class="bg-white dark:bg-gray-700 rounded-2xl p-8 shadow-xl">
+                        <div class="bg-white dark:bg-[hsl(0,0%,7%)] rounded-2xl p-8 shadow-xl">
                             <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
                                 Our Mission
                             </h3>
@@ -533,7 +570,7 @@ const scrollToSection = (sectionId: string) => {
         </section>
 
         <!-- Contact Section -->
-        <section id="contact" class="py-20 bg-white dark:bg-gray-900">
+        <section id="contact" class="py-20 bg-white dark:bg-[hsl(0,0%,3.9%)]">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="text-center mb-16">
                     <h2 class="text-4xl font-bold text-gray-900 dark:text-white mb-4">
@@ -614,7 +651,7 @@ const scrollToSection = (sectionId: string) => {
                     </div>
 
                     <!-- CTA Card -->
-                    <div class="bg-blue-50 dark:bg-gray-800 rounded-2xl p-8">
+                    <div class="bg-blue-50 dark:bg-[hsl(0,0%,7%)] rounded-2xl p-8">
                         <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
                             Ready to Get Started?
                         </h3>
@@ -638,7 +675,7 @@ const scrollToSection = (sectionId: string) => {
                             </Link>
                         </div>
 
-                        <div class="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
+                        <div class="mt-8 pt-8 border-t border-gray-200 dark:border-[hsl(0,0%,14.9%)]">
                             <p class="text-sm text-gray-600 dark:text-gray-400 text-center">
                                 Questions about our platform? 
                                 <br>
@@ -653,7 +690,7 @@ const scrollToSection = (sectionId: string) => {
         </section>
 
         <!-- Footer -->
-        <footer class="bg-gray-900 text-white py-12">
+        <footer class="bg-[hsl(240,5.9%,10%)] text-white py-12">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="grid md:grid-cols-4 gap-8">
                     <!-- Company Info -->
@@ -714,7 +751,7 @@ const scrollToSection = (sectionId: string) => {
                     </div>
                 </div>
 
-                <div class="border-t border-gray-800 mt-8 pt-8 text-center">
+                <div class="border-t border-[hsl(0,0%,14.9%)] mt-8 pt-8 text-center">
                     <p class="text-gray-400">
                         © {{ new Date().getFullYear() }} PetConnect. All rights reserved. Made with ❤️ for pets in the Philippines.
                     </p>

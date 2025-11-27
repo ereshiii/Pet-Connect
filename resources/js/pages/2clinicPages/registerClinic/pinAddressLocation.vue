@@ -32,6 +32,18 @@ const mapCenter = ref<[number, number]>([14.5995, 120.9842]); // Default to Mani
 const mapZoom = ref(13);
 const markers = ref<Array<any>>([]);
 
+// Update marker on map
+const updateMarker = (latitude: number, longitude: number) => {
+    markers.value = [{
+        id: 'clinic-location',
+        lat: latitude,
+        lng: longitude,
+        title: 'Clinic Location',
+        description: props.address || 'Clinic address location',
+        type: 'clinic'
+    }];
+};
+
 // Update map center when props change
 watch(() => [props.latitude, props.longitude], ([lat, lng]) => {
     if (lat && lng) {
@@ -97,18 +109,6 @@ const getCurrentLocation = async () => {
     } finally {
         isGettingLocation.value = false;
     }
-};
-
-// Update marker on map
-const updateMarker = (latitude: number, longitude: number) => {
-    markers.value = [{
-        id: 'clinic-location',
-        lat: latitude,
-        lng: longitude,
-        title: 'Clinic Location',
-        description: props.address || 'Clinic address location',
-        type: 'clinic'
-    }];
 };
 
 // Handle map click to set location

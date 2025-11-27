@@ -12,146 +12,112 @@ class SubscriptionPlanSeeder extends Seeder
      */
     public function run(): void
     {
-        // Pet Owner Plans
-        \App\Models\SubscriptionPlan::create([
-            'name' => 'Free Pet Owner',
-            'slug' => 'free-pet-owner',
-            'type' => 'user',
-            'description' => 'Basic pet care management for casual pet owners',
-            'price' => 0.00,
-            'annual_price' => 0.00,
-            'features' => [
-                'basic_pet_profiles',
-                'standard_appointment_booking',
-                'basic_health_records',
-                'community_access',
-            ],
-            'limits' => [
-                'max_pets' => 2,
-                'max_appointments_per_month' => 10,
-                'storage_mb' => 100,
-            ],
-            'is_active' => true,
-            'trial_days' => 0,
-            'sort_order' => 1,
-        ]);
+        // Clinic Plans (Pet owners have no subscriptions as per requirements)
 
-        \App\Models\SubscriptionPlan::create([
-            'name' => 'Premium Pet Owner',
-            'slug' => 'premium-pet-owner',
-            'type' => 'user',
-            'description' => 'Advanced pet care with unlimited pets and premium features',
-            'price' => 199.00, // ₱199/month
-            'annual_price' => 1990.00, // ₱1,990/year (save ₱398)
-            'features' => [
-                'unlimited_pets',
-                'advanced_health_tracking',
-                'priority_booking',
-                'telemedicine',
-                'health_reports',
-                'export_records',
-                'vaccination_reminders',
-                'medical_history_timeline',
-                'emergency_contact_alerts',
-            ],
-            'limits' => [
-                'max_pets' => -1, // unlimited
-                'max_appointments_per_month' => -1, // unlimited
-                'storage_mb' => 1000,
-            ],
-            'is_active' => true,
-            'trial_days' => 14,
-            'sort_order' => 2,
-        ]);
+        \App\Models\SubscriptionPlan::updateOrCreate(
+            ['slug' => 'basic-clinic'],
+            [
+                'name' => 'Basic Clinic',
+                'type' => 'clinic',
+                'stripe_price_id' => 'basic-clinic',  // Use slug as identifier
+                'description' => 'Free forever plan for small veterinary practices',
+                'price' => 0.00,
+                'annual_price' => 0.00,
+                'features' => [
+                    'dashboard',
+                    'appointments',
+                    'schedule_management',
+                ],
+                'limits' => [
+                    'max_appointments_per_month' => -1, // unlimited
+                    'max_staff_accounts' => 1,
+                    'max_services' => 3,
+                    'max_locations' => 1,
+                    'storage_mb' => 500,
+                    'reports' => false,
+                    'analytics' => false,
+                    'history' => false,
+                    'patient_records' => false,
+                ],
+                'is_active' => true,
+                'trial_days' => 0, // No trial needed - free forever
+                'transaction_fee_percentage' => 0.00, // No transaction fee for free plan
+                'transaction_fee_fixed' => 0.00,
+                'sort_order' => 1,
+            ]
+        );
 
-        // Clinic Plans
-        \App\Models\SubscriptionPlan::create([
-            'name' => 'Basic Clinic',
-            'slug' => 'basic-clinic',
-            'type' => 'clinic',
-            'description' => 'Essential features for small veterinary practices',
-            'price' => 0.00,
-            'annual_price' => 0.00,
-            'features' => [
-                'profile_listing',
-                'basic_calendar',
-                'standard_reviews',
-                'basic_patient_management',
-            ],
-            'limits' => [
-                'max_appointments_per_month' => 50,
-                'max_staff_accounts' => 1,
-                'max_locations' => 1,
-                'storage_mb' => 500,
-            ],
-            'is_active' => true,
-            'trial_days' => 0,
-            'transaction_fee_percentage' => 5.00, // 5% transaction fee
-            'transaction_fee_fixed' => 0.00,
-            'sort_order' => 1,
-        ]);
+        \App\Models\SubscriptionPlan::updateOrCreate(
+            ['slug' => 'professional'],
+            [
+                'name' => 'Professional',
+                'type' => 'clinic',
+                'stripe_price_id' => 'professional',  // Use slug as identifier
+                'description' => 'Enhanced features for growing veterinary practices',
+                'price' => 599.00, // ₱599/month
+                'annual_price' => 5990.00, // ₱5,990/year (save ₱1,198 - 17% discount)
+                'features' => [
+                    'dashboard',
+                    'appointments',
+                    'schedule_management',
+                    'analytics',
+                    'history',
+                    'patient_records',
+                ],
+                'limits' => [
+                    'max_appointments_per_month' => -1, // unlimited
+                    'max_staff_accounts' => 3,
+                    'max_services' => 10,
+                    'max_locations' => 2,
+                    'storage_mb' => 3000,
+                    'reports' => false,
+                    'analytics' => true,
+                    'history' => true,
+                    'patient_records' => true,
+                ],
+                'is_active' => true,
+                'trial_days' => 14,
+                'transaction_fee_percentage' => 3.50, // 3.5% transaction fee
+                'transaction_fee_fixed' => 0.00,
+                'sort_order' => 2,
+            ]
+        );
 
-        \App\Models\SubscriptionPlan::create([
-            'name' => 'Professional Clinic',
-            'slug' => 'professional-clinic',
-            'type' => 'clinic',
-            'description' => 'Advanced features for growing veterinary practices',
-            'price' => 1499.00, // ₱1,499/month
-            'annual_price' => 14990.00, // ₱14,990/year (save ₱3,498)
+        \App\Models\SubscriptionPlan::updateOrCreate(
+            ['slug' => 'pro-plus'],
+            [
+                'name' => 'Pro Plus',
+                'type' => 'clinic',
+                'stripe_price_id' => 'pro-plus',  // Use slug as identifier
+                'description' => 'Advanced features for professional veterinary practices',
+                'price' => 1499.00, // ₱1,499/month
+                'annual_price' => 14990.00, // ₱14,990/year (save ₱3,498 - 20% discount)
             'features' => [
-                'unlimited_appointments',
-                'advanced_scheduling',
-                'staff_management',
-                'detailed_analytics',
-                'custom_forms',
-                'priority_listing',
-                'inventory_management',
-                'automated_reminders',
-                'financial_reporting',
+                'dashboard',
+                'appointments',
+                'schedule_management',
+                'analytics',
+                'history',
+                'patient_records',
+                'report_generation',
             ],
             'limits' => [
                 'max_appointments_per_month' => -1, // unlimited
-                'max_staff_accounts' => 5,
-                'max_locations' => 1,
-                'storage_mb' => 5000,
+                'max_staff_accounts' => -1, // unlimited
+                'max_services' => -1, // unlimited
+                'max_locations' => 5,
+                'storage_mb' => 20000,
+                'reports' => true,
+                'analytics' => true,
+                'history' => true,
+                'patient_records' => true,
             ],
             'is_active' => true,
             'trial_days' => 30,
             'transaction_fee_percentage' => 2.50, // 2.5% transaction fee
             'transaction_fee_fixed' => 0.00,
-            'sort_order' => 2,
-        ]);
-
-        \App\Models\SubscriptionPlan::create([
-            'name' => 'Enterprise Clinic',
-            'slug' => 'enterprise-clinic',
-            'type' => 'clinic',
-            'description' => 'Complete solution for large veterinary chains and hospitals',
-            'price' => 4999.00, // ₱4,999/month
-            'annual_price' => 49990.00, // ₱49,990/year (save ₱9,998)
-            'features' => [
-                'multi_location',
-                'unlimited_staff',
-                'api_access',
-                'white_label_app',
-                'advanced_reporting',
-                'dedicated_support',
-                'custom_integrations',
-                'advanced_analytics',
-                'compliance_tools',
-                'multi_currency',
-            ],
-            'limits' => [
-                'max_appointments_per_month' => -1, // unlimited
-                'max_staff_accounts' => -1, // unlimited
-                'max_locations' => -1, // unlimited
-                'storage_mb' => 50000,
-            ],
-            'is_active' => true,
-            'trial_days' => 30,
-            'transaction_fee_percentage' => 1.00, // 1% transaction fee
-            'transaction_fee_fixed' => 0.00,
             'sort_order' => 3,
-        ]);
+        ]
+        );
     }
 }

@@ -62,8 +62,9 @@ class DashboardStatsService
         $thisMonth = $now->startOfMonth();
         $nextMonth = $now->copy()->addMonth()->startOfMonth();
 
-        $appointments = $user->appointments()->get();
+        $appointments = $user->appointments()->with(['pet', 'clinic'])->get();
         $upcomingAppointments = $user->appointments()
+            ->with(['pet', 'clinic'])
             ->where('scheduled_at', '>', $now)
             ->where('status', '!=', 'cancelled')
             ->orderBy('scheduled_at')
@@ -236,13 +237,13 @@ class DashboardStatsService
             'status' => $appointment->status,
             'scheduled_at' => $appointment->scheduled_at,
             'type' => $appointment->type ?? 'General Consultation',
-            'pet' => [
+            'pet' => $appointment->pet ? [
                 'name' => $appointment->pet->name,
                 'species' => $appointment->pet->species,
-            ],
-            'clinic' => [
+            ] : null,
+            'clinic' => $appointment->clinic ? [
                 'name' => $appointment->clinic->business_name ?? $appointment->clinic->name,
-            ],
+            ] : null,
             'estimated_cost' => $appointment->estimated_cost,
         ];
     }

@@ -19,6 +19,7 @@ class PetHealthCondition extends Model
         'diagnosed_date',
         'treatment',
         'is_active',
+        'clinic_id',
     ];
 
     protected $casts = [
@@ -32,6 +33,22 @@ class PetHealthCondition extends Model
     public function pet(): BelongsTo
     {
         return $this->belongsTo(Pet::class);
+    }
+
+    /**
+     * Get the clinic registration associated with this condition.
+     */
+    public function clinicRegistration(): BelongsTo
+    {
+        return $this->belongsTo(ClinicRegistration::class, 'clinic_id');
+    }
+
+    /**
+     * Get the clinic associated with this condition (alias).
+     */
+    public function clinic(): BelongsTo
+    {
+        return $this->belongsTo(ClinicRegistration::class, 'clinic_id');
     }
 
     /**

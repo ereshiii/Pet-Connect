@@ -30,12 +30,17 @@ interface MedicalRecord {
     diagnosis: string; // alias for description
     treatment: string;
     medication: string;
-    cost: number;
-    formatted_cost: string;
     notes: string;
     veterinarian: string;
     follow_up_date?: string;
     attachments?: string[];
+    appointment_id?: number;
+    appointment?: {
+        id: number;
+        appointment_number: string;
+        scheduled_at: string;
+        service: string;
+    };
 }
 
 interface Patient {
@@ -120,6 +125,79 @@ const showViewModal = ref(false);
 const showEditModal = ref(false);
 const selectedRecord = ref<MedicalRecord | null>(null);
 
+// Form validation
+const formErrors = ref<Record<string, string>>({});
+const isSubmitting = ref(false);
+
+const validateForm = (): boolean => {
+    formErrors.value = {};
+    
+    if (!selectedRecord.value) return false;
+    
+    // Date validation
+    if (!selectedRecord.value.date) {
+        formErrors.value.date = 'Date is required';
+    } else {
+        const recordDate = new Date(selectedRecord.value.date);
+        const today = new Date();
+        if (recordDate > today) {
+            formErrors.value.date = 'Date cannot be in the future';
+        }
+    }
+    
+    // Type validation
+    if (!selectedRecord.value.type) {
+        formErrors.value.type = 'Record type is required';
+    }
+    
+    // Title validation
+    if (!selectedRecord.value.title || selectedRecord.value.title.trim() === '') {
+        formErrors.value.title = 'Title is required';
+    } else if (selectedRecord.value.title.length > 255) {
+        formErrors.value.title = 'Title cannot exceed 255 characters';
+    }
+    
+    // Description validation
+    if (selectedRecord.value.description && selectedRecord.value.description.length > 2000) {
+        formErrors.value.description = 'Description cannot exceed 2000 characters';
+    }
+    
+    // Treatment validation
+    if (selectedRecord.value.treatment && selectedRecord.value.treatment.length > 2000) {
+        formErrors.value.treatment = 'Treatment cannot exceed 2000 characters';
+    }
+    
+    // Medication validation
+    if (selectedRecord.value.medication && selectedRecord.value.medication.length > 500) {
+        formErrors.value.medication = 'Medication cannot exceed 500 characters';
+    }
+    
+    // Veterinarian validation
+    if (selectedRecord.value.veterinarian && selectedRecord.value.veterinarian.length > 255) {
+        formErrors.value.veterinarian = 'Veterinarian name cannot exceed 255 characters';
+    }
+    
+    // Follow-up date validation
+    if (selectedRecord.value.follow_up_date) {
+        const followUpDate = new Date(selectedRecord.value.follow_up_date);
+        const recordDate = new Date(selectedRecord.value.date);
+        if (followUpDate < recordDate) {
+            formErrors.value.follow_up_date = 'Follow-up date must be after record date';
+        }
+    }
+    
+    // Notes validation
+    if (selectedRecord.value.notes && selectedRecord.value.notes.length > 2000) {
+        formErrors.value.notes = 'Notes cannot exceed 2000 characters';
+    }
+    
+    return Object.keys(formErrors.value).length === 0;
+};
+
+const clearError = (field: string) => {
+    delete formErrors.value[field];
+};
+
 // Computed properties for sorted and filtered data
 const sortedMedicalRecords = computed(() => {
     if (!props.medical_records) return [];
@@ -147,12 +225,6 @@ const sortedMedicalRecords = computed(() => {
             if (column === 'date' || column === 'formatted_date') {
                 aVal = new Date(a.date || a.formatted_date);
                 bVal = new Date(b.date || b.formatted_date);
-            }
-            
-            // Handle cost sorting (remove currency symbols and convert to number)
-            if (column === 'cost' || column === 'formatted_cost') {
-                aVal = parseFloat(String(a.cost || a.formatted_cost || '0').replace(/[^\d.-]/g, ''));
-                bVal = parseFloat(String(b.cost || b.formatted_cost || '0').replace(/[^\d.-]/g, ''));
             }
             
             if (aVal === null || aVal === undefined) aVal = '';
@@ -231,6 +303,7 @@ const viewRecord = (record: MedicalRecord) => {
 
 const editRecord = (record: MedicalRecord) => {
     selectedRecord.value = { ...record }; // Create a copy for editing
+    formErrors.value = {}; // Clear any previous errors
     showEditModal.value = true;
 };
 
@@ -238,6 +311,8 @@ const closeModals = () => {
     showViewModal.value = false;
     showEditModal.value = false;
     selectedRecord.value = null;
+    formErrors.value = {};
+    isSubmitting.value = false;
 };
 
 const editPatient = () => {
@@ -247,21 +322,37 @@ const editPatient = () => {
 const saveRecord = async () => {
     if (!selectedRecord.value) return;
     
-    // TODO: Implement the actual save functionality with Inertia.js
-    // This would typically make a PUT/PATCH request to update the record
-    console.log('Saving record:', selectedRecord.value);
+    // Validate form
+    if (!validateForm()) {
+        // Show error toast or highlight first error
+        const firstError = Object.values(formErrors.value)[0];
+        console.error('Validation failed:', firstError);
+        return;
+    }
     
-    // For now, just close the modal and update the local data
-    // In a real implementation, you would:
-    // 1. Make an API call to save the record
-    // 2. Handle success/error responses
-    // 3. Update the local medical_records data
-    // 4. Show success/error messages
+    isSubmitting.value = true;
     
-    closeModals();
-    
-    // Placeholder for the actual implementation:
-    // await router.put(`/clinic/patients/${patient.id}/medical-records/${selectedRecord.value.id}`, selectedRecord.value);
+    try {
+        // TODO: Implement the actual save functionality with Inertia.js
+        // This would typically make a PUT/PATCH request to update the record
+        console.log('Saving record:', selectedRecord.value);
+        
+        // For now, just close the modal and update the local data
+        // In a real implementation, you would:
+        // 1. Make an API call to save the record
+        // 2. Handle success/error responses
+        // 3. Update the local medical_records data
+        // 4. Show success/error messages
+        
+        closeModals();
+        
+        // Placeholder for the actual implementation:
+        // await router.put(`/clinic/patients/${patient.id}/medical-records/${selectedRecord.value.id}`, selectedRecord.value);
+    } catch (error) {
+        console.error('Failed to save record:', error);
+    } finally {
+        isSubmitting.value = false;
+    }
 };
 </script>
 
@@ -454,15 +545,6 @@ const saveRecord = async () => {
                             </div>
                         </div>
 
-                        <!-- Debug info -->
-                        <div class="mb-4 p-3 bg-gray-100 rounded text-xs">
-                            <strong>Debug:</strong> 
-                            Raw medical_records: {{ medical_records?.length || 0 }} | 
-                            Sorted: {{ sortedMedicalRecords?.length || 0 }} | 
-                            Search: "{{ searchQuery }}" | 
-                            Type: "{{ selectedRecordType }}"
-                        </div>
-
                         <!-- Medical Records Table -->
                         <div v-if="sortedMedicalRecords && sortedMedicalRecords.length > 0" class="overflow-x-auto">
                             <table class="w-full border-collapse">
@@ -474,6 +556,7 @@ const saveRecord = async () => {
                                         <th class="px-4 py-3 text-left text-sm font-medium text-muted-foreground cursor-pointer hover:bg-muted/50 transition-colors" @click="sortMedicalRecords('type')">
                                             Type {{ getSortIcon(medicalRecordsSort, 'type') }}
                                         </th>
+                                        <th class="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Appointment</th>
                                         <th class="px-4 py-3 text-left text-sm font-medium text-muted-foreground cursor-pointer hover:bg-muted/50 transition-colors" @click="sortMedicalRecords('title')">
                                             Title {{ getSortIcon(medicalRecordsSort, 'title') }}
                                         </th>
@@ -483,9 +566,6 @@ const saveRecord = async () => {
                                         </th>
                                         <th class="px-4 py-3 text-left text-sm font-medium text-muted-foreground cursor-pointer hover:bg-muted/50 transition-colors" @click="sortMedicalRecords('medication')">
                                             Medication {{ getSortIcon(medicalRecordsSort, 'medication') }}
-                                        </th>
-                                        <th class="px-4 py-3 text-left text-sm font-medium text-muted-foreground cursor-pointer hover:bg-muted/50 transition-colors" @click="sortMedicalRecords('formatted_cost')">
-                                            Cost {{ getSortIcon(medicalRecordsSort, 'formatted_cost') }}
                                         </th>
                                         <th class="px-4 py-3 text-left text-sm font-medium text-muted-foreground cursor-pointer hover:bg-muted/50 transition-colors" @click="sortMedicalRecords('veterinarian')">
                                             Veterinarian {{ getSortIcon(medicalRecordsSort, 'veterinarian') }}
@@ -515,6 +595,12 @@ const saveRecord = async () => {
                                                 {{ record.type }}
                                             </span>
                                         </td>
+                                        <td class="px-4 py-3 text-sm">
+                                            <div v-if="record.appointment" class="flex items-center gap-1">
+                                                <span class="text-xs px-2 py-1 bg-indigo-100 text-indigo-800 rounded">#{{ record.appointment.appointment_number }}</span>
+                                            </div>
+                                            <span v-else class="text-muted-foreground text-xs">Manual</span>
+                                        </td>
                                         <td class="px-4 py-3 text-sm">{{ record.title || '-' }}</td>
                                         <td class="px-4 py-3 text-sm max-w-xs">
                                             <div class="truncate" :title="record.description">
@@ -523,7 +609,6 @@ const saveRecord = async () => {
                                         </td>
                                         <td class="px-4 py-3 text-sm">{{ record.treatment || '-' }}</td>
                                         <td class="px-4 py-3 text-sm">{{ record.medication || '-' }}</td>
-                                        <td class="px-4 py-3 text-sm font-medium">{{ record.formatted_cost || '-' }}</td>
                                         <td class="px-4 py-3 text-sm">{{ record.veterinarian || '-' }}</td>
                                         <td class="px-4 py-3 text-sm">{{ record.follow_up_date || '-' }}</td>
                                         <td class="px-4 py-3">
@@ -596,10 +681,6 @@ const saveRecord = async () => {
                             <p class="text-sm bg-gray-50 p-2 rounded">{{ selectedRecord.medication || 'None' }}</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Cost</label>
-                            <p class="text-sm bg-gray-50 p-2 rounded font-medium">{{ selectedRecord.formatted_cost || 'No cost recorded' }}</p>
-                        </div>
-                        <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Veterinarian</label>
                             <p class="text-sm bg-gray-50 p-2 rounded">{{ selectedRecord.veterinarian || 'Not specified' }}</p>
                         </div>
@@ -636,108 +717,175 @@ const saveRecord = async () => {
                 <form v-if="selectedRecord" @submit.prevent="saveRecord" class="p-6 space-y-4">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Date *</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Date <span class="text-red-500">*</span>
+                            </label>
                             <input 
                                 v-model="selectedRecord.date" 
                                 type="date" 
                                 required
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                                @input="clearError('date')"
+                                :max="new Date().toISOString().split('T')[0]"
+                                class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                                :class="formErrors.date ? 'border-red-500' : 'border-gray-300'"
                             >
+                            <p v-if="formErrors.date" class="text-red-500 text-xs mt-1">{{ formErrors.date }}</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Type *</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Type <span class="text-red-500">*</span>
+                            </label>
                             <select 
                                 v-model="selectedRecord.type" 
                                 required
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                                @change="clearError('type')"
+                                class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                                :class="formErrors.type ? 'border-red-500' : 'border-gray-300'"
                             >
+                                <option value="">Select type...</option>
                                 <option value="checkup">Checkup</option>
                                 <option value="vaccination">Vaccination</option>
                                 <option value="surgery">Surgery</option>
                                 <option value="treatment">Treatment</option>
                                 <option value="emergency">Emergency</option>
                             </select>
+                            <p v-if="formErrors.type" class="text-red-500 text-xs mt-1">{{ formErrors.type }}</p>
                         </div>
                         <div class="md:col-span-2">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Title *</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Title <span class="text-red-500">*</span>
+                                <span class="text-gray-400 text-xs">({{ selectedRecord.title?.length || 0 }}/255)</span>
+                            </label>
                             <input 
                                 v-model="selectedRecord.title" 
                                 type="text" 
                                 required
+                                maxlength="255"
+                                @input="clearError('title')"
                                 placeholder="Enter record title"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                                class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                                :class="formErrors.title ? 'border-red-500' : 'border-gray-300'"
                             >
+                            <p v-if="formErrors.title" class="text-red-500 text-xs mt-1">{{ formErrors.title }}</p>
                         </div>
                         <div class="md:col-span-2">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Description
+                                <span class="text-gray-400 text-xs">({{ selectedRecord.description?.length || 0 }}/2000)</span>
+                            </label>
                             <textarea 
                                 v-model="selectedRecord.description" 
                                 rows="3"
+                                maxlength="2000"
+                                @input="clearError('description')"
                                 placeholder="Enter detailed description"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                                class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                                :class="formErrors.description ? 'border-red-500' : 'border-gray-300'"
                             ></textarea>
+                            <p v-if="formErrors.description" class="text-red-500 text-xs mt-1">{{ formErrors.description }}</p>
                         </div>
                         <div class="md:col-span-2">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Treatment</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Treatment
+                                <span class="text-gray-400 text-xs">({{ selectedRecord.treatment?.length || 0 }}/2000)</span>
+                            </label>
                             <textarea 
                                 v-model="selectedRecord.treatment" 
                                 rows="3"
+                                maxlength="2000"
+                                @input="clearError('treatment')"
                                 placeholder="Enter treatment details"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                                class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                                :class="formErrors.treatment ? 'border-red-500' : 'border-gray-300'"
                             ></textarea>
+                            <p v-if="formErrors.treatment" class="text-red-500 text-xs mt-1">{{ formErrors.treatment }}</p>
                         </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Medication</label>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Medication
+                                <span class="text-gray-400 text-xs">({{ selectedRecord.medication?.length || 0 }}/500)</span>
+                            </label>
                             <input 
                                 v-model="selectedRecord.medication" 
                                 type="text" 
+                                maxlength="500"
+                                @input="clearError('medication')"
                                 placeholder="Enter medications prescribed"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                                class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                                :class="formErrors.medication ? 'border-red-500' : 'border-gray-300'"
                             >
+                            <p v-if="formErrors.medication" class="text-red-500 text-xs mt-1">{{ formErrors.medication }}</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Cost (₱)</label>
-                            <input 
-                                v-model="selectedRecord.cost" 
-                                type="number" 
-                                step="0.01" 
-                                min="0"
-                                placeholder="0.00"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                            >
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Veterinarian</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Veterinarian
+                                <span class="text-gray-400 text-xs">({{ selectedRecord.veterinarian?.length || 0 }}/255)</span>
+                            </label>
                             <input 
                                 v-model="selectedRecord.veterinarian" 
                                 type="text" 
+                                maxlength="255"
+                                @input="clearError('veterinarian')"
                                 placeholder="Enter veterinarian name"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                                class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                                :class="formErrors.veterinarian ? 'border-red-500' : 'border-gray-300'"
                             >
+                            <p v-if="formErrors.veterinarian" class="text-red-500 text-xs mt-1">{{ formErrors.veterinarian }}</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Follow-up Date</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Follow-up Date
+                            </label>
                             <input 
                                 v-model="selectedRecord.follow_up_date" 
                                 type="date" 
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                                :min="selectedRecord.date"
+                                @input="clearError('follow_up_date')"
+                                class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                                :class="formErrors.follow_up_date ? 'border-red-500' : 'border-gray-300'"
                             >
+                            <p v-if="formErrors.follow_up_date" class="text-red-500 text-xs mt-1">{{ formErrors.follow_up_date }}</p>
                         </div>
                         <div v-if="selectedRecord.notes !== undefined" class="md:col-span-2">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Additional Notes</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Additional Notes
+                                <span class="text-gray-400 text-xs">({{ selectedRecord.notes?.length || 0 }}/2000)</span>
+                            </label>
                             <textarea 
                                 v-model="selectedRecord.notes" 
                                 rows="3"
+                                maxlength="2000"
+                                @input="clearError('notes')"
                                 placeholder="Enter additional notes"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                                class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                                :class="formErrors.notes ? 'border-red-500' : 'border-gray-300'"
                             ></textarea>
+                            <p v-if="formErrors.notes" class="text-red-500 text-xs mt-1">{{ formErrors.notes }}</p>
                         </div>
+                    </div>
+                    
+                    <!-- Validation Summary -->
+                    <div v-if="Object.keys(formErrors).length > 0" class="bg-red-50 border border-red-200 rounded-md p-4">
+                        <h4 class="text-sm font-semibold text-red-800 mb-2">Please correct the following errors:</h4>
+                        <ul class="text-sm text-red-700 list-disc list-inside space-y-1">
+                            <li v-for="(error, field) in formErrors" :key="field">{{ error }}</li>
+                        </ul>
                     </div>
                 </form>
                 
                 <div class="flex justify-end gap-3 p-6 border-t bg-gray-50">
-                    <button @click="closeModals" type="button" class="btn btn-outline px-4 py-2">Cancel</button>
-                    <button @click="saveRecord" class="btn btn-primary px-4 py-2">Save Changes</button>
+                    <button @click="closeModals" type="button" class="btn btn-outline px-4 py-2" :disabled="isSubmitting">
+                        Cancel
+                    </button>
+                    <button 
+                        @click="saveRecord" 
+                        type="button"
+                        class="btn btn-primary px-4 py-2 flex items-center gap-2"
+                        :disabled="isSubmitting"
+                    >
+                        <span v-if="isSubmitting">Saving...</span>
+                        <span v-else>Save Changes</span>
+                    </button>
                 </div>
             </div>
         </div>

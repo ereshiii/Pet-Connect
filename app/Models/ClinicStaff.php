@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ClinicStaff extends Model
 {
@@ -21,23 +22,13 @@ class ClinicStaff extends Model
         'specializations',
         'start_date',
         'end_date',
-        'is_active',
     ];
 
     protected $casts = [
         'specializations' => 'array',
         'start_date' => 'date',
         'end_date' => 'date',
-        'is_active' => 'boolean',
     ];
-
-    /**
-     * Get the clinic that this staff member belongs to.
-     */
-    public function clinic(): BelongsTo
-    {
-        return $this->belongsTo(Clinic::class);
-    }
 
     /**
      * Get the user associated with this staff member.
@@ -45,6 +36,32 @@ class ClinicStaff extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get the clinic registration that this staff member belongs to.
+     * Note: clinic_id references clinic_registrations.id (not clinics.id)
+     */
+    public function clinic(): BelongsTo
+    {
+        return $this->belongsTo(ClinicRegistration::class, 'clinic_id');
+    }
+
+    /**
+     * Alias for clinic() for better semantics.
+     * Returns the clinic registration.
+     */
+    public function clinicRegistration(): BelongsTo
+    {
+        return $this->clinic();
+    }
+
+    /**
+     * Get appointments assigned to this staff member.
+     */
+    public function appointments(): HasMany
+    {
+        return $this->hasMany(Appointment::class, 'clinic_staff_id');
     }
 
     /**
@@ -105,7 +122,7 @@ class ClinicStaff extends Model
      */
     public function scopeActive($query)
     {
-        return $query->where('is_active', true);
+        return $query->whereNull('end_date')->orWhere('end_date', '>=', now());
     }
 
     /**

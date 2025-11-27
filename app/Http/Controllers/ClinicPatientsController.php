@@ -35,6 +35,7 @@ class ClinicPatientsController extends Controller
             abort(404, 'Clinic registration not found.');
         }
 
+        // Use clinic registration ID directly (clinic_id now references clinic_registrations.id)
         $clinicId = $clinicRegistration->id;
 
         // Get filter parameters
@@ -247,6 +248,12 @@ class ClinicPatientsController extends Controller
         }
 
         $clinicRegistration = $user->clinicRegistration;
+        
+        if (!$clinicRegistration) {
+            abort(404, 'Clinic registration not found.');
+        }
+
+        // Use clinic registration ID directly (clinic_id now references clinic_registrations.id)
         $clinicId = $clinicRegistration->id;
 
         // Get pet with all related data
@@ -257,17 +264,18 @@ class ClinicPatientsController extends Controller
             'breed',
             'appointments' => function ($q) use ($clinicId) {
                 $q->where('clinic_id', $clinicId)
+                  ->whereIn('status', ['completed', 'cancelled', 'no_show'])
                   ->with('service')
                   ->orderBy('scheduled_at', 'desc');
             },
-            'medicalRecords' => function ($q) use ($clinicId) {
-                $q->where('clinic_id', $clinicId)
-                  ->with('veterinarian')
+            'medicalRecords' => function ($q) {
+                // Get ALL medical records from ALL clinics for complete history
+                $q->with(['veterinarian', 'clinic', 'appointment.service'])
                   ->orderBy('date', 'desc');
             },
-            'vaccinations' => function ($q) use ($clinicId) {
-                $q->where('clinic_id', $clinicId)
-                  ->with('veterinarian')
+            'vaccinations' => function ($q) {
+                // Get ALL vaccinations from ALL clinics
+                $q->with(['veterinarian', 'clinic'])
                   ->orderBy('administered_date', 'desc');
             },
             'healthConditions' => function ($q) {
@@ -299,7 +307,9 @@ class ClinicPatientsController extends Controller
         });
 
         // Transform medical records
-        $medicalRecords = $pet->medicalRecords->map(function ($record) {
+        $medicalRecords = $pet->medicalRecords()->with(['appointment.service', 'clinic'])->get()->map(function ($record) use ($clinicId) {
+            $isOwnClinic = $record->clinic_id === $clinicId;
+            
             return [
                 'id' => $record->id,
                 'date' => $record->date->format('Y-m-d'),
@@ -316,11 +326,22 @@ class ClinicPatientsController extends Controller
                 'follow_up_date' => $record->follow_up_date?->format('Y-m-d'),
                 'attachments' => $record->attachments ?? [],
                 'notes' => $record->instructions,
+                'appointment_id' => $record->appointment_id,
+                'clinic_name' => $record->clinic ? $record->clinic->clinic_name : 'Unknown Clinic',
+                'is_own_clinic' => $isOwnClinic,
+                'appointment' => $record->appointment ? [
+                    'id' => $record->appointment->id,
+                    'appointment_number' => $record->appointment->appointment_number,
+                    'scheduled_at' => $record->appointment->scheduled_at->format('M j, Y g:i A'),
+                    'service' => $record->appointment->service ? $record->appointment->service->name : null,
+                ] : null,
             ];
         });
 
         // Transform vaccinations
-        $vaccinations = $pet->vaccinations->map(function ($vaccination) {
+        $vaccinations = $pet->vaccinations->map(function ($vaccination) use ($clinicId) {
+            $isOwnClinic = $vaccination->clinic_id === $clinicId;
+            
             return [
                 'id' => $vaccination->id,
                 'vaccine' => $vaccination->vaccine_name,
@@ -334,6 +355,8 @@ class ClinicPatientsController extends Controller
                 'is_expired' => $vaccination->is_expired,
                 'is_due_soon' => $vaccination->is_due_soon,
                 'days_until_expiry' => $vaccination->days_until_expiry,
+                'clinic_name' => $vaccination->clinic ? $vaccination->clinic->clinic_name : 'Unknown Clinic',
+                'is_own_clinic' => $isOwnClinic,
             ];
         });
 
@@ -626,6 +649,12 @@ class ClinicPatientsController extends Controller
         }
 
         $clinicRegistration = $user->clinicRegistration;
+        
+        if (!$clinicRegistration) {
+            abort(404, 'Clinic registration not found.');
+        }
+
+        // Use clinic registration ID directly (clinic_id now references clinic_registrations.id)
         $clinicId = $clinicRegistration->id;
 
         // Get pet with all related data
@@ -702,9 +731,15 @@ class ClinicPatientsController extends Controller
         }
 
         $clinicRegistration = $user->clinicRegistration;
+        
+        if (!$clinicRegistration) {
+            abort(404, 'Clinic registration not found.');
+        }
+
+        // Use clinic registration ID directly (clinic_id now references clinic_registrations.id)
         $clinicId = $clinicRegistration->id;
 
-        // Get pet with basic information
+        // Get pet with all related data
         $pet = Pet::with(['owner'])->findOrFail($id);
 
         // Verify this pet has had appointments OR medical records at this clinic

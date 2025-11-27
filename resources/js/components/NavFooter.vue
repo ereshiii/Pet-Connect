@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/sidebar';
 import { toUrl } from '@/lib/utils';
 import { type NavItem } from '@/types';
+import { Link } from '@inertiajs/vue3';
 
 interface Props {
     items: NavItem[];
@@ -15,6 +16,10 @@ interface Props {
 }
 
 defineProps<Props>();
+
+const isExternalLink = (href: string) => {
+    return href.startsWith('http://') || href.startsWith('https://');
+};
 </script>
 
 <template>
@@ -22,20 +27,31 @@ defineProps<Props>();
         :class="`group-data-[collapsible=icon]:p-0 ${$props.class || ''}`"
     >
         <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu class="flex-row gap-1">
                 <SidebarMenuItem v-for="item in items" :key="item.title">
                     <SidebarMenuButton
                         class="text-neutral-600 hover:text-neutral-800 dark:text-neutral-300 dark:hover:text-neutral-100"
                         as-child
+                        size="sm"
                     >
+                        <!-- External links -->
                         <a
+                            v-if="isExternalLink(item.href)"
                             :href="toUrl(item.href)"
                             target="_blank"
                             rel="noopener noreferrer"
                         >
-                            <component :is="item.icon" />
-                            <span>{{ item.title }}</span>
+                            <component :is="item.icon" class="h-4 w-4" />
+                            <span class="group-data-[collapsible=icon]:hidden">{{ item.title }}</span>
                         </a>
+                        <!-- Internal links -->
+                        <Link
+                            v-else
+                            :href="item.href"
+                        >
+                            <component :is="item.icon" class="h-4 w-4" />
+                            <span class="group-data-[collapsible=icon]:hidden">{{ item.title }}</span>
+                        </Link>
                     </SidebarMenuButton>
                 </SidebarMenuItem>
             </SidebarMenu>

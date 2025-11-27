@@ -140,89 +140,173 @@ onMounted(() => {
 </script>
 
 <template>
-    <div v-if="show" @click="handleBackdropClick" class="fixed inset-0 bg-gray-600 dark:bg-gray-900 bg-opacity-50 dark:bg-opacity-50 overflow-y-auto h-full w-full z-[9999] flex items-center justify-center p-4">
-        <div @click.stop class="relative mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white dark:bg-gray-800">
-            <div class="mt-3">
-                <!-- Icon -->
-                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900">
-                    <svg class="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-                    </svg>
-                </div>
-
-                <!-- Content -->
-                <div class="mt-4 text-center">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">
-                        Share Your Location
-                    </h3>
-                    <div class="mt-2 px-2">
-                        <p class="text-sm text-gray-500 dark:text-gray-400">
-                            To show you nearby clinics and accurate distances, we need access to your location.
-                        </p>
-                    </div>
-
-                    <!-- Error display -->
-                    <div v-if="error" class="mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
-                        <p class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
-                    </div>
-
-                    <!-- Benefits -->
-                    <div class="mt-4 text-left">
-                        <p class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">Benefits:</p>
-                        <ul class="text-xs text-gray-600 dark:text-gray-400 space-y-1">
-                            <li class="flex items-center">
-                                <svg class="w-3 h-3 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                                </svg>
-                                Find clinics near you
-                            </li>
-                            <li class="flex items-center">
-                                <svg class="w-3 h-3 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                                </svg>
-                                See accurate distances
-                            </li>
-                            <li class="flex items-center">
-                                <svg class="w-3 h-3 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                                </svg>
-                                Get travel time estimates
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-
-                <!-- Actions -->
-                <div class="mt-6 flex gap-3">
-                    <button
-                        @click="requestLocation"
-                        :disabled="isLoading"
-                        class="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
-                    >
-                        <span v-if="isLoading" class="flex items-center justify-center">
-                            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            Getting Location...
-                        </span>
-                        <span v-else>Allow Location Access</span>
-                    </button>
-                    
+    <!-- Backdrop Overlay -->
+    <Transition
+        enter-active-class="transition-opacity duration-300 ease-out"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition-opacity duration-200 ease-in"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+    >
+        <div v-if="show" @click="handleBackdropClick" class="fixed inset-0 bg-black/60 backdrop-blur-sm overflow-y-auto h-full w-full z-[9999] flex items-center justify-center p-4">
+            <!-- Modal Container -->
+            <Transition
+                enter-active-class="transition-all duration-300 ease-out"
+                enter-from-class="opacity-0 scale-95 translate-y-4"
+                enter-to-class="opacity-100 scale-100 translate-y-0"
+                leave-active-class="transition-all duration-200 ease-in"
+                leave-from-class="opacity-100 scale-100 translate-y-0"
+                leave-to-class="opacity-0 scale-95 translate-y-4"
+            >
+                <div v-if="show" @click.stop class="relative mx-auto w-full max-w-lg">
+                    <!-- Close Button -->
                     <button
                         @click="dismiss"
-                        class="flex-1 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 py-2 px-4 rounded-md hover:bg-gray-400 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 text-sm font-medium"
+                        class="absolute -top-4 -right-4 z-10 p-2 rounded-full bg-gray-800 border border-gray-700 hover:bg-gray-700 transition-colors group"
                     >
-                        Skip
+                        <svg class="w-5 h-5 text-gray-400 group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
                     </button>
-                </div>
 
-                <!-- Privacy note -->
-                <p class="mt-3 text-xs text-gray-500 dark:text-gray-400 text-center">
-                    Your location is only used to improve your experience and is not stored permanently.
-                </p>
-            </div>
+                    <!-- Modal Content -->
+                    <div class="bg-gradient-to-br from-gray-800 via-gray-900 to-gray-800 rounded-2xl shadow-2xl border border-gray-700 overflow-hidden">
+                        <!-- Header with animated gradient -->
+                        <div class="relative bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600 bg-[length:200%_100%] animate-gradient p-8 text-center">
+                            <div class="absolute inset-0 bg-black/10"></div>
+                            <div class="relative">
+                                <!-- Animated Icon -->
+                                <div class="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 mb-4 animate-pulse-slow">
+                                    <svg class="h-10 w-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    </svg>
+                                </div>
+                                <h3 class="text-2xl font-bold text-white mb-2">
+                                    Enable Location Access
+                                </h3>
+                                <p class="text-blue-100 text-sm">
+                                    Help us find the perfect clinic for your pet
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Body -->
+                        <div class="p-6 space-y-6">
+                            <!-- Description -->
+                            <p class="text-gray-300 text-center leading-relaxed">
+                                Allow location access to discover nearby veterinary clinics with accurate distances and travel times tailored to your location.
+                            </p>
+
+                            <!-- Error display -->
+                            <div v-if="error" class="p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
+                                <div class="flex items-start gap-3">
+                                    <svg class="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                    </svg>
+                                    <p class="text-sm text-red-300 flex-1">{{ error }}</p>
+                                </div>
+                            </div>
+
+                            <!-- Benefits Grid -->
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div class="bg-gray-800/50 border border-gray-700 rounded-xl p-4 text-center hover:border-blue-500/50 transition-colors">
+                                    <div class="mx-auto w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center mb-3">
+                                        <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        </svg>
+                                    </div>
+                                    <h4 class="text-sm font-semibold text-white mb-1">Nearby Clinics</h4>
+                                    <p class="text-xs text-gray-400">Find clinics closest to you</p>
+                                </div>
+                                
+                                <div class="bg-gray-800/50 border border-gray-700 rounded-xl p-4 text-center hover:border-purple-500/50 transition-colors">
+                                    <div class="mx-auto w-12 h-12 rounded-full bg-purple-500/10 flex items-center justify-center mb-3">
+                                        <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                                        </svg>
+                                    </div>
+                                    <h4 class="text-sm font-semibold text-white mb-1">Real Distances</h4>
+                                    <p class="text-xs text-gray-400">See exact distances</p>
+                                </div>
+                                
+                                <div class="bg-gray-800/50 border border-gray-700 rounded-xl p-4 text-center hover:border-green-500/50 transition-colors sm:col-span-1 col-span-1">
+                                    <div class="mx-auto w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center mb-3">
+                                        <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                    </div>
+                                    <h4 class="text-sm font-semibold text-white mb-1">Travel Time</h4>
+                                    <p class="text-xs text-gray-400">Estimated arrival times</p>
+                                </div>
+                            </div>
+
+                            <!-- Actions -->
+                            <div class="space-y-3">
+                                <button
+                                    @click="requestLocation"
+                                    :disabled="isLoading"
+                                    class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3.5 px-6 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                                >
+                                    <span v-if="isLoading" class="flex items-center justify-center gap-2">
+                                        <svg class="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        <span>Getting Your Location...</span>
+                                    </span>
+                                    <span v-else class="flex items-center justify-center gap-2">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                        <span>Allow Location Access</span>
+                                    </span>
+                                </button>
+                                
+                                <button
+                                    @click="dismiss"
+                                    class="w-full bg-gray-700 hover:bg-gray-600 text-gray-200 font-medium py-3 px-6 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:ring-offset-gray-900 transition-colors"
+                                >
+                                    Continue Without Location
+                                </button>
+                            </div>
+
+                            <!-- Privacy note -->
+                            <div class="flex items-start gap-2 p-3 bg-gray-800/30 border border-gray-700/50 rounded-lg">
+                                <svg class="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                                </svg>
+                                <p class="text-xs text-gray-400 leading-relaxed">
+                                    Your location is used only to enhance your experience. We respect your privacy and don't store this data permanently.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </Transition>
         </div>
-    </div>
+    </Transition>
 </template>
+
+<style scoped>
+@keyframes gradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.animate-gradient {
+    animation: gradient 3s ease infinite;
+}
+
+@keyframes pulse-slow {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.animate-pulse-slow {
+    animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+</style>

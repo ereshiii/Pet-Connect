@@ -47,7 +47,7 @@ class PetController extends Controller
                 'id' => $pet->id,
                 'name' => $pet->name,
                 'species' => $pet->species,
-                'breed' => $pet->breed ? $pet->breed->name : null,
+                'breed' => $pet->breed_id && $pet->breed ? $pet->breed->name : ($pet->breed ?? null),
                 'breed_id' => $pet->breed_id,
                 'type' => $pet->type ? $pet->type->name : null,
                 'type_id' => $pet->type_id,
@@ -194,9 +194,9 @@ class PetController extends Controller
             'breed',
             'type',
             'owner.profile',
-            'medicalRecords.clinicRegistration.clinic',
-            'vaccinations.clinicRegistration.clinic',
-            'healthConditions.clinicRegistration.clinic',
+            'medicalRecords.clinicRegistration',
+            'vaccinations.clinicRegistration',
+            'healthConditions.clinicRegistration',
             'appointments.clinic'
         ]);
 
@@ -275,10 +275,10 @@ class PetController extends Controller
                 'is_emergency' => $record->is_emergency,
                 'vital_signs' => $record->vital_signs,
                 'days_since_visit' => $record->days_since_visit,
-                'clinic' => $record->clinicRegistration?->clinic ? [
-                    'id' => $record->clinicRegistration->clinic->id,
-                    'clinic_name' => $record->clinicRegistration->clinic->clinic_name,
-                    'phone_number' => $record->clinicRegistration->clinic->phone_number,
+                'clinic' => $record->clinicRegistration ? [
+                    'id' => $record->clinicRegistration->id,
+                    'clinic_name' => $record->clinicRegistration->clinic_name,
+                    'phone_number' => $record->clinicRegistration->phone,
                 ] : null,
             ];
         })->sortByDesc('visit_date')->values();
@@ -299,10 +299,10 @@ class PetController extends Controller
                 'is_due_soon' => $vaccination->is_due_soon,
                 'days_until_expiry' => $vaccination->days_until_expiry,
                 'days_until_due' => $vaccination->days_until_due,
-                'clinic' => $vaccination->clinicRegistration?->clinic ? [
-                    'id' => $vaccination->clinicRegistration->clinic->id,
-                    'clinic_name' => $vaccination->clinicRegistration->clinic->clinic_name,
-                    'phone_number' => $vaccination->clinicRegistration->clinic->phone_number,
+                'clinic' => $vaccination->clinicRegistration ? [
+                    'id' => $vaccination->clinicRegistration->id,
+                    'clinic_name' => $vaccination->clinicRegistration->clinic_name,
+                    'phone_number' => $vaccination->clinicRegistration->phone,
                 ] : null,
             ];
         })->sortByDesc('administered_date')->values();
@@ -328,10 +328,10 @@ class PetController extends Controller
                 'status' => $condition->status,
                 'days_since_diagnosis' => $condition->days_since_diagnosis,
                 'days_until_follow_up' => $condition->days_until_follow_up,
-                'clinic' => $condition->clinicRegistration?->clinic ? [
-                    'id' => $condition->clinicRegistration->clinic->id,
-                    'clinic_name' => $condition->clinicRegistration->clinic->clinic_name,
-                    'phone_number' => $condition->clinicRegistration->clinic->phone_number,
+                'clinic' => $condition->clinicRegistration ? [
+                    'id' => $condition->clinicRegistration->id,
+                    'clinic_name' => $condition->clinicRegistration->clinic_name,
+                    'phone_number' => $condition->clinicRegistration->phone,
                 ] : null,
             ];
         })->sortByDesc('diagnosis_date')->values();
@@ -420,11 +420,11 @@ class PetController extends Controller
         }
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'species' => 'required|string|max:50',
+            'name' => 'sometimes|required|string|max:255',
+            'species' => 'sometimes|required|string|max:50',
             'breed_id' => 'nullable|exists:pet_breeds,id',
             'type_id' => 'nullable|exists:pet_types,id',
-            'gender' => 'required|in:male,female,unknown',
+            'gender' => 'sometimes|required|in:male,female,unknown',
             'birth_date' => 'nullable|date|before_or_equal:today',
             'weight' => 'nullable|numeric|min:0|max:500',
             'size' => 'nullable|in:tiny,small,medium,large,giant',
@@ -434,27 +434,40 @@ class PetController extends Controller
             'is_neutered' => 'boolean',
             'special_needs' => 'nullable|string|max:1000',
             'notes' => 'nullable|string|max:1000',
-            'profile_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'profile_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:10240',
             'images' => 'nullable|array',
             'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
             'remove_profile_image' => 'boolean',
             'remove_images' => 'nullable|array',
+        ], [
+            'profile_image.max' => 'The profile image must not be larger than 10MB.',
+            'profile_image.image' => 'The file must be an image.',
+            'profile_image.mimes' => 'The profile image must be a file of type: jpeg, png, jpg, gif, webp.',
         ]);
 
-        // Handle profile image upload
+        // Handle profile image upload (single image only)
         if ($request->hasFile('profile_image')) {
-            // Delete old profile image
+            \Log::info('Profile image upload detected', [
+                'pet_id' => $pet->id,
+                'file_name' => $request->file('profile_image')->getClientOriginalName(),
+                'file_size' => $request->file('profile_image')->getSize(),
+            ]);
+            
+            // Delete old profile image if exists
             if ($pet->profile_image) {
                 Storage::disk('public')->delete($pet->profile_image);
             }
-            $validated['profile_image'] = $request->file('profile_image')
+            $path = $request->file('profile_image')
                 ->store('pets/profile-images', 'public');
-        } elseif ($request->boolean('remove_profile_image')) {
-            // Remove profile image
-            if ($pet->profile_image) {
-                Storage::disk('public')->delete($pet->profile_image);
-            }
-            $validated['profile_image'] = null;
+            $validated['profile_image'] = $path;
+            
+            \Log::info('Profile image saved', ['path' => $path]);
+        } else {
+            \Log::info('No profile_image file in request', [
+                'has_files' => $request->hasFile('profile_image'),
+                'all_files' => array_keys($request->allFiles()),
+                'all_input' => array_keys($request->all()),
+            ]);
         }
 
         // Handle additional images
@@ -491,6 +504,11 @@ class PetController extends Controller
         }
 
         $pet->update($validated);
+
+        // Handle Inertia requests (like image upload from modal)
+        if ($request->wantsJson() || $request->header('X-Inertia')) {
+            return back()->with('success', "Pet '{$pet->name}' has been updated successfully!");
+        }
 
         return redirect()->route('petsShow', $pet)
             ->with('success', "Pet '{$pet->name}' has been updated successfully!");

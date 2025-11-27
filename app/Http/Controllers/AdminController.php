@@ -24,21 +24,299 @@ use Carbon\Carbon;
 class AdminController extends Controller
 {
     /**
-     * Admin dashboard with system overview
+     * Admin dashboard with comprehensive overview of all categories
      */
     public function dashboard(): Response
     {
-        $stats = $this->getSystemStats();
-        $recentActivity = $this->getRecentActivity();
-        $systemHealth = $this->getSystemHealth();
-        $alerts = $this->getSystemAlerts();
+        // === USER MANAGEMENT CATEGORY ===
+        $currentMonthUsers = User::whereMonth('created_at', now()->month)->count();
+        $lastMonthUsers = User::whereMonth('created_at', now()->subMonth()->month)->count();
+        
+        $userManagementStats = [
+            'total_users' => User::count(),
+            'pet_owners' => User::where('account_type', 'user')->count(),
+            'clinics' => User::where('account_type', 'clinic')->count(),
+            'admins' => User::where('is_admin', true)->count(),
+            'active_users' => User::where('updated_at', '>=', now()->subMinutes(15))->count(),
+            'growth_this_month' => $currentMonthUsers,
+            'growth_percentage' => $lastMonthUsers > 0 
+                ? round((($currentMonthUsers - $lastMonthUsers) / $lastMonthUsers) * 100, 1) 
+                : ($currentMonthUsers > 0 ? 100 : 0),
+        ];
 
-        return Inertia::render('1adminPages/AdminDashboard', [
-            'stats' => $stats,
+        // === SYSTEM MONITORING CATEGORY ===
+        $systemMonitoringStats = [
+            'server_status' => 'healthy',
+            'database_size' => $this->getDatabaseSize(),
+            'active_connections' => DB::table('users')->where('updated_at', '>=', now()->subMinutes(15))->count(),
+            'total_appointments' => Appointment::count(),
+            'completed_appointments' => Appointment::where('status', 'completed')->count(),
+            'pending_appointments' => Appointment::where('status', 'pending')->count(),
+            'storage_used' => $this->getStorageUsagePercentage(),
+        ];
+
+        // === FINANCIAL CATEGORY ===
+        $activeSubscriptions = DB::table('subscriptions')
+            ->where(function($query) {
+                $query->whereNull('ends_at')->orWhere('ends_at', '>', now());
+            })
+            ->get();
+        
+        $totalRevenue = 0;
+        $planCounts = ['basic' => 0, 'professional' => 0, 'pro_plus' => 0];
+        
+        foreach ($activeSubscriptions as $sub) {
+            $amount = match($sub->type) {
+                'basic' => 999,
+                'professional', 'premium' => 1999,
+                'pro_plus', 'enterprise' => 2999,
+                default => 999
+            };
+            $totalRevenue += $amount;
+            
+            if ($sub->type === 'basic') {
+                $planCounts['basic']++;
+            } elseif (in_array($sub->type, ['professional', 'premium'])) {
+                $planCounts['professional']++;
+            } else {
+                $planCounts['pro_plus']++;
+            }
+        }
+        
+        $financialStats = [
+            'active_subscriptions' => $activeSubscriptions->count(),
+            'mrr' => $totalRevenue,
+            'arr' => $totalRevenue * 12,
+            'basic_plan' => $planCounts['basic'],
+            'professional_plan' => $planCounts['professional'],
+            'pro_plus_plan' => $planCounts['pro_plus'],
+        ];
+
+        // === TESTING TOOLS CATEGORY ===
+        $testingToolsStats = [
+            'mock_subscriptions' => DB::table('subscriptions')
+                ->where('stripe_id', 'like', 'mock_sub_%')
+                ->count(),
+            'accounts_reset_this_month' => 0, // This would track actual reset operations
+        ];
+
+        // === RECENT ACTIVITY (ALL CATEGORIES) ===
+        $recentActivity = [];
+        
+        // Recent users
+        $recentUsers = User::with('profile')
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get()
+            ->map(function ($user) {
+                return [
+                    'id' => $user->id,
+                    'name' => $user->profile ? trim($user->profile->first_name . ' ' . $user->profile->last_name) : $user->email,
+                    'email' => $user->email,
+                    'role' => $user->is_admin ? 'admin' : ($user->account_type === 'clinic' ? 'clinic' : 'pet_owner'),
+                    'status' => $user->email_verified_at ? 'active' : 'inactive',
+                    'created_at' => $user->created_at->format('M d, Y H:i'),
+                    'activity_type' => 'user_registration',
+                ];
+            });
+
+        // Recent subscriptions
+        $recentSubscriptions = DB::table('subscriptions')
+            ->join('users', 'subscriptions.user_id', '=', 'users.id')
+            ->leftJoin('clinic_registrations', 'users.id', '=', 'clinic_registrations.user_id')
+            ->select([
+                'subscriptions.id',
+                'subscriptions.type',
+                'subscriptions.created_at',
+                'clinic_registrations.clinic_name',
+                'users.email',
+            ])
+            ->orderBy('subscriptions.created_at', 'desc')
+            ->limit(5)
+            ->get()
+            ->map(function ($sub) {
+                return [
+                    'id' => $sub->id,
+                    'name' => $sub->clinic_name ?? $sub->email,
+                    'email' => $sub->email,
+                    'role' => 'subscription',
+                    'status' => 'active',
+                    'created_at' => Carbon::parse($sub->created_at)->format('M d, Y H:i'),
+                    'activity_type' => 'subscription_created',
+                    'plan' => $sub->type,
+                ];
+            });
+
+        $recentActivity = $recentUsers->merge($recentSubscriptions)
+            ->sortByDesc('created_at')
+            ->take(10)
+            ->values();
+
+        // === COMPREHENSIVE GROWTH DATA (CROSS-CATEGORY) ===
+        $growthData = $this->getDashboardGrowthData();
+
+        // === QUICK STATS CARDS ===
+        $quickStats = [
+            'total_users' => $userManagementStats['total_users'],
+            'active_subscriptions' => $financialStats['active_subscriptions'],
+            'monthly_revenue' => $financialStats['mrr'],
+            'system_health' => 'Healthy',
+            'pending_clinics' => ClinicRegistration::where('status', 'pending')->count(),
+            'total_pets' => Pet::count(),
+        ];
+
+        // === CATEGORY SUMMARIES ===
+        $categorySummaries = [
+            'user_management' => [
+                'title' => 'User Management',
+                'metrics' => [
+                    ['label' => 'Total Users', 'value' => $userManagementStats['total_users'], 'trend' => $userManagementStats['growth_percentage']],
+                    ['label' => 'Pet Owners', 'value' => $userManagementStats['pet_owners']],
+                    ['label' => 'Clinics', 'value' => $userManagementStats['clinics']],
+                    ['label' => 'Active Now', 'value' => $userManagementStats['active_users']],
+                ],
+            ],
+            'financial' => [
+                'title' => 'Financial',
+                'metrics' => [
+                    ['label' => 'Active Subscriptions', 'value' => $financialStats['active_subscriptions']],
+                    ['label' => 'MRR', 'value' => '₱' . number_format($financialStats['mrr'], 2)],
+                    ['label' => 'ARR', 'value' => '₱' . number_format($financialStats['arr'], 2)],
+                ],
+            ],
+            'system_monitoring' => [
+                'title' => 'System Monitoring',
+                'metrics' => [
+                    ['label' => 'Server Status', 'value' => $systemMonitoringStats['server_status']],
+                    ['label' => 'Database Size', 'value' => $systemMonitoringStats['database_size']],
+                    ['label' => 'Total Appointments', 'value' => $systemMonitoringStats['total_appointments']],
+                ],
+            ],
+            'testing_tools' => [
+                'title' => 'Testing Tools',
+                'metrics' => [
+                    ['label' => 'Mock Subscriptions', 'value' => $testingToolsStats['mock_subscriptions']],
+                ],
+            ],
+        ];
+
+        return Inertia::render('1adminPages/Dashboard', [
+            'quick_stats' => $quickStats,
+            'category_summaries' => $categorySummaries,
+            'user_management_stats' => $userManagementStats,
+            'financial_stats' => $financialStats,
+            'system_stats' => $systemMonitoringStats,
+            'testing_stats' => $testingToolsStats,
             'recent_activity' => $recentActivity,
-            'system_health' => $systemHealth,
-            'alerts' => $alerts,
+            'growth_data' => $growthData,
+            
+            // Legacy compatibility with current Dashboard.vue
+            'stats' => [
+                'total_users' => $userManagementStats['total_users'],
+                'pet_owners' => $userManagementStats['pet_owners'],
+                'clinics' => $userManagementStats['clinics'],
+                'admins' => $userManagementStats['admins'],
+                'active_users' => $userManagementStats['active_users'],
+                'inactive_users' => $userManagementStats['total_users'] - $userManagementStats['active_users'],
+                'pet_owners_growth' => $userManagementStats['growth_percentage'],
+                'clinics_growth' => $userManagementStats['growth_percentage'],
+            ],
+            'recent_users' => $recentUsers,
+            'user_growth_data' => [
+                'labels' => $growthData['labels'],
+                'pet_owners' => $growthData['pet_owners'],
+                'clinics' => $growthData['clinics'],
+            ],
+            'user_distribution' => [
+                'pet_owners' => $userManagementStats['pet_owners'],
+                'clinics' => $userManagementStats['clinics'],
+                'admins' => $userManagementStats['admins'],
+            ],
+            'monthly_registrations' => [
+                'labels' => $growthData['monthly_labels'],
+                'data' => $growthData['monthly_users'],
+            ],
         ]);
+    }
+
+    /**
+     * Get comprehensive growth data for dashboard (all categories)
+     */
+    private function getDashboardGrowthData(): array
+    {
+        $labels = [];
+        $monthlyLabels = [];
+        $petOwners = [];
+        $clinics = [];
+        $subscriptions = [];
+        $appointments = [];
+        $monthlyUsers = [];
+
+        // Last 6 months for trends
+        for ($i = 5; $i >= 0; $i--) {
+            $date = now()->subMonths($i);
+            $labels[] = $date->format('M Y');
+            
+            $petOwners[] = User::where('account_type', 'user')
+                ->whereYear('created_at', $date->year)
+                ->whereMonth('created_at', $date->month)
+                ->count();
+            
+            $clinics[] = User::where('account_type', 'clinic')
+                ->whereYear('created_at', $date->year)
+                ->whereMonth('created_at', $date->month)
+                ->count();
+            
+            $subscriptions[] = DB::table('subscriptions')
+                ->whereYear('created_at', $date->year)
+                ->whereMonth('created_at', $date->month)
+                ->count();
+            
+            $appointments[] = Appointment::whereYear('created_at', $date->year)
+                ->whereMonth('created_at', $date->month)
+                ->count();
+        }
+
+        // Last 12 months for monthly registrations bar chart
+        for ($i = 11; $i >= 0; $i--) {
+            $month = now()->subMonths($i);
+            $monthlyLabels[] = $month->format('M');
+            
+            $monthlyUsers[] = User::whereYear('created_at', $month->year)
+                ->whereMonth('created_at', $month->month)
+                ->count();
+        }
+
+        return [
+            'labels' => $labels,
+            'pet_owners' => $petOwners,
+            'clinics' => $clinics,
+            'subscriptions' => $subscriptions,
+            'appointments' => $appointments,
+            'monthly_labels' => $monthlyLabels,
+            'monthly_users' => $monthlyUsers,
+        ];
+    }
+
+    /**
+     * Get storage usage percentage
+     */
+    private function getStorageUsagePercentage(): string
+    {
+        try {
+            $path = storage_path();
+            $totalSpace = disk_total_space($path);
+            $freeSpace = disk_free_space($path);
+            
+            if ($totalSpace > 0) {
+                $usedPercentage = (($totalSpace - $freeSpace) / $totalSpace) * 100;
+                return round($usedPercentage, 1) . '%';
+            }
+            
+            return '0%';
+        } catch (\Exception $e) {
+            return 'N/A';
+        }
     }
 
     /**
@@ -324,6 +602,141 @@ class AdminController extends Controller
         }
 
         return back()->with('success', 'User updated successfully');
+    }
+
+    /**
+     * Show a single user's details for admin view
+     */
+    public function showUser(Request $request, User $user): Response
+    {
+        $user->load(['profile', 'clinicRegistration', 'pets']);
+
+        $data = [
+            'user' => $user,
+        ];
+
+        // If user is a pet owner, load pet-related data
+        if ($user->account_type === 'user') {
+            $data['pets'] = $user->pets()->with(['breed'])->get();
+            $data['appointments'] = DB::table('appointments')
+                ->join('clinic_registrations', 'appointments.clinic_id', '=', 'clinic_registrations.id')
+                ->where('appointments.owner_id', $user->id)
+                ->select(
+                    'appointments.*',
+                    'clinic_registrations.clinic_name',
+                    'clinic_registrations.email as clinic_email',
+                    'clinic_registrations.phone as clinic_phone'
+                )
+                ->orderBy('appointments.scheduled_at', 'desc')
+                ->limit(10)
+                ->get();
+            
+            $data['stats'] = [
+                'total_pets' => $user->pets()->count(),
+                'total_appointments' => DB::table('appointments')->where('owner_id', $user->id)->count(),
+                'completed_appointments' => DB::table('appointments')->where('owner_id', $user->id)->where('status', 'completed')->count(),
+                'pending_appointments' => DB::table('appointments')->where('owner_id', $user->id)->where('status', 'pending')->count(),
+                'total_reviews' => DB::table('clinic_reviews')->where('user_id', $user->id)->count(),
+            ];
+        }
+
+        // If user is a clinic, load clinic-related data
+        if ($user->account_type === 'clinic' && $user->clinicRegistration) {
+            $clinic = $user->clinicRegistration;
+            
+            // Include all clinic registration fields
+            $data['clinic'] = [
+                'id' => $clinic->id,
+                'clinic_name' => $clinic->clinic_name,
+                'clinic_description' => $clinic->clinic_description,
+                'website' => $clinic->website,
+                'email' => $clinic->email,
+                'phone' => $clinic->phone,
+                'country' => $clinic->country,
+                'region' => $clinic->region,
+                'province' => $clinic->province,
+                'city' => $clinic->city,
+                'barangay' => $clinic->barangay,
+                'street_address' => $clinic->street_address,
+                'postal_code' => $clinic->postal_code,
+                'latitude' => $clinic->latitude,
+                'longitude' => $clinic->longitude,
+                'is_emergency_clinic' => $clinic->is_24_hours ?? false,
+                'status' => $clinic->status,
+                'rejection_reason' => $clinic->rejection_reason,
+                'specialties' => [], // No specialties field in current schema
+                'certifications' => $clinic->certification_proofs ?? [],
+                'created_at' => $clinic->created_at,
+                'updated_at' => $clinic->updated_at,
+            ];
+            
+            // Services are stored as JSON in clinic_registrations, already decoded by model
+            $data['services'] = $clinic->services ?? [];
+            
+            // Veterinarians are stored as JSON in clinic_registrations, already decoded by model
+            $data['staff'] = $clinic->veterinarians ?? [];
+            
+            // Transform operating hours from JSON object to array format
+            $operatingHoursData = $clinic->operating_hours ?? [];
+            
+            // Convert operating hours to array format expected by the view
+            $data['operating_hours'] = [];
+            if ($operatingHoursData) {
+                foreach ($operatingHoursData as $day => $hours) {
+                    $data['operating_hours'][] = [
+                        'day_of_week' => $day,
+                        'opening_time' => $hours['open'] ?? null,
+                        'closing_time' => $hours['close'] ?? null,
+                        'is_closed' => empty($hours['open']) || empty($hours['close'])
+                    ];
+                }
+            }
+            
+            // Load subscription
+            $data['subscription'] = DB::table('subscriptions')
+                ->where('user_id', $user->id)
+                ->latest('created_at')
+                ->first();
+            
+            // Load recent appointments
+            $data['recent_appointments'] = DB::table('appointments')
+                ->join('users', 'appointments.owner_id', '=', 'users.id')
+                ->join('pets', 'appointments.pet_id', '=', 'pets.id')
+                ->where('appointments.clinic_id', $clinic->id)
+                ->select(
+                    'appointments.*',
+                    'users.email as owner_email',
+                    'pets.name as pet_name',
+                    'pets.species as pet_type'
+                )
+                ->orderBy('appointments.scheduled_at', 'desc')
+                ->limit(10)
+                ->get();
+            
+            // Load reviews
+            $data['reviews'] = DB::table('clinic_reviews')
+                ->join('users', 'clinic_reviews.user_id', '=', 'users.id')
+                ->where('clinic_reviews.clinic_registration_id', $clinic->id)
+                ->select(
+                    'clinic_reviews.*',
+                    'users.email as reviewer_email'
+                )
+                ->orderBy('clinic_reviews.created_at', 'desc')
+                ->limit(10)
+                ->get();
+            
+            $data['stats'] = [
+                'total_appointments' => DB::table('appointments')->where('clinic_id', $clinic->id)->count(),
+                'completed_appointments' => DB::table('appointments')->where('clinic_id', $clinic->id)->where('status', 'completed')->count(),
+                'pending_appointments' => DB::table('appointments')->where('clinic_id', $clinic->id)->where('status', 'pending')->count(),
+                'total_staff' => DB::table('clinic_staff')->where('clinic_id', $clinic->id)->count(),
+                'total_services' => DB::table('clinic_services')->where('clinic_id', $clinic->id)->count(),
+                'total_reviews' => DB::table('clinic_reviews')->where('clinic_registration_id', $clinic->id)->count(),
+                'average_rating' => $clinic->average_rating ?? 0,
+            ];
+        }
+
+        return Inertia::render('1adminPages/UserDetail', $data);
     }
 
     /**

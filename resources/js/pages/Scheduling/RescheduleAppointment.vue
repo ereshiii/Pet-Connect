@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
+import { DatePicker } from '@/components/ui/date-picker';
+import { TimePicker } from '@/components/ui/time-picker';
+import { Checkbox } from '@/components/ui/checkbox';
 import { schedule, appointmentDetails, appointmentsUpdate } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, useForm } from '@inertiajs/vue3';
 import { ref, computed, watch } from 'vue';
+import { Calendar, ArrowLeft } from 'lucide-vue-next';
 
 // Types
 interface Pet {
@@ -80,27 +84,38 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 // Parse current appointment date and time
-const currentScheduledAt = new Date(props.appointment.scheduled_at);
+// Parse as local time to avoid timezone shifting
+const parseScheduledAt = () => {
+    const dateStr = props.appointment.scheduled_at; // Format: 'YYYY-MM-DD HH:mm:ss'
+    const [datePart, timePart] = dateStr.split(' ');
+    
+    let timeFormatted = '';
+    if (timePart) {
+        const [hours, minutes] = timePart.split(':').map(Number);
+        const period = hours >= 12 ? 'PM' : 'AM';
+        const displayHours = hours % 12 || 12;
+        timeFormatted = `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+    }
+    
+    return {
+        date: datePart,
+        time: timeFormatted
+    };
+};
+
+const parsedSchedule = parseScheduledAt();
 
 // Form setup using Inertia useForm
 const form = useForm({
     pet_id: props.appointment.pet.id,
     clinic_id: props.appointment.clinic.id,
-    service_id: props.appointment.service?.id || '',
+    service_ids: props.appointment.service ? [props.appointment.service.id] : [] as number[],
     veterinarian_id: props.appointment.veterinarian?.id || '',
-    preferred_date: currentScheduledAt.toISOString().split('T')[0],
-    preferred_time: currentScheduledAt.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-    }),
-    duration_minutes: props.appointment.duration_minutes,
-    type: props.appointment.type,
-    priority: props.appointment.priority,
+    preferred_date: parsedSchedule.date,
+    preferred_time: parsedSchedule.time,
     reason: props.appointment.reason,
-    notes: props.appointment.notes || '',
-    special_instructions: props.appointment.special_instructions || '',
-    contact_phone: '', // User needs to provide this
+    notes: '',
+    contact_phone: props.appointment.clinic.phone || '',
 });
 
 // Reactive data
@@ -155,8 +170,8 @@ const maxDate = computed(() => {
     return sixMonthsFromNow.toISOString().split('T')[0];
 });
 
-const selectedService = computed(() => {
-    return availableServices.value.find(service => service.id.toString() === form.service_id.toString());
+const selectedServices = computed(() => {
+    return availableServices.value.filter(service => form.service_ids.includes(service.id));
 });
 
 const currentFormattedDate = computed(() => {
@@ -182,14 +197,14 @@ watch(() => form.clinic_id, (newClinicId) => {
         const clinic = props.clinics.find(c => c.id.toString() === newClinicId.toString());
         selectedClinic.value = clinic || null;
         availableServices.value = clinic?.clinic_services || [];
-        // Reset service if it's not available in the new clinic
-        if (form.service_id && !availableServices.value.find(s => s.id.toString() === form.service_id.toString())) {
-            form.service_id = '';
-        }
+        // Reset services if they're not available in the new clinic
+        form.service_ids = form.service_ids.filter(id => 
+            availableServices.value.find(s => s.id === id)
+        );
     } else {
         selectedClinic.value = null;
         availableServices.value = [];
-        form.service_id = '';
+        form.service_ids = [];
     }
 });
 
@@ -231,46 +246,41 @@ const formatDate = (dateStr: string) => {
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
             <!-- Header -->
-            <div class="bg-white dark:bg-gray-800 rounded-xl border border-sidebar-border/70 dark:border-sidebar-border p-6">
+            <div class="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-2xl p-8 shadow-lg">
                 <div class="flex items-center justify-between mb-4">
                     <div>
-                        <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">Reschedule Appointment</h1>
-                        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                            Update your appointment details below
+                        <h1 class="text-3xl font-bold">Reschedule Appointment</h1>
+                        <p class="text-blue-100 mt-2">
+                            Update your appointment date and time
                         </p>
                     </div>
                     <div class="flex gap-2">
                         <button @click="goBack" 
-                                class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm font-medium dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
+                                class="px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg text-sm font-medium flex items-center gap-2 transition-all">
+                            <ArrowLeft class="h-4 w-4" />
                             Cancel
                         </button>
                     </div>
                 </div>
 
                 <!-- Current Appointment Info -->
-                <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                    <h3 class="font-medium text-blue-900 dark:text-blue-100 mb-2">Current Appointment</h3>
+                <div class="bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl p-4">
+                    <h3 class="font-semibold text-white mb-3">Current Appointment</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                        <div>
-                            <p class="text-blue-700 dark:text-blue-300">
-                                <span class="font-medium">Pet:</span> {{ props.appointment.pet.name }} ({{ props.appointment.pet.type }} - {{ props.appointment.pet.breed }})
+                        <div class="space-y-2">
+                            <p class="text-blue-100">
+                                <span class="font-semibold text-white">Pet:</span> {{ props.appointment.pet.name }} ({{ props.appointment.pet.type }} - {{ props.appointment.pet.breed }})
                             </p>
-                            <p class="text-blue-700 dark:text-blue-300">
-                                <span class="font-medium">Type:</span> {{ appointmentTypes.find(t => t.value === props.appointment.type)?.label }}
-                            </p>
-                            <p v-if="props.appointment.service" class="text-blue-700 dark:text-blue-300">
-                                <span class="font-medium">Service:</span> {{ props.appointment.service.name }} - {{ props.appointment.service.cost ? '₱' + props.appointment.service.cost.toLocaleString() : 'Price on request' }}
+                            <p v-if="props.appointment.service" class="text-blue-100">
+                                <span class="font-semibold text-white">Service:</span> {{ props.appointment.service.name }}
                             </p>
                         </div>
-                        <div>
-                            <p class="text-blue-700 dark:text-blue-300">
-                                <span class="font-medium">Date & Time:</span> {{ currentFormattedDate }} at {{ currentFormattedTime }}
+                        <div class="space-y-2">
+                            <p class="text-blue-100">
+                                <span class="font-semibold text-white">Date & Time:</span> {{ currentFormattedDate }} at {{ currentFormattedTime }}
                             </p>
-                            <p class="text-blue-700 dark:text-blue-300">
-                                <span class="font-medium">Clinic:</span> {{ props.appointment.clinic.name }}
-                            </p>
-                            <p v-if="props.appointment.veterinarian" class="text-blue-700 dark:text-blue-300">
-                                <span class="font-medium">Veterinarian:</span> {{ props.appointment.veterinarian.name }}
+                            <p class="text-blue-100">
+                                <span class="font-semibold text-white">Clinic:</span> {{ props.appointment.clinic.name }}
                             </p>
                         </div>
                     </div>
@@ -278,304 +288,206 @@ const formatDate = (dateStr: string) => {
             </div>
 
             <!-- Reschedule Form -->
-            <div class="bg-white dark:bg-gray-800 rounded-xl border border-sidebar-border/70 dark:border-sidebar-border p-6">
-                <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">Select New Date & Time</h2>
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-8">
+                <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Select New Date & Time</h2>
 
                 <form @submit.prevent="submitReschedule" class="space-y-6">
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <!-- Left Column -->
-                        <div class="space-y-4">
-                            <!-- Pet Selection -->
+                        <div class="space-y-6">
+                            <!-- Pet (Non-editable) -->
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Pet *
+                                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                    Pet
                                 </label>
-                                <select 
-                                    v-model="form.pet_id"
-                                    :class="[
-                                        'w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
-                                        form.errors.pet_id ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600',
-                                        'dark:bg-gray-700 dark:text-gray-200'
-                                    ]"
-                                >
-                                    <option v-for="pet in props.pets" :key="pet.id" :value="pet.id">
-                                        {{ pet.name }} ({{ pet.type }} - {{ pet.breed }})
-                                    </option>
-                                </select>
-                                <p v-if="form.errors.pet_id" class="mt-1 text-sm text-red-600 dark:text-red-400">
-                                    {{ form.errors.pet_id }}
-                                </p>
+                                <div class="w-full px-4 py-3 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-600 dark:text-gray-300">
+                                    {{ props.appointment.pet.name }} ({{ props.appointment.pet.type }} - {{ props.appointment.pet.breed }})
+                                </div>
                             </div>
 
-                            <!-- Clinic Selection -->
+                            <!-- Clinic (Non-editable) -->
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Clinic *
+                                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                    Clinic
                                 </label>
-                                <select 
-                                    v-model="form.clinic_id"
-                                    :class="[
-                                        'w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
-                                        form.errors.clinic_id ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600',
-                                        'dark:bg-gray-700 dark:text-gray-200'
-                                    ]"
-                                >
-                                    <option v-for="clinic in props.clinics" :key="clinic.id" :value="clinic.id">
-                                        {{ clinic.name }}
-                                    </option>
-                                </select>
-                                <p v-if="form.errors.clinic_id" class="mt-1 text-sm text-red-600 dark:text-red-400">
-                                    {{ form.errors.clinic_id }}
-                                </p>
+                                <div class="w-full px-4 py-3 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-600 dark:text-gray-300">
+                                    {{ props.appointment.clinic.name }}
+                                </div>
                             </div>
 
                             <!-- Service Selection -->
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Service (Optional)
+                                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                                    Services (Optional) - Select multiple if needed
                                 </label>
-                                <select 
-                                    v-model="form.service_id"
-                                    :disabled="!selectedClinic"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 disabled:opacity-50"
-                                >
-                                    <option value="">No service selected</option>
-                                    <option v-for="service in availableServices" :key="service.id" :value="service.id">
-                                        {{ service.name }} - {{ service.base_price ? '₱' + service.base_price.toLocaleString() : 'Price on request' }}
-                                    </option>
-                                </select>
-                                <p v-if="form.errors.service_id" class="mt-1 text-sm text-red-600 dark:text-red-400">
-                                    {{ form.errors.service_id }}
+                                <div v-if="availableServices.length > 0" class="space-y-3 max-h-64 overflow-y-auto p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900">
+                                    <div v-for="service in availableServices" :key="service.id" class="flex items-start space-x-3 p-3 rounded-lg hover:bg-white dark:hover:bg-gray-800 transition-colors">
+                                        <Checkbox
+                                            :id="`service-${service.id}`"
+                                            :checked="form.service_ids.includes(service.id)"
+                                            @update:checked="(checked) => {
+                                                if (checked) {
+                                                    form.service_ids.push(service.id);
+                                                } else {
+                                                    form.service_ids = form.service_ids.filter(id => id !== service.id);
+                                                }
+                                            }"
+                                            class="mt-0.5"
+                                        />
+                                        <label :for="`service-${service.id}`" class="flex-1 cursor-pointer">
+                                            <div class="font-medium text-gray-900 dark:text-gray-100">{{ service.name }}</div>
+                                            <div class="text-sm text-gray-600 dark:text-gray-400">
+                                                <span v-if="service.base_price">₱{{ service.base_price.toLocaleString() }}</span>
+                                                <span v-if="service.base_price && service.duration_minutes"> • </span>
+                                                <span v-if="service.duration_minutes">{{ service.duration_minutes }} min</span>
+                                            </div>
+                                            <div v-if="service.description" class="text-xs text-gray-500 dark:text-gray-500 mt-1">{{ service.description }}</div>
+                                        </label>
+                                    </div>
+                                </div>
+                                <p v-else class="text-sm text-gray-500 dark:text-gray-400 mt-2 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-300 dark:border-gray-600">
+                                    No services available for this clinic
+                                </p>
+                                <p v-if="form.service_ids.length > 0" class="text-sm text-blue-600 dark:text-blue-400 mt-2">
+                                    {{ form.service_ids.length }} service{{ form.service_ids.length > 1 ? 's' : '' }} selected
                                 </p>
                             </div>
 
-                            <!-- Appointment Type -->
+                            <!-- Reason for Visit -->
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Appointment Type *
+                                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                    Reason for Rescheduling <span class="text-red-500">*</span>
                                 </label>
-                                <select 
-                                    v-model="form.type"
-                                    :class="[
-                                        'w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
-                                        form.errors.type ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600',
-                                        'dark:bg-gray-700 dark:text-gray-200'
-                                    ]"
-                                >
-                                    <option v-for="type in appointmentTypes" :key="type.value" :value="type.value">
-                                        {{ type.label }}
-                                    </option>
-                                </select>
-                                <p v-if="form.errors.type" class="mt-1 text-sm text-red-600 dark:text-red-400">
-                                    {{ form.errors.type }}
-                                </p>
-                            </div>
-
-                            <!-- Priority -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Priority *
-                                </label>
-                                <select 
-                                    v-model="form.priority"
-                                    :class="[
-                                        'w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
-                                        form.errors.priority ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600',
-                                        'dark:bg-gray-700 dark:text-gray-200'
-                                    ]"
-                                >
-                                    <option v-for="priority in priorityLevels" :key="priority.value" :value="priority.value">
-                                        {{ priority.label }}
-                                    </option>
-                                </select>
-                                <p v-if="form.errors.priority" class="mt-1 text-sm text-red-600 dark:text-red-400">
-                                    {{ form.errors.priority }}
+                                <textarea 
+                                    v-model="form.reason"
+                                    rows="4"
+                                    class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none dark:bg-gray-700 dark:text-gray-200 hover:border-blue-400"
+                                    placeholder="Please describe the reason for rescheduling..."
+                                ></textarea>
+                                <p v-if="form.errors.reason" class="text-red-600 dark:text-red-400 text-sm mt-2">
+                                    {{ form.errors.reason }}
                                 </p>
                             </div>
                         </div>
 
                         <!-- Right Column -->
-                        <div class="space-y-4">
+                        <div class="space-y-6">
                             <!-- Date Selection -->
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    New Date *
+                                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                    New Date <span class="text-red-500">*</span>
                                 </label>
-                                <input 
+                                <DatePicker
                                     v-model="form.preferred_date"
-                                    type="date" 
-                                    :min="minDate"
-                                    :max="maxDate"
-                                    :class="[
-                                        'w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
-                                        form.errors.scheduled_at || form.errors.preferred_date ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600',
-                                        'dark:bg-gray-700 dark:text-gray-200'
-                                    ]"
+                                    :min-date="minDate"
+                                    :max-date="maxDate"
+                                    placeholder="Select new appointment date"
+                                    :class="form.errors.scheduled_at || form.errors.preferred_date ? 'border-red-500' : ''"
                                 />
-                                <p v-if="form.errors.scheduled_at || form.errors.preferred_date" class="mt-1 text-sm text-red-600 dark:text-red-400">
+                                <p v-if="form.errors.scheduled_at || form.errors.preferred_date" class="mt-2 text-sm text-red-600 dark:text-red-400">
                                     {{ form.errors.scheduled_at || form.errors.preferred_date }}
                                 </p>
-                                <p v-if="form.preferred_date" class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                                <p v-if="form.preferred_date" class="mt-2 text-sm text-gray-600 dark:text-gray-400">
                                     {{ formatDate(form.preferred_date) }}
-                                </p>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                    Appointments available Monday-Friday, 9 AM - 5 PM
                                 </p>
                             </div>
 
                             <!-- Time Selection -->
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    New Time *
+                                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                    New Time <span class="text-red-500">*</span>
                                 </label>
-                                <div class="grid grid-cols-3 gap-2">
-                                    <button
-                                        v-for="time in timeSlots"
-                                        :key="time"
-                                        type="button"
-                                        @click="form.preferred_time = time"
-                                        :class="[
-                                            'px-3 py-2 text-sm border rounded-md transition-colors',
-                                            form.preferred_time === time 
-                                                ? 'bg-blue-600 text-white border-blue-600' 
-                                                : 'border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700'
-                                        ]"
-                                    >
-                                        {{ time }}
-                                    </button>
-                                </div>
-                                <p v-if="form.errors.scheduled_at || form.errors.preferred_time" class="mt-1 text-sm text-red-600 dark:text-red-400">
+                                <TimePicker
+                                    v-model="form.preferred_time"
+                                    :available-slots="timeSlots"
+                                    placeholder="Select appointment time"
+                                    :class="form.errors.scheduled_at || form.errors.preferred_time ? 'border-red-500' : ''"
+                                />
+                                <p v-if="form.errors.scheduled_at || form.errors.preferred_time" class="mt-2 text-sm text-red-600 dark:text-red-400">
                                     {{ form.errors.scheduled_at || form.errors.preferred_time }}
                                 </p>
                             </div>
 
-                            <!-- Duration -->
+                            <!-- Contact Phone (Auto-filled) -->
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Duration
+                                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                    Contact Phone <span class="text-red-500">*</span>
+                                    <span class="text-xs text-green-600 dark:text-green-400 font-normal ml-1">(auto-filled from clinic)</span>
                                 </label>
-                                <select 
-                                    v-model="form.duration_minutes"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
-                                >
-                                    <option v-for="duration in durationOptions" :key="duration.value" :value="duration.value">
-                                        {{ duration.label }}
-                                    </option>
-                                </select>
-                                <p v-if="form.errors.duration_minutes" class="mt-1 text-sm text-red-600 dark:text-red-400">
-                                    {{ form.errors.duration_minutes }}
-                                </p>
-                            </div>
-
-                            <!-- Contact Phone -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Contact Phone *
-                                </label>
-                                <input 
-                                    v-model="form.contact_phone"
-                                    type="tel" 
-                                    :class="[
-                                        'w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
-                                        form.errors.contact_phone ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600',
-                                        'dark:bg-gray-700 dark:text-gray-200'
-                                    ]"
-                                    placeholder="(555) 123-4567"
-                                />
-                                <p v-if="form.errors.contact_phone" class="mt-1 text-sm text-red-600 dark:text-red-400">
-                                    {{ form.errors.contact_phone }}
-                                </p>
+                                <div class="w-full px-4 py-3 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-600 dark:text-gray-300">
+                                    {{ form.contact_phone || 'No phone number available' }}
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Reason for Rescheduling -->
+                    <!-- Reason for Visit -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Reason for Visit *
+                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            Reason for Visit <span class="text-red-500">*</span>
                         </label>
                         <textarea 
                             v-model="form.reason"
-                            rows="3"
+                            rows="4"
                             :class="[
-                                'w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
-                                form.errors.reason ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600',
+                                'w-full px-4 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none',
+                                form.errors.reason ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-300 dark:border-gray-600 hover:border-blue-400',
                                 'dark:bg-gray-700 dark:text-gray-200'
                             ]"
                             placeholder="Please describe the reason for your visit..."
                         ></textarea>
-                        <p v-if="form.errors.reason" class="mt-1 text-sm text-red-600 dark:text-red-400">
+                        <p v-if="form.errors.reason" class="mt-2 text-sm text-red-600 dark:text-red-400">
                             {{ form.errors.reason }}
                         </p>
                     </div>
 
-                    <!-- Additional Notes -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Additional Notes
-                            </label>
-                            <textarea 
-                                v-model="form.notes"
-                                rows="3" 
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
-                                placeholder="Any additional information..."
-                            ></textarea>
-                            <p v-if="form.errors.notes" class="mt-1 text-sm text-red-600 dark:text-red-400">
-                                {{ form.errors.notes }}
-                            </p>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Special Instructions
-                            </label>
-                            <textarea 
-                                v-model="form.special_instructions"
-                                rows="3" 
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
-                                placeholder="Any special handling instructions for your pet..."
-                            ></textarea>
-                            <p v-if="form.errors.special_instructions" class="mt-1 text-sm text-red-600 dark:text-red-400">
-                                {{ form.errors.special_instructions }}
-                            </p>
-                        </div>
-                    </div>
-
                     <!-- Summary -->
-                    <div v-if="form.preferred_date && form.preferred_time" class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-                        <h4 class="font-medium text-green-900 dark:text-green-100 mb-2">Updated Appointment Summary</h4>
-                        <div class="text-sm text-green-700 dark:text-green-300 space-y-1">
-                            <p><span class="font-medium">Pet:</span> {{ props.appointment.pet.name }} ({{ props.appointment.pet.type }} - {{ props.appointment.pet.breed }})</p>
-                            <p><span class="font-medium">Clinic:</span> {{ selectedClinic?.name }}</p>
-                            <p v-if="selectedService"><span class="font-medium">Service:</span> {{ selectedService.name }} - {{ selectedService.base_price ? '₱' + selectedService.base_price.toLocaleString() : 'Price on request' }}</p>
-                            <p><span class="font-medium">Type:</span> {{ appointmentTypes.find(t => t.value === form.type)?.label }}</p>
-                            <p><span class="font-medium">Priority:</span> {{ priorityLevels.find(p => p.value === form.priority)?.label }}</p>
-                            <p><span class="font-medium">Date & Time:</span> {{ formatDate(form.preferred_date) }} at {{ form.preferred_time }}</p>
-                            <p><span class="font-medium">Duration:</span> {{ durationOptions.find(d => d.value === form.duration_minutes)?.label }}</p>
+                    <div v-if="form.preferred_date && form.preferred_time" class="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-xl p-6">
+                        <h4 class="font-semibold text-blue-900 dark:text-blue-100 mb-3 text-lg">📋 Updated Appointment Summary</h4>
+                        <div class="text-sm text-blue-800 dark:text-blue-200 space-y-2">
+                            <p><span class="font-semibold">Pet:</span> {{ props.appointment.pet.name }} ({{ props.appointment.pet.type }} - {{ props.appointment.pet.breed }})</p>
+                            <p><span class="font-semibold">Clinic:</span> {{ props.appointment.clinic.name }}</p>
+                            <div v-if="selectedServices.length > 0">
+                                <p class="font-semibold mb-1">Services:</p>
+                                <ul class="ml-4 space-y-1">
+                                    <li v-for="service in selectedServices" :key="service.id" class="flex items-center gap-2">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400"></span>
+                                        {{ service.name }}<span v-if="service.base_price"> - ₱{{ service.base_price.toLocaleString() }}</span>
+                                    </li>
+                                </ul>
+                            </div>
+                            <p><span class="font-semibold">New Date & Time:</span> {{ formatDate(form.preferred_date) }} at {{ form.preferred_time }}</p>
                         </div>
                     </div>
 
                     <!-- Form Actions -->
-                    <div class="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-600">
+                    <div class="flex flex-col sm:flex-row gap-4 pt-6">
                         <button 
                             type="submit"
                             :disabled="form.processing"
                             :class="[
-                                'px-6 py-2 rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
+                                'flex-1 py-4 px-6 rounded-xl font-semibold transition-all transform shadow-lg flex items-center justify-center gap-2',
                                 form.processing 
                                     ? 'bg-gray-400 text-gray-700 cursor-not-allowed' 
-                                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                                    : 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 hover:scale-[1.02] hover:shadow-xl'
                             ]"
                         >
+                            <svg v-if="form.processing" class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <Calendar v-else class="h-5 w-5" />
                             {{ form.processing ? 'Rescheduling...' : 'Confirm Reschedule' }}
                         </button>
                         <button 
                             type="button"
                             @click="goBack"
                             :disabled="form.processing"
-                            class="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm font-medium dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 disabled:opacity-50"
+                            class="flex-1 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-4 px-6 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                         >
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
                             Cancel
                         </button>
                     </div>

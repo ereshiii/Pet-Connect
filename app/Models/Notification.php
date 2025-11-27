@@ -17,6 +17,7 @@ class Notification extends Model
         'message',
         'data',
         'priority',
+        'is_read',
         'read_at',
         'expires_at',
         'is_system',
@@ -24,9 +25,12 @@ class Notification extends Model
 
     protected $casts = [
         'data' => 'array',
+        'is_read' => 'boolean',
+        'is_system' => 'boolean',
         'read_at' => 'datetime',
         'expires_at' => 'datetime',
-        'is_system' => 'boolean',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     /**
@@ -38,99 +42,40 @@ class Notification extends Model
     }
 
     /**
-     * Mark the notification as read.
-     */
-    public function markAsRead(): void
-    {
-        $this->update(['read_at' => now()]);
-    }
-
-    /**
-     * Check if the notification is read.
-     */
-    public function isRead(): bool
-    {
-        return !is_null($this->read_at);
-    }
-
-    /**
-     * Check if the notification is expired.
-     */
-    public function isExpired(): bool
-    {
-        return $this->expires_at && $this->expires_at->isPast();
-    }
-
-    /**
-     * Get the notification's priority color.
-     */
-    public function getPriorityColorAttribute(): string
-    {
-        return match($this->priority) {
-            'low' => 'text-blue-600',
-            'normal' => 'text-green-600',
-            'high' => 'text-yellow-600',
-            'urgent' => 'text-red-600',
-            default => 'text-gray-600'
-        };
-    }
-
-    /**
-     * Get the notification's type icon.
-     */
-    public function getTypeIconAttribute(): string
-    {
-        return match($this->type) {
-            'appointment' => '📅',
-            'vaccination' => '💉',
-            'medical' => '🏥',
-            'system' => '⚙️',
-            'reminder' => '🔔',
-            'alert' => '⚠️',
-            default => '📢'
-        };
-    }
-
-    /**
-     * Scope to get unread notifications.
+     * Scope a query to only include unread notifications.
      */
     public function scopeUnread($query)
     {
-        return $query->whereNull('read_at');
+        return $query->where('is_read', false);
     }
 
     /**
-     * Scope to get read notifications.
+     * Scope a query to only include read notifications.
      */
     public function scopeRead($query)
     {
-        return $query->whereNotNull('read_at');
+        return $query->where('is_read', true);
     }
 
     /**
-     * Scope to get active (non-expired) notifications.
+     * Mark notification as read.
      */
-    public function scopeActive($query)
+    public function markAsRead(): void
     {
-        return $query->where(function ($q) {
-            $q->whereNull('expires_at')
-              ->orWhere('expires_at', '>', now());
-        });
+        $this->update([
+            'is_read' => true,
+            'read_at' => now(),
+        ]);
     }
 
     /**
-     * Scope to get notifications by type.
+     * Mark notification as unread.
      */
-    public function scopeOfType($query, string $type)
+    public function markAsUnread(): void
     {
-        return $query->where('type', $type);
-    }
-
-    /**
-     * Scope to get system notifications.
-     */
-    public function scopeSystem($query)
-    {
-        return $query->where('is_system', true);
+        $this->update([
+            'is_read' => false,
+            'read_at' => null,
+        ]);
     }
 }

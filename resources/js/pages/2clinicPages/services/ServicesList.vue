@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
+import UpgradePrompt from '@/components/subscription/UpgradePrompt.vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
 import { clinicDashboard, clinicServices } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
@@ -38,8 +39,6 @@ const breadcrumbs: BreadcrumbItem[] = [
 interface ServiceUsage {
     total_appointments: number;
     completed_appointments: number;
-    total_revenue: number;
-    formatted_revenue: string;
     last_used: string | null;
     formatted_last_used: string;
     recent_usage: number;
@@ -52,8 +51,6 @@ interface Service {
     description: string;
     category: string;
     category_display: string;
-    base_price: number;
-    formatted_price: string;
     duration_minutes: number;
     formatted_duration: string;
     is_active: boolean;
@@ -74,8 +71,6 @@ interface ServiceStats {
         appointment_count: number;
         category: string;
     }>;
-    total_revenue: number;
-    formatted_revenue: string;
 }
 
 interface Filters {
@@ -97,6 +92,12 @@ interface Props {
         id: number;
         name: string;
     };
+    usage_limits?: {
+        current: number;
+        max: number;
+        can_add: boolean;
+    };
+    show_upgrade_prompt?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -106,13 +107,13 @@ const showCreateModal = ref(false);
 const showEditModal = ref(false);
 const editingService = ref<Service | null>(null);
 const activeDropdown = ref<number | null>(null);
+const showUpgradeModal = ref(props.show_upgrade_prompt || false);
 
 // Forms
 const createForm = useForm({
     name: '',
     description: '',
-    category: '',
-    base_price: null as number | null,
+    category: 'consultation',
     duration_minutes: 30,
     is_active: true,
     requires_appointment: true,
@@ -123,7 +124,6 @@ const editForm = useForm({
     name: '',
     description: '',
     category: '',
-    base_price: null as number | null,
     duration_minutes: 30,
     is_active: true,
     requires_appointment: true,
@@ -131,23 +131,58 @@ const editForm = useForm({
 });
 
 const filterForm = useForm({
-    category: props.filters.category,
-    status: props.filters.status,
-    search: props.filters.search,
+    category: props.filters.category || 'all',
+    status: props.filters.status || 'all',
+    search: props.filters.search || '',
 });
 
 // Computed
-const categorizedServices = computed(() => {
-    const grouped: Record<string, Service[]> = {};
+const filteredServices = computed(() => {
+    let filtered = [...props.services.data];
     
-    props.services.data.forEach(service => {
-        if (!grouped[service.category]) {
-            grouped[service.category] = [];
-        }
-        grouped[service.category].push(service);
-    });
+    // Apply search filter (client-side for immediate feedback)
+    if (filterForm.search) {
+        const searchLower = filterForm.search.toLowerCase();
+        filtered = filtered.filter(service => 
+            service.name.toLowerCase().includes(searchLower) ||
+            service.description?.toLowerCase().includes(searchLower) ||
+            service.category_display.toLowerCase().includes(searchLower)
+        );
+    }
     
-    return grouped;
+    // Apply category filter (client-side)
+    if (filterForm.category && filterForm.category !== 'all') {
+        filtered = filtered.filter(service => service.category === filterForm.category);
+    }
+    
+    // Apply status filter (client-side)
+    if (filterForm.status && filterForm.status !== 'all') {
+        const isActive = filterForm.status === 'active';
+        filtered = filtered.filter(service => service.is_active === isActive);
+    }
+    
+    return filtered;
+});
+
+const shouldGroupByCategory = computed(() => {
+    return filterForm.category && filterForm.category !== 'all';
+});
+
+const displayServices = computed(() => {
+    if (shouldGroupByCategory.value) {
+        // Group by category when filtered
+        const grouped: Record<string, Service[]> = {};
+        filteredServices.value.forEach(service => {
+            if (!grouped[service.category]) {
+                grouped[service.category] = [];
+            }
+            grouped[service.category].push(service);
+        });
+        return grouped;
+    } else {
+        // Show all services together
+        return { 'all': filteredServices.value };
+    }
 });
 
 const categoryOptions = computed(() => {
@@ -160,9 +195,9 @@ const categoryOptions = computed(() => {
 
 // Methods
 const search = () => {
-    router.get(route('clinicServices'), {
-        category: filterForm.category,
-        status: filterForm.status,
+    router.get(clinicServices().url, {
+        category: filterForm.category === 'all' ? '' : filterForm.category,
+        status: filterForm.status === 'all' ? '' : filterForm.status,
         search: filterForm.search,
     }, {
         preserveState: true,
@@ -171,11 +206,22 @@ const search = () => {
 };
 
 const resetFilters = () => {
-    filterForm.reset();
-    search();
+    filterForm.category = 'all';
+    filterForm.status = 'all';
+    filterForm.search = '';
+    router.get(clinicServices().url, {}, {
+        preserveState: true,
+        preserveScroll: true,
+    });
 };
 
 const openCreateModal = () => {
+    // Check if user can add more services
+    if (props.usage_limits && !props.usage_limits.can_add) {
+        showUpgradeModal.value = true;
+        return;
+    }
+    
     createForm.reset();
     showCreateModal.value = true;
 };
@@ -186,7 +232,6 @@ const openEditModal = (service: Service) => {
     editForm.name = service.name;
     editForm.description = service.description;
     editForm.category = service.category;
-    editForm.base_price = service.base_price;
     editForm.duration_minutes = service.duration_minutes;
     editForm.is_active = service.is_active;
     editForm.requires_appointment = service.requires_appointment;
@@ -196,7 +241,7 @@ const openEditModal = (service: Service) => {
 };
 
 const createService = () => {
-    createForm.post(route('clinicServices.store'), {
+    createForm.post('/clinic/services', {
         onSuccess: () => {
             showCreateModal.value = false;
             createForm.reset();
@@ -207,7 +252,7 @@ const createService = () => {
 const updateService = () => {
     if (!editingService.value) return;
     
-    editForm.patch(route('clinicServices.update', editingService.value.id), {
+    editForm.patch(`/clinic/services/${editingService.value.id}`, {
         onSuccess: () => {
             showEditModal.value = false;
             editForm.reset();
@@ -217,7 +262,7 @@ const updateService = () => {
 };
 
 const toggleServiceStatus = (service: Service) => {
-    router.patch(route('clinicServices.toggleStatus', service.id), {}, {
+    router.patch(`/clinic/services/${service.id}/toggle-status`, {}, {
         onSuccess: () => {
             closeDropdown();
         },
@@ -225,7 +270,7 @@ const toggleServiceStatus = (service: Service) => {
 };
 
 const duplicateService = (service: Service) => {
-    router.post(route('clinicServices.duplicate', service.id), {}, {
+    router.post(`/clinic/services/${service.id}/duplicate`, {}, {
         onSuccess: () => {
             closeDropdown();
         },
@@ -234,7 +279,7 @@ const duplicateService = (service: Service) => {
 
 const deleteService = (service: Service) => {
     if (confirm(`Are you sure you want to delete "${service.name}"?`)) {
-        router.delete(route('clinicServices.destroy', service.id), {
+        router.delete(`/clinic/services/${service.id}`, {
             onSuccess: () => {
                 closeDropdown();
             },
@@ -248,6 +293,10 @@ const toggleDropdown = (serviceId: number) => {
 
 const closeDropdown = () => {
     activeDropdown.value = null;
+};
+
+const closeUpgradeModal = () => {
+    showUpgradeModal.value = false;
 };
 
 const getCategoryIcon = (category: string) => {
@@ -285,7 +334,7 @@ onMounted(() => {
     <Head title="Services Management" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-6">
+        <div class="flex h-full flex-1 flex-col gap-6 rounded-xl p-6">
             <!-- Header -->
             <div class="flex items-center justify-between">
                 <div>
@@ -301,132 +350,112 @@ onMounted(() => {
                 </button>
             </div>
 
-            <!-- Statistics -->
-            <div class="grid gap-4 md:grid-cols-4">
-                <div class="rounded-lg border bg-card p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm text-muted-foreground">Total Services</p>
-                            <p class="text-2xl font-bold">{{ stats.total_services }}</p>
-                        </div>
-                        <div class="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-                            <Settings class="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="rounded-lg border bg-card p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm text-muted-foreground">Active Services</p>
-                            <p class="text-2xl font-bold text-green-600">{{ stats.active_services }}</p>
-                        </div>
-                        <div class="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
-                            <Eye class="h-5 w-5 text-green-600 dark:text-green-400" />
-                        </div>
-                    </div>
-                </div>
-
-                <div class="rounded-lg border bg-card p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm text-muted-foreground">Inactive Services</p>
-                            <p class="text-2xl font-bold text-gray-600">{{ stats.inactive_services }}</p>
-                        </div>
-                        <div class="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                            <EyeOff class="h-5 w-5 text-gray-600 dark:text-gray-400" />
-                        </div>
-                    </div>
-                </div>
-
-                <div class="rounded-lg border bg-card p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm text-muted-foreground">Total Revenue</p>
-                            <p class="text-2xl font-bold text-green-600">{{ stats.formatted_revenue }}</p>
-                        </div>
-                        <div class="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
-                            <DollarSign class="h-5 w-5 text-green-600 dark:text-green-400" />
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- Filters -->
-            <div class="rounded-lg border bg-card p-4">
-                <div class="flex flex-wrap items-center gap-4">
-                    <div class="flex items-center gap-2">
-                        <Search class="h-4 w-4 text-muted-foreground" />
-                        <input
-                            v-model="filterForm.search"
-                            @keyup.enter="search"
-                            type="text"
-                            placeholder="Search services..."
-                            class="border rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                        />
+            <div class="rounded-lg border bg-card">
+                <div class="p-4 border-b">
+                    <h3 class="text-sm font-semibold flex items-center gap-2">
+                        <Filter class="h-4 w-4" />
+                        Filter Services
+                    </h3>
+                </div>
+                <div class="p-4">
+                    <div class="grid gap-4 md:grid-cols-4">
+                        <!-- Search -->
+                        <div class="relative">
+                            <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <input
+                                v-model="filterForm.search"
+                                @input="search"
+                                type="text"
+                                placeholder="Search services..."
+                                class="w-full pl-10 pr-3 py-2 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                            />
+                        </div>
+                        
+                        <!-- Category Filter -->
+                        <select
+                            v-model="filterForm.category"
+                            @change="search"
+                            class="border border-input bg-background px-3 py-2 text-sm ring-offset-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                        >
+                            <option value="all">All Categories</option>
+                            <option 
+                                v-for="category in categoryOptions" 
+                                :key="category.value" 
+                                :value="category.value"
+                            >
+                                {{ category.label }} ({{ category.count }})
+                            </option>
+                        </select>
+                        
+                        <!-- Status Filter -->
+                        <select
+                            v-model="filterForm.status"
+                            @change="search"
+                            class="border border-input bg-background px-3 py-2 text-sm ring-offset-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                        >
+                            <option value="all">All Status</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                        
+                        <!-- Reset Button -->
+                        <button 
+                            @click="resetFilters"
+                            class="px-4 py-2 text-sm border border-input rounded-md hover:bg-muted transition-colors"
+                            :class="{ 'opacity-50 cursor-not-allowed': filterForm.category === 'all' && filterForm.status === 'all' && !filterForm.search }"
+                            :disabled="filterForm.category === 'all' && filterForm.status === 'all' && !filterForm.search"
+                        >
+                            Reset Filters
+                        </button>
                     </div>
                     
-                    <select
-                        v-model="filterForm.category"
-                        @change="search"
-                        class="border rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                    >
-                        <option value="all">All Categories</option>
-                        <option 
-                            v-for="category in categoryOptions" 
-                            :key="category.value" 
-                            :value="category.value"
-                        >
-                            {{ category.label }} ({{ category.count }})
-                        </option>
-                    </select>
-                    
-                    <select
-                        v-model="filterForm.status"
-                        @change="search"
-                        class="border rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                    >
-                        <option value="all">All Status</option>
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                    </select>
-                    
-                    <button 
-                        @click="search"
-                        class="inline-flex items-center gap-1 bg-primary text-primary-foreground hover:bg-primary/90 px-3 py-1 rounded-md text-sm font-medium transition-colors"
-                    >
-                        <Filter class="h-3 w-3" />
-                        Filter
-                    </button>
-                    
-                    <button 
-                        @click="resetFilters"
-                        class="text-sm text-muted-foreground hover:text-foreground"
-                    >
-                        Reset
-                    </button>
+                    <!-- Active Filters Display -->
+                    <div v-if="filterForm.category !== 'all' || filterForm.status !== 'all' || filterForm.search" class="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t">
+                        <span class="text-xs text-muted-foreground font-medium">Active filters:</span>
+                        
+                        <span v-if="filterForm.search" class="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded-md text-xs font-medium">
+                            Search: "{{ filterForm.search }}"
+                            <button @click="filterForm.search = ''; search()" class="hover:bg-blue-200 dark:hover:bg-blue-800 rounded-full p-0.5 transition-colors">
+                                <X class="h-3 w-3" />
+                            </button>
+                        </span>
+                        
+                        <span v-if="filterForm.category !== 'all'" class="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 rounded-md text-xs font-medium">
+                            Category: {{ categories[filterForm.category] }}
+                            <button @click="filterForm.category = 'all'; search()" class="hover:bg-purple-200 dark:hover:bg-purple-800 rounded-full p-0.5 transition-colors">
+                                <X class="h-3 w-3" />
+                            </button>
+                        </span>
+                        
+                        <span v-if="filterForm.status !== 'all'" class="inline-flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 rounded-md text-xs font-medium">
+                            Status: {{ filterForm.status === 'active' ? 'Active' : 'Inactive' }}
+                            <button @click="filterForm.status = 'all'; search()" class="hover:bg-green-200 dark:hover:bg-green-800 rounded-full p-0.5 transition-colors">
+                                <X class="h-3 w-3" />
+                            </button>
+                        </span>
+                    </div>
                 </div>
             </div>
 
             <!-- Services List -->
             <div class="space-y-6">
-                <div 
-                    v-for="(services, category) in categorizedServices"
-                    :key="category"
-                    class="rounded-lg border bg-card"
-                >
-                    <div class="flex items-center justify-between p-4 border-b">
-                        <div class="flex items-center gap-3">
-                            <span class="text-2xl">{{ getCategoryIcon(category) }}</span>
-                            <div>
-                                <h2 class="text-lg font-semibold">{{ categories[category] }}</h2>
-                                <p class="text-sm text-muted-foreground">{{ services.length }} service(s)</p>
+                <template v-for="(services, category) in displayServices" :key="category">
+                    <div class="rounded-lg border bg-card">
+                        <!-- Category Header (only shown when filtered by category) -->
+                        <div v-if="shouldGroupByCategory" class="flex items-center justify-between p-4 border-b">
+                            <div class="flex items-center gap-3">
+                                <span class="text-2xl">{{ getCategoryIcon(category) }}</span>
+                                <div>
+                                    <h2 class="text-lg font-semibold">{{ categories[category] }}</h2>
+                                    <p class="text-sm text-muted-foreground">{{ services.length }} service(s)</p>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="p-4">
-                        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        <!-- Services Grid -->
+                        <div class="p-4">
+                            <div v-if="services.length > 0" class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                             <div 
                                 v-for="service in services"
                                 :key="service.id"
@@ -498,10 +527,6 @@ onMounted(() => {
                                 <!-- Service Details -->
                                 <div class="space-y-2 mb-4">
                                     <div class="flex justify-between">
-                                        <span class="text-sm text-muted-foreground">Price:</span>
-                                        <span class="text-sm font-semibold text-green-600">{{ service.formatted_price }}</span>
-                                    </div>
-                                    <div class="flex justify-between">
                                         <span class="text-sm text-muted-foreground">Duration:</span>
                                         <span class="text-sm">{{ service.formatted_duration }}</span>
                                     </div>
@@ -530,55 +555,32 @@ onMounted(() => {
                                         <span class="text-xs font-medium">{{ service.usage.total_appointments }}</span>
                                     </div>
                                     <div class="flex justify-between">
-                                        <span class="text-xs text-muted-foreground">Revenue:</span>
-                                        <span class="text-xs font-medium text-green-600">{{ service.usage.formatted_revenue }}</span>
-                                    </div>
-                                    <div class="flex justify-between">
                                         <span class="text-xs text-muted-foreground">Last Used:</span>
                                         <span class="text-xs">{{ service.usage.formatted_last_used }}</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
+                            
+                            <!-- No Results in Category -->
+                            <div v-else class="text-center py-8 text-muted-foreground">
+                                <p>No services found{{ shouldGroupByCategory ? ' in this category' : '' }}</p>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                </template>
 
                 <!-- Empty State -->
-                <div v-if="services.data.length === 0" class="text-center py-12">
+                <div v-if="filteredServices.length === 0" class="text-center py-12">
                     <div class="text-muted-foreground">
                         <Settings class="h-12 w-12 mx-auto mb-4 opacity-50" />
-                        <p class="text-lg mb-2">No services found</p>
-                        <p class="mb-4">{{ filters.search || filters.category !== 'all' || filters.status !== 'all' ? 'Try adjusting your filters' : 'Start by creating your first service' }}</p>
-                        <button 
-                            @click="filters.search || filters.category !== 'all' || filters.status !== 'all' ? resetFilters() : openCreateModal()"
-                            class="bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-sm font-medium transition-colors"
-                        >
-                            {{ filters.search || filters.category !== 'all' || filters.status !== 'all' ? 'Clear Filters' : 'Create First Service' }}
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Popular Services -->
-            <div v-if="stats.popular_services.length > 0" class="rounded-lg border bg-card p-6">
-                <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                    <TrendingUp class="h-5 w-5" />
-                    Most Popular Services
-                </h3>
-                <div class="space-y-3">
-                    <div 
-                        v-for="service in stats.popular_services"
-                        :key="service.name"
-                        class="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
-                    >
-                        <div>
-                            <p class="font-medium">{{ service.name }}</p>
-                            <p class="text-sm text-muted-foreground">{{ service.category }}</p>
-                        </div>
-                        <div class="text-right">
-                            <p class="font-semibold">{{ service.appointment_count }}</p>
-                            <p class="text-xs text-muted-foreground">bookings</p>
-                        </div>
+                        <p class="text-lg font-medium mb-2">No services found</p>
+                        <p v-if="filterForm.search || filterForm.category !== 'all' || filterForm.status !== 'all'">
+                            Try adjusting your filters
+                        </p>
+                        <p v-else>
+                            Get started by creating your first service
+                        </p>
                     </div>
                 </div>
             </div>
@@ -664,22 +666,7 @@ onMounted(() => {
                         </div>
                     </div>
 
-                    <div class="grid gap-4 md:grid-cols-2">
-                        <div>
-                            <label class="block text-sm font-medium mb-1">Base Price (₱)</label>
-                            <input
-                                v-model.number="createForm.base_price"
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                class="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                                placeholder="0.00"
-                            />
-                            <div v-if="createForm.errors.base_price" class="text-red-500 text-sm mt-1">
-                                {{ createForm.errors.base_price }}
-                            </div>
-                        </div>
-
+                    <div class="grid gap-4 md:grid-cols-1">
                         <div>
                             <label class="block text-sm font-medium mb-1">Duration (minutes)</label>
                             <input
@@ -798,21 +785,7 @@ onMounted(() => {
                         </div>
                     </div>
 
-                    <div class="grid gap-4 md:grid-cols-2">
-                        <div>
-                            <label class="block text-sm font-medium mb-1">Base Price (₱)</label>
-                            <input
-                                v-model.number="editForm.base_price"
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                class="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                            />
-                            <div v-if="editForm.errors.base_price" class="text-red-500 text-sm mt-1">
-                                {{ editForm.errors.base_price }}
-                            </div>
-                        </div>
-
+                    <div class="grid gap-4 md:grid-cols-1">
                         <div>
                             <label class="block text-sm font-medium mb-1">Duration (minutes)</label>
                             <input
@@ -874,6 +847,18 @@ onMounted(() => {
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <!-- Upgrade Required Modal -->
+        <div v-if="showUpgradeModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div class="bg-background rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                <UpgradePrompt 
+                    feature="Add More Services"
+                    required-plan="professional"
+                    is-modal
+                    @close="closeUpgradeModal"
+                />
             </div>
         </div>
     </AppLayout>

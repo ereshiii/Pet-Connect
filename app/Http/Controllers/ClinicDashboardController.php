@@ -33,20 +33,24 @@ class ClinicDashboardController extends Controller
             abort(404, 'Clinic registration not found.');
         }
 
+        // Use clinic registration ID directly (clinic_id now references clinic_registrations.id)
         $today = Carbon::today();
         $clinicId = $clinicRegistration->id;
 
         // Get today's statistics
         $todayStats = $this->getTodayStats($clinicId, $today);
         
-        // Get upcoming appointments for today
+        // Get today's appointments with detailed info
+        $todayAppointments = $this->getTodayAppointments($clinicId, $today);
+        
+        // Get upcoming future appointments with minimal info
         $upcomingAppointments = $this->getUpcomingAppointments($clinicId, $today);
         
         // Get recent patients
         $recentPatients = $this->getRecentPatients($clinicId);
         
-        // Get alerts and notifications
-        $alerts = $this->getAlerts($clinicId);
+        // Get pending appointments waiting for confirmation
+        $pendingAppointments = $this->getPendingAppointments($clinicId);
 
         return Inertia::render('2clinicPages/clinicDashboard', [
             'clinic' => [
@@ -57,9 +61,10 @@ class ClinicDashboardController extends Controller
             ],
             'dashboardData' => [
                 'todayStats' => $todayStats,
+                'todayAppointments' => $todayAppointments,
                 'upcomingAppointments' => $upcomingAppointments,
                 'recentPatients' => $recentPatients,
-                'alerts' => $alerts,
+                'pendingAppointments' => $pendingAppointments,
             ],
         ]);
     }
@@ -86,13 +91,49 @@ class ClinicDashboardController extends Controller
     }
 
     /**
-     * Get upcoming appointments for today.
+     * Get today's appointments with detailed information.
+     */
+    private function getTodayAppointments($clinicId, $today): array
+    {
+        $appointments = Appointment::with(['pet.owner', 'service', 'veterinarian'])
+            ->where('clinic_id', $clinicId)
+            ->whereDate('scheduled_at', $today)
+            ->where('status', '!=', 'completed')
+            ->where('status', '!=', 'cancelled')
+            ->orderBy('scheduled_at')
+            ->get();
+
+        return $appointments->map(function ($appointment) {
+            $pet = $appointment->pet;
+            $owner = $pet ? $pet->owner : null;
+            $service = $appointment->service;
+            $vet = $appointment->veterinarian;
+            
+            return [
+                'id' => $appointment->id,
+                'time' => Carbon::parse($appointment->scheduled_at)->format('g:i A'),
+                'date' => Carbon::parse($appointment->scheduled_at)->format('M d, Y'),
+                'petName' => $pet ? $pet->name : 'Unknown Pet',
+                'petType' => $pet ? ($pet->breed ?? $pet->type->name ?? 'Unknown') : 'Unknown',
+                'ownerName' => $owner ? $owner->name : 'Unknown Owner',
+                'ownerPhone' => $owner ? $owner->phone : null,
+                'serviceName' => $service ? $service->name : 'General Consultation',
+                'veterinarianName' => $vet ? $vet->name : 'Not Assigned',
+                'status' => $appointment->status,
+                'statusDisplay' => ucfirst(str_replace('_', ' ', $appointment->status)),
+                'duration' => $appointment->duration ?? '30 minutes',
+            ];
+        })->toArray();
+    }
+
+    /**
+     * Get upcoming appointments (future dates) with minimal information.
      */
     private function getUpcomingAppointments($clinicId, $today): array
     {
         $appointments = Appointment::with(['pet.owner', 'service'])
             ->where('clinic_id', $clinicId)
-            ->whereDate('scheduled_at', $today)
+            ->where('scheduled_at', '>=', now()) // Changed from whereDate to show all future appointments
             ->where('status', '!=', 'completed')
             ->where('status', '!=', 'cancelled')
             ->orderBy('scheduled_at')
@@ -143,7 +184,7 @@ class ClinicDashboardController extends Controller
                 'id' => $pet->id,
                 'name' => $pet->name,
                 'species' => $pet->type ? $pet->type->name : 'Unknown',
-                'lastVisit' => Carbon::parse($appointment->appointment_date)->format('Y-m-d'),
+                'lastVisit' => Carbon::parse($appointment->scheduled_at)->format('Y-m-d'),
                 'ownerName' => $owner ? $owner->name : 'Unknown Owner',
                 'status' => $this->getPatientStatus($pet, $appointment),
             ];
@@ -156,74 +197,39 @@ class ClinicDashboardController extends Controller
         return $patients;
     }
 
+
+
     /**
-     * Get alerts and notifications for the clinic.
+     * Get pending appointments waiting for confirmation.
      */
-    private function getAlerts($clinicId): array
+    private function getPendingAppointments($clinicId): array
     {
-        $alerts = [];
-        
-        // Check for emergency appointments today
-        $emergencyCount = Appointment::where('clinic_id', $clinicId)
-            ->whereDate('appointment_date', Carbon::today())
-            ->where('appointment_type', 'emergency')
-            ->where('status', '!=', 'completed')
-            ->where('status', '!=', 'cancelled')
-            ->count();
+        $appointments = Appointment::with(['pet.owner', 'service', 'veterinarian'])
+            ->where('clinic_id', $clinicId)
+            ->where('status', 'pending')
+            ->orderBy('scheduled_at')
+            ->get();
 
-        if ($emergencyCount > 0) {
-            $alerts[] = [
-                'id' => 'emergency_' . time(),
-                'type' => 'urgent',
-                'message' => $emergencyCount . ' emergency appointment' . ($emergencyCount > 1 ? 's' : '') . ' scheduled for today',
-                'time' => 'Just now',
+        return $appointments->map(function ($appointment) {
+            $pet = $appointment->pet;
+            $owner = $pet ? $pet->owner : null;
+            $service = $appointment->service;
+            $vet = $appointment->veterinarian;
+            
+            return [
+                'id' => $appointment->id,
+                'time' => Carbon::parse($appointment->scheduled_at)->format('g:i A'),
+                'date' => Carbon::parse($appointment->scheduled_at)->format('M d, Y'),
+                'scheduledAt' => Carbon::parse($appointment->scheduled_at)->format('Y-m-d H:i'),
+                'petName' => $pet ? $pet->name : 'Unknown Pet',
+                'petType' => $pet ? ($pet->breed ?? $pet->type->name ?? 'Unknown') : 'Unknown',
+                'ownerName' => $owner ? $owner->name : 'Unknown Owner',
+                'ownerPhone' => $owner ? $owner->phone : null,
+                'serviceName' => $service ? $service->name : 'General Consultation',
+                'veterinarianName' => $vet ? $vet->name : 'Not Assigned',
+                'duration' => $appointment->duration ?? '30 minutes',
             ];
-        }
-
-        // Check for scheduled appointments
-        $scheduledCount = Appointment::where('clinic_id', $clinicId)
-            ->whereDate('appointment_date', Carbon::today())
-            ->where('status', 'scheduled')
-            ->count();
-
-        if ($scheduledCount > 0) {
-            $alerts[] = [
-                'id' => 'scheduled_' . time(),
-                'type' => 'info',
-                'message' => $scheduledCount . ' appointment' . ($scheduledCount > 1 ? 's' : '') . ' waiting for confirmation',
-                'time' => '1 hour ago',
-            ];
-        }
-
-        // Check for upcoming appointments in next hour
-        $nextHour = Carbon::now()->addHour();
-        $upcomingCount = Appointment::where('clinic_id', $clinicId)
-            ->whereDate('appointment_date', Carbon::today())
-            ->where('appointment_time', '<=', $nextHour->format('H:i:s'))
-            ->where('appointment_time', '>', Carbon::now()->format('H:i:s'))
-            ->where('status', 'confirmed')
-            ->count();
-
-        if ($upcomingCount > 0) {
-            $alerts[] = [
-                'id' => 'upcoming_' . time(),
-                'type' => 'warning',
-                'message' => $upcomingCount . ' appointment' . ($upcomingCount > 1 ? 's' : '') . ' starting within the next hour',
-                'time' => '30 minutes ago',
-            ];
-        }
-
-        // Add a general info alert if no other alerts
-        if (empty($alerts)) {
-            $alerts[] = [
-                'id' => 'info_' . time(),
-                'type' => 'info',
-                'message' => 'All appointments are up to date. Have a great day!',
-                'time' => '2 hours ago',
-            ];
-        }
-
-        return $alerts;
+        })->toArray();
     }
 
     /**
@@ -248,11 +254,11 @@ class ClinicDashboardController extends Controller
      */
     private function getPatientStatus($pet, $lastAppointment): string
     {
-        $daysSinceLastVisit = Carbon::parse($lastAppointment->appointment_date)->diffInDays(Carbon::today());
+        $daysSinceLastVisit = Carbon::parse($lastAppointment->scheduled_at)->diffInDays(Carbon::today());
         
         // Check if there are any follow-up appointments
         $hasFollowUp = Appointment::where('pet_id', $pet->id)
-            ->where('appointment_date', '>', Carbon::today())
+            ->where('scheduled_at', '>', Carbon::today())
             ->where('status', '!=', 'cancelled')
             ->exists();
 
@@ -264,7 +270,7 @@ class ClinicDashboardController extends Controller
             return 'healthy';
         }
 
-        if ($lastAppointment->appointment_type === 'emergency' && $daysSinceLastVisit <= 30) {
+        if ($lastAppointment->type === 'emergency' && $daysSinceLastVisit <= 30) {
             return 'treatment';
         }
 

@@ -27,11 +27,21 @@ class UserProfile extends Model
         'emergency_contact_phone',
         'emergency_contact_relationship',
         'preferences',
+        'address',
+        'city',
+        'province',
+        'region',
+        'barangay',
+        'zip_code',
+        'latitude',
+        'longitude',
+        'profile_completed_at',
     ];
 
     protected $casts = [
         'date_of_birth' => 'date',
         'preferences' => 'array',
+        'profile_completed_at' => 'datetime',
     ];
 
     /**

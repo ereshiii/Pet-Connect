@@ -17,9 +17,16 @@ class TwoFactorAuthenticationController extends Controller
     public function show(TwoFactorAuthenticationRequest $request): Response
     {
         $request->ensureStateIsValid();
+        
+        $user = $request->user();
+        
+        // Determine which two-factor page to render based on user type
+        $page = $user->is_clinic || $user->account_type === 'clinic' 
+            ? '2clinicPages/settings/TwoFactor' 
+            : 'settings/TwoFactor';
 
-        return Inertia::render('settings/TwoFactor', [
-            'twoFactorEnabled' => $request->user()->hasEnabledTwoFactorAuthentication(),
+        return Inertia::render($page, [
+            'twoFactorEnabled' => $user->hasEnabledTwoFactorAuthentication(),
             'requiresConfirmation' => Features::optionEnabled(Features::twoFactorAuthentication(), 'confirm'),
         ]);
     }

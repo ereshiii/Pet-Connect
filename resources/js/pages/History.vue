@@ -4,14 +4,7 @@ import { history, appointmentDetails, appointmentsCreate, clinicAppointmentDetai
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
-import { 
-    NavigationMenu, 
-    NavigationMenuContent, 
-    NavigationMenuItem, 
-    NavigationMenuLink, 
-    NavigationMenuList, 
-    NavigationMenuTrigger 
-} from '@/components/ui/navigation-menu';
+import { Search, Filter, ChevronLeft, ChevronRight } from 'lucide-vue-next';
 
 // Types
 interface Appointment {
@@ -111,6 +104,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 const selectedPetId = ref(props.filters.pet_id || '');
 const selectedDateFilter = ref(props.filters.date_filter);
 const activeCategory = ref<'completed' | 'cancelled' | 'no_show' | 'all'>('all');
+const searchQuery = ref('');
 
 // Computed properties for filtered appointments
 const filteredAppointments = computed(() => {
@@ -121,6 +115,17 @@ const filteredAppointments = computed(() => {
     // Filter by category
     if (activeCategory.value !== 'all') {
         filtered = filtered.filter(appointment => appointment.status === activeCategory.value);
+    }
+
+    // Filter by search query
+    if (searchQuery.value.trim()) {
+        const query = searchQuery.value.toLowerCase();
+        filtered = filtered.filter(appointment =>
+            appointment.pet?.name.toLowerCase().includes(query) ||
+            appointment.clinic?.name.toLowerCase().includes(query) ||
+            appointment.type.toLowerCase().includes(query) ||
+            appointment.appointment_number.toLowerCase().includes(query)
+        );
     }
 
     return filtered;
@@ -292,11 +297,6 @@ const setActiveCategory = (category: 'completed' | 'cancelled' | 'no_show' | 'al
     activeCategory.value = category;
 };
 
-const exportHistory = () => {
-    // TODO: Implement export functionality
-    alert('Export functionality will be implemented soon!');
-};
-
 const viewDetails = (appointmentId: number) => {
     console.log('Navigating to appointment details for ID:', appointmentId);
     console.log('User type:', props.userType);
@@ -323,191 +323,184 @@ const rebookAppointment = (appointment?: Appointment) => {
 </script>
 
 <template>
-    <Head title="History" />
+    <Head title="Booking History" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div
-            class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4"
-        >
-            <!-- Comprehensive Booking History -->
-            <div class="bg-white dark:bg-gray-800 rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
+        <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-6">
+            <!-- Page Header -->
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-2xl font-semibold text-foreground">Booking History</h1>
+                    <p class="text-muted-foreground">
+                        View your past appointments and booking history
+                    </p>
+                </div>
+            </div>
+
+            <!-- Filters Section -->
+            <div class="rounded-lg border bg-card">
+                <div class="p-4 border-b">
+                    <h3 class="text-sm font-semibold flex items-center gap-2">
+                        <Filter class="h-4 w-4" />
+                        Filter History
+                    </h3>
+                </div>
+                <div class="p-4">
+                    <div class="grid gap-4 md:grid-cols-3">
+                        <!-- Search -->
+                        <div class="relative">
+                            <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <input 
+                                type="text" 
+                                v-model="searchQuery"
+                                placeholder="Search by pet, clinic, service..."
+                                class="w-full pl-10 pr-3 py-2 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                            />
+                        </div>
+
+                        <!-- Pet Filter -->
+                        <select 
+                            v-model="selectedPetId" 
+                            @change="applyFilters"
+                            class="border border-input bg-background px-3 py-2 text-sm ring-offset-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                        >
+                            <option value="">All Pets</option>
+                            <option v-for="pet in userPets" :key="pet.id" :value="pet.id">
+                                {{ pet.name }}
+                            </option>
+                        </select>
+
+                        <!-- Date Range Filter -->
+                        <select 
+                            v-model="selectedDateFilter" 
+                            @change="applyFilters"
+                            class="border border-input bg-background px-3 py-2 text-sm ring-offset-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                        >
+                            <option value="last_month">Last Month</option>
+                            <option value="last_3_months">Last 3 Months</option>
+                            <option value="last_6_months">Last 6 Months</option>
+                            <option value="last_year">Last Year</option>
+                            <option value="all_time">All Time</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- History Content -->
+            <div class="rounded-lg border bg-card">
                 <div class="p-6">
-                    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
-                        <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Booking History</h2>
-                        <div class="flex flex-col sm:flex-row gap-2">
-                            <select 
-                                v-model="selectedPetId" 
-                                @change="applyFilters"
-                                class="px-3 py-2 border border-gray-300 rounded-md text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+                    <!-- Category Tabs -->
+                    <div class="mb-6">
+                        <div class="flex items-center gap-2 bg-muted rounded-lg p-1 flex-wrap">
+                            <button
+                                @click="setActiveCategory('all')"
+                                :class="[
+                                    'px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
+                                    activeCategory === 'all' 
+                                        ? 'bg-background shadow-sm' 
+                                        : 'text-muted-foreground hover:text-foreground'
+                                ]"
                             >
-                                <option value="">All Pets</option>
-                                <option v-for="pet in userPets" :key="pet.id" :value="pet.id">
-                                    {{ pet.name }}
-                                </option>
-                            </select>
-                            <select 
-                                v-model="selectedDateFilter" 
-                                @change="applyFilters"
-                                class="px-3 py-2 border border-gray-300 rounded-md text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+                                All ({{ categoryCounts.all }})
+                            </button>
+                            <button
+                                @click="setActiveCategory('completed')"
+                                :class="[
+                                    'px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
+                                    activeCategory === 'completed' 
+                                        ? 'bg-background shadow-sm' 
+                                        : 'text-muted-foreground hover:text-foreground'
+                                ]"
                             >
-                                <option value="last_month">Last Month</option>
-                                <option value="last_3_months">Last 3 Months</option>
-                                <option value="last_6_months">Last 6 Months</option>
-                                <option value="last_year">Last Year</option>
-                                <option value="all_time">All Time</option>
-                            </select>
-                            <button 
-                                @click="exportHistory"
-                                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium whitespace-nowrap"
+                                Completed ({{ categoryCounts.completed }})
+                            </button>
+                            <button
+                                @click="setActiveCategory('cancelled')"
+                                :class="[
+                                    'px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
+                                    activeCategory === 'cancelled' 
+                                        ? 'bg-background shadow-sm' 
+                                        : 'text-muted-foreground hover:text-foreground'
+                                ]"
                             >
-                                Export History
+                                Cancelled ({{ categoryCounts.cancelled }})
+                            </button>
+                            <button
+                                @click="setActiveCategory('no_show')"
+                                :class="[
+                                    'px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
+                                    activeCategory === 'no_show' 
+                                        ? 'bg-background shadow-sm' 
+                                        : 'text-muted-foreground hover:text-foreground'
+                                ]"
+                            >
+                                No Show ({{ categoryCounts.no_show }})
                             </button>
                         </div>
                     </div>
-                    
-                    <!-- Category Navigation -->
-                    <div class="mb-6">
-                        <NavigationMenu class="w-full">
-                            <NavigationMenuList class="flex space-x-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
-                                <NavigationMenuItem>
-                                    <NavigationMenuLink
-                                        as="button"
-                                        @click="setActiveCategory('all')"
-                                        :class="[
-                                            'px-4 py-2 rounded-md text-sm font-medium transition-colors',
-                                            activeCategory === 'all' 
-                                                ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm' 
-                                                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
-                                        ]"
-                                    >
-                                        All ({{ categoryCounts.all }})
-                                    </NavigationMenuLink>
-                                </NavigationMenuItem>
-                                <NavigationMenuItem>
-                                    <NavigationMenuLink
-                                        as="button"
-                                        @click="setActiveCategory('completed')"
-                                        :class="[
-                                            'px-4 py-2 rounded-md text-sm font-medium transition-colors',
-                                            activeCategory === 'completed' 
-                                                ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm' 
-                                                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
-                                        ]"
-                                    >
-                                        Completed ({{ categoryCounts.completed }})
-                                    </NavigationMenuLink>
-                                </NavigationMenuItem>
-                                <NavigationMenuItem>
-                                    <NavigationMenuLink
-                                        as="button"
-                                        @click="setActiveCategory('cancelled')"
-                                        :class="[
-                                            'px-4 py-2 rounded-md text-sm font-medium transition-colors',
-                                            activeCategory === 'cancelled' 
-                                                ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm' 
-                                                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
-                                        ]"
-                                    >
-                                        Cancelled ({{ categoryCounts.cancelled }})
-                                    </NavigationMenuLink>
-                                </NavigationMenuItem>
-                                <NavigationMenuItem>
-                                    <NavigationMenuLink
-                                        as="button"
-                                        @click="setActiveCategory('no_show')"
-                                        :class="[
-                                            'px-4 py-2 rounded-md text-sm font-medium transition-colors',
-                                            activeCategory === 'no_show' 
-                                                ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm' 
-                                                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
-                                        ]"
-                                    >
-                                        No Show ({{ categoryCounts.no_show }})
-                                    </NavigationMenuLink>
-                                </NavigationMenuItem>
-                            </NavigationMenuList>
-                        </NavigationMenu>
-                    </div>
-                    
+
                     <!-- Appointments List -->
-                    <div class="space-y-4">
-                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
-                            {{ activeCategory === 'all' ? 'All History' : 
-                               activeCategory === 'completed' ? 'Completed Appointments' :
-                               activeCategory === 'cancelled' ? 'Cancelled Appointments' :
-                               'No Show Appointments' }}
-                        </h3>
-                        
-                        <!-- Dynamic Appointments -->
+                    <div class="space-y-3">
                         <div 
                             v-for="appointment in filteredAppointments" 
                             :key="appointment.id"
-                            class="border border-gray-200 dark:border-gray-600 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                            :class="{ 'opacity-75': appointment.status === 'cancelled' }"
+                            @click="viewDetails(appointment.id)"
+                            class="border rounded-lg p-4 hover:bg-muted/50 transition-all cursor-pointer group"
                         >
-                            <div class="flex items-start justify-between">
-                                <div class="flex-1">
-                                    <div class="flex items-center gap-3 mb-2">
-                                        <h4 class="font-medium text-gray-900 dark:text-gray-100">
+                            <div class="flex items-start justify-between gap-4">
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-3 mb-3 flex-wrap">
+                                        <h4 class="font-semibold text-foreground truncate">
                                             {{ appointment.pet?.name }} - {{ getAppointmentTypeDisplay(appointment.type) }}
                                         </h4>
                                         <span 
-                                            class="px-2 py-1 text-xs font-medium rounded-full"
+                                            class="px-2.5 py-1 text-xs font-medium rounded-full whitespace-nowrap"
                                             :class="getStatusBadgeClass(appointment.status)"
                                         >
                                             {{ getStatusDisplay(appointment.status).text }}
                                         </span>
                                     </div>
                                     
-                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                                    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-sm">
                                         <div>
-                                            <p class="text-gray-600 dark:text-gray-400">Date & Time</p>
-                                            <p class="text-gray-900 dark:text-gray-100 font-medium">
-                                                {{ formatAppointmentDateTime(appointment.scheduled_at).date }} • {{ formatAppointmentDateTime(appointment.scheduled_at).time }}
+                                            <p class="text-muted-foreground text-xs mb-1">Clinic</p>
+                                            <p class="text-foreground font-medium">{{ appointment.clinic?.name }}</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-muted-foreground text-xs mb-1">Date & Time</p>
+                                            <p class="text-foreground font-medium">
+                                                {{ formatAppointmentDateTime(appointment.scheduled_at).date }} • 
+                                                {{ formatAppointmentDateTime(appointment.scheduled_at).time }}
                                             </p>
                                         </div>
-                                        <div>
-                                            <p class="text-gray-600 dark:text-gray-400">Clinic & Doctor</p>
-                                            <p class="text-gray-900 dark:text-gray-100 font-medium">{{ appointment.clinic?.name }}</p>
-                                            <p class="text-gray-600 dark:text-gray-400">{{ appointment.veterinarian?.name || 'Staff' }}</p>
-                                        </div>
-                                        <div>
-                                            <p class="text-gray-600 dark:text-gray-400">Cost</p>
-                                            <p class="text-gray-900 dark:text-gray-100 font-medium">{{ formatCurrency(appointment.actual_cost || appointment.estimated_cost || 0) }}</p>
+                                        <div v-if="appointment.actual_cost || appointment.estimated_cost">
+                                            <p class="text-muted-foreground text-xs mb-1">Cost</p>
+                                            <p class="text-foreground font-medium">
+                                                {{ formatCurrency(appointment.actual_cost || appointment.estimated_cost) }}
+                                            </p>
                                         </div>
                                     </div>
-                                    
-                                    <div 
-                                        v-if="appointment.notes"
-                                        class="mt-3 p-3 rounded-md"
-                                        :class="getNotesBgClass(appointment.status)"
-                                    >
-                                        <p 
-                                            class="text-sm"
-                                            :class="getNotesTextClass(appointment.status)"
-                                        >
-                                            <strong>Notes:</strong> {{ appointment.notes }}
-                                        </p>
+
+                                    <!-- Notes Section -->
+                                    <div v-if="appointment.notes" class="mt-3 p-3 rounded-md" :class="getNotesBgClass(appointment.status)">
+                                        <p class="text-xs font-medium mb-1" :class="getNotesTextClass(appointment.status)">Notes</p>
+                                        <p class="text-sm" :class="getNotesTextClass(appointment.status)">{{ appointment.notes }}</p>
                                     </div>
                                 </div>
                                 
-                                <div class="ml-4 flex flex-col gap-2">
-                                    <button 
-                                        @click="viewDetails(appointment.id)"
-                                        class="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-md hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800"
-                                    >
-                                        View Details
-                                    </button>
+                                <!-- Action Buttons -->
+                                <div class="flex flex-col gap-2 flex-shrink-0">
                                     <button 
                                         v-if="appointment.status === 'completed'"
-                                        class="px-3 py-1 bg-gray-100 text-gray-800 text-xs font-medium rounded-md hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                                        @click.stop
+                                        class="px-3 py-1.5 bg-muted hover:bg-muted/80 text-foreground text-xs font-medium rounded-md transition-colors whitespace-nowrap"
                                     >
-                                        Download Report
+                                        View Report
                                     </button>
                                     <button 
                                         v-if="appointment.status === 'cancelled'"
-                                        @click="rebookAppointment(appointment)"
-                                        class="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-md hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800"
+                                        @click.stop="rebookAppointment(appointment)"
+                                        class="px-3 py-1.5 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-medium rounded-md transition-colors whitespace-nowrap"
                                     >
                                         Rebook
                                     </button>
@@ -515,36 +508,49 @@ const rebookAppointment = (appointment?: Appointment) => {
                             </div>
                         </div>
                         
-                        <!-- No appointments message -->
+                        <!-- Empty State -->
                         <div 
                             v-if="filteredAppointments.length === 0"
-                            class="text-center py-8 text-gray-500 dark:text-gray-400"
+                            class="text-center py-12"
                         >
-                            <p v-if="categoryCounts.all === 0">No appointment history found.</p>
-                            <p v-else>No {{ activeCategory === 'all' ? '' : activeCategory }} appointments found for the selected filters.</p>
+                            <div class="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                                <svg class="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                            </div>
+                            <p class="text-muted-foreground font-medium mb-1">
+                                {{ categoryCounts.all === 0 ? 'No appointment history found' : 'No appointments match your filters' }}
+                            </p>
+                            <p class="text-sm text-muted-foreground">
+                                {{ categoryCounts.all === 0 ? 'Your booking history will appear here' : 'Try adjusting your search or filters' }}
+                            </p>
                         </div>
                     </div>
                     
-                    <!-- Load More / Pagination -->
-                    <div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-600">
-                        <div class="flex items-center justify-between">
-                            <p class="text-sm text-gray-600 dark:text-gray-400">
-                                Showing {{ appointments.from }} to {{ appointments.to }} of {{ appointments.total }} appointments
+                    <!-- Pagination -->
+                    <div v-if="categoryCounts.all > 0" class="mt-6 pt-6 border-t">
+                        <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                            <p class="text-sm text-muted-foreground">
+                                Showing <span class="font-medium text-foreground">{{ filteredAppointments.length > 0 ? 1 : 0 }}</span> to 
+                                <span class="font-medium text-foreground">{{ filteredAppointments.length }}</span> of 
+                                <span class="font-medium text-foreground">{{ categoryCounts.all }}</span> appointments
                             </p>
-                            <div class="flex gap-2">
+                            <div class="flex items-center gap-2">
                                 <button 
                                     v-if="appointments.current_page > 1"
                                     @click="previousPage"
-                                    class="px-3 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                                    class="flex items-center gap-1 px-3 py-2 border rounded-md hover:bg-muted transition-colors text-sm"
                                 >
+                                    <ChevronLeft class="h-4 w-4" />
                                     Previous
                                 </button>
                                 <button 
                                     v-if="appointments.current_page < appointments.last_page"
                                     @click="nextPage"
-                                    class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
+                                    class="flex items-center gap-1 px-3 py-2 border rounded-md hover:bg-muted transition-colors text-sm"
                                 >
                                     Next
+                                    <ChevronRight class="h-4 w-4" />
                                 </button>
                             </div>
                         </div>

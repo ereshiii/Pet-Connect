@@ -77,10 +77,16 @@ const showModal = ref(false);
 const showNewAppointmentModal = ref(false);
 const viewMode = ref<'calendar' | 'list'>('calendar');
 const currentView = ref('month');
+const calendarView = ref<'month' | 'week' | 'day'>('month');
+const currentMonth = ref(new Date());
+const currentWeek = ref(new Date());
+const currentDay = ref(new Date());
 const showFilterDropdown = ref(false);
-const filterBy = ref<'all' | 'scheduled' | 'pending' | 'today' | 'week'>(
+const filterBy = ref<'all' | 'scheduled' | 'pending' | 'confirmed' | 'in_progress' | 'pending_completion' | 'today' | 'week'>(
     props.filters?.status === 'scheduled' ? 'scheduled' :
     props.filters?.status === 'pending' ? 'pending' :
+    props.filters?.status === 'confirmed' ? 'confirmed' :
+    props.filters?.status === 'in_progress' ? 'in_progress' :
     'all'
 );
 
@@ -98,6 +104,10 @@ const getStatusColor = (status: string): string => {
             return 'bg-green-500';
         case 'pending':
             return 'bg-yellow-500';
+        case 'confirmed':
+            return 'bg-blue-500';
+        case 'in_progress':
+            return 'bg-indigo-500';
         case 'completed':
             return 'bg-purple-500';
         case 'cancelled':
@@ -113,11 +123,23 @@ const getStatusDisplayName = (status: string): string => {
     switch (status?.toLowerCase()) {
         case 'scheduled': return 'Scheduled';
         case 'pending': return 'Pending';
+        case 'confirmed': return 'Confirmed';
+        case 'in_progress': return 'In Progress';
         case 'completed': return 'Completed';
         case 'cancelled': return 'Cancelled';
         case 'no_show': return 'No Show';
         default: return 'Unknown';
     }
+};
+
+// Helper function to check if appointment is pending completion
+const isPendingCompletion = (appointment: any) => {
+    const now = new Date();
+    const appointmentDate = new Date(appointment.scheduled_at || appointment.date);
+    return appointmentDate < now && 
+           appointment.status !== 'completed' && 
+           appointment.status !== 'cancelled' &&
+           appointment.status !== 'no_show';
 };
 
 // Convert backend appointments to custom calendar format
@@ -162,20 +184,34 @@ const calendarEvents = computed((): CalendarEvent[] => {
         
         if (appointment.scheduled_at) {
             try {
-                const scheduledDateTime = new Date(appointment.scheduled_at);
-                appointmentDate = scheduledDateTime.toISOString().split('T')[0]; // YYYY-MM-DD
-                appointmentTime = scheduledDateTime.toLocaleTimeString('en-US', { 
-                    hour: 'numeric', 
-                    minute: '2-digit',
-                    hour12: true 
-                });
+                // Parse the date string as-is (it's already in Manila timezone from backend)
+                // Format: 'YYYY-MM-DD HH:mm:ss'
+                const dateStr = appointment.scheduled_at;
+                const [datePart, timePart] = dateStr.split(' ');
+                appointmentDate = datePart; // Already in YYYY-MM-DD format
+                
+                // Parse time for display
+                if (timePart) {
+                    const [hours, minutes] = timePart.split(':').map(Number);
+                    const period = hours >= 12 ? 'PM' : 'AM';
+                    const displayHours = hours % 12 || 12;
+                    appointmentTime = `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+                }
                 console.log(`Appointment ${appointment.id}: ${appointmentDate} at ${appointmentTime}`);
             } catch (error) {
                 console.error('Error parsing scheduled_at:', appointment.scheduled_at, error);
-                appointmentDate = new Date().toISOString().split('T')[0];
+                const today = new Date();
+                const year = today.getFullYear();
+                const month = String(today.getMonth() + 1).padStart(2, '0');
+                const day = String(today.getDate()).padStart(2, '0');
+                appointmentDate = `${year}-${month}-${day}`;
             }
         } else {
-            appointmentDate = new Date().toISOString().split('T')[0];
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            appointmentDate = `${year}-${month}-${day}`;
         }
         
         // Custom calendar event format
@@ -232,54 +268,49 @@ const appointmentStats = computed(() => ({
     total_appointments: props.stats.total_appointments || 0
 }));
 
-// Generate current week if not provided
-const currentWeek = computed(() => {
-    if (props.currentWeek) return props.currentWeek;
-    
-    const today = new Date();
-    const week = [];
-    const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - today.getDay());
-    
-    for (let i = 0; i < 7; i++) {
-        const date = new Date(startOfWeek);
-        date.setDate(startOfWeek.getDate() + i);
-        
-        week.push({
-            date: date.toISOString().split('T')[0],
-            formatted_date: date.toLocaleDateString(),
-            day_name: date.toLocaleDateString('en-US', { weekday: 'long' }),
-            day_short: date.toLocaleDateString('en-US', { weekday: 'short' }),
-            is_today: date.toDateString() === today.toDateString(),
-            is_weekend: date.getDay() === 0 || date.getDay() === 6
-        });
-    }
-    
-    return week;
-});
-
 // Filtered appointments based on current filter for custom calendar
 const filteredAppointments = computed(() => {
-    const today = new Date().toISOString().split('T')[0];
+    const todayDate = new Date();
+    const today = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, '0')}-${String(todayDate.getDate()).padStart(2, '0')}`;
     const weekFromNow = new Date();
     weekFromNow.setDate(weekFromNow.getDate() + 7);
-    const weekEnd = weekFromNow.toISOString().split('T')[0];
+    const weekEnd = `${weekFromNow.getFullYear()}-${String(weekFromNow.getMonth() + 1).padStart(2, '0')}-${String(weekFromNow.getDate()).padStart(2, '0')}`;
+
+    // Base filter: only show pending and scheduled appointments
+    const baseFiltered = calendarEvents.value.filter(event => 
+        event.status === 'scheduled' || event.status === 'pending'
+    );
 
     switch (filterBy.value) {
         case 'scheduled':
-            return calendarEvents.value.filter(event => event.status === 'scheduled');
+            return baseFiltered.filter(event => event.status === 'scheduled');
         case 'pending':
-            return calendarEvents.value.filter(event => event.status === 'pending');
-        case 'completed':
-            return calendarEvents.value.filter(event => event.status === 'completed');
-        case 'cancelled':
-            return calendarEvents.value.filter(event => event.status === 'cancelled');
+            return baseFiltered.filter(event => event.status === 'pending');
+        case 'confirmed':
+            return baseFiltered.filter(event => event.status === 'confirmed');
+        case 'in_progress':
+            return baseFiltered.filter(event => event.status === 'in_progress');
+        case 'pending_completion':
+            return baseFiltered.filter(event => {
+                const now = new Date();
+                const eventDate = new Date(event.date);
+                return eventDate < now && 
+                       event.status !== 'completed' && 
+                       event.status !== 'cancelled' &&
+                       event.status !== 'no_show';
+            });
         case 'today':
-            return calendarEvents.value.filter(event => event.date === today);
+            return baseFiltered.filter(event => {
+                const eventDate = new Date(event.date);
+                const todayDate = new Date(today);
+                return eventDate.getFullYear() === todayDate.getFullYear() &&
+                       eventDate.getMonth() === todayDate.getMonth() &&
+                       eventDate.getDate() === todayDate.getDate();
+            });
         case 'week':
-            return calendarEvents.value.filter(event => event.date >= today && event.date <= weekEnd);
+            return baseFiltered.filter(event => event.date >= today && event.date <= weekEnd);
         default:
-            return calendarEvents.value;
+            return baseFiltered;
     }
 });
 
@@ -304,6 +335,29 @@ const onDateDoubleClick = (date: string) => {
 const onMonthChange = (year: number, month: number) => {
     // Update calendar view when month changes
     currentView.value = 'month';
+    
+    // Fetch appointments for the new month
+    const startDate = new Date(year, month, 1);
+    const endDate = new Date(year, month + 1, 0, 23, 59, 59);
+    
+    // Format dates as YYYY-MM-DD HH:mm:ss
+    const formatDateTime = (date: Date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    };
+    
+    router.get('/calendar', {
+        start_date: formatDateTime(startDate),
+        end_date: formatDateTime(endDate)
+    }, {
+        preserveState: true,
+        preserveScroll: true,
+    });
 };
 
 // Navigation methods
@@ -347,8 +401,11 @@ const getFilterLabel = (filter: string): string => {
         case 'all': return 'All Appointments';
         case 'today': return 'Today';
         case 'week': return 'This Week';
-        case 'scheduled': return 'Scheduled';
         case 'pending': return 'Pending';
+        case 'confirmed': return 'Confirmed';
+        case 'in_progress': return 'In Progress';
+        case 'pending_completion': return 'Pending for Completion';
+        case 'scheduled': return 'Scheduled';
         case 'completed': return 'Completed';
         case 'cancelled': return 'Cancelled';
         default: return 'All Appointments';
@@ -480,12 +537,182 @@ const getStatusTextColor = (status?: string) => {
     }
 };
 
+// Format displays for calendar views
+const formatMonthYear = computed(() => {
+    return currentMonth.value.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+});
+
+const formatWeekRange = computed(() => {
+    const startOfWeek = new Date(currentWeek.value);
+    startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(endOfWeek.getDate() + 6);
+    return `${startOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+});
+
+const formatDayDate = computed(() => {
+    return currentDay.value.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+});
+
+// Get calendar days for month view
+const calendarDays = computed(() => {
+    const year = currentMonth.value.getFullYear();
+    const month = currentMonth.value.getMonth();
+    
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay();
+    
+    const days: Array<{
+        date: Date;
+        isCurrentMonth: boolean;
+        appointments: typeof props.appointments;
+    }> = [];
+    
+    // Previous month days
+    const prevMonthLastDay = new Date(year, month, 0).getDate();
+    for (let i = startingDayOfWeek - 1; i >= 0; i--) {
+        const date = new Date(year, month - 1, prevMonthLastDay - i);
+        days.push({
+            date,
+            isCurrentMonth: false,
+            appointments: []
+        });
+    }
+    
+    // Current month days
+    for (let i = 1; i <= daysInMonth; i++) {
+        const date = new Date(year, month, i);
+        const dateStr = date.toISOString().split('T')[0];
+        const dayAppointments = calendarEvents.value.filter(event => event.date === dateStr);
+        days.push({
+            date,
+            isCurrentMonth: true,
+            appointments: dayAppointments as any
+        });
+    }
+    
+    // Next month days
+    const remainingDays = 42 - days.length;
+    for (let i = 1; i <= remainingDays; i++) {
+        const date = new Date(year, month + 1, i);
+        days.push({
+            date,
+            isCurrentMonth: false,
+            appointments: []
+        });
+    }
+    
+    return days;
+});
+
+// Week view days
+const weekDays = computed(() => {
+    const startOfWeek = new Date(currentWeek.value);
+    startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+    
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+        const date = new Date(startOfWeek);
+        date.setDate(date.getDate() + i);
+        const dateStr = date.toISOString().split('T')[0];
+        const dayAppointments = calendarEvents.value.filter(event => event.date === dateStr);
+        days.push({
+            date,
+            appointments: dayAppointments as any
+        });
+    }
+    
+    return days;
+});
+
+// Day view hour slots
+const hourSlots = computed(() => {
+    const slots = [];
+    const dateStr = currentDay.value.toISOString().split('T')[0];
+    const dayAppointments = calendarEvents.value.filter(event => event.date === dateStr);
+    
+    for (let hour = 0; hour < 24; hour++) {
+        const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+        const period = hour < 12 ? 'AM' : 'PM';
+        const displayTime = `${displayHour}:00 ${period}`;
+        
+        const slotAppointments = dayAppointments.filter(event => {
+            if (!event.time) return false;
+            const eventHour = parseInt(event.time.split(':')[0]);
+            return eventHour === hour;
+        });
+        
+        slots.push({
+            hour,
+            displayTime,
+            appointments: slotAppointments as any
+        });
+    }
+    
+    return slots;
+});
+
+// Navigation methods
+const previousMonth = () => {
+    currentMonth.value = new Date(currentMonth.value.getFullYear(), currentMonth.value.getMonth() - 1, 1);
+    // Trigger month change to fetch new appointments
+    onMonthChange(currentMonth.value.getFullYear(), currentMonth.value.getMonth());
+};
+
+const nextMonth = () => {
+    currentMonth.value = new Date(currentMonth.value.getFullYear(), currentMonth.value.getMonth() + 1, 1);
+    // Trigger month change to fetch new appointments
+    onMonthChange(currentMonth.value.getFullYear(), currentMonth.value.getMonth());
+};
+
+const previousWeek = () => {
+    const newDate = new Date(currentWeek.value);
+    newDate.setDate(newDate.getDate() - 7);
+    currentWeek.value = newDate;
+};
+
+const nextWeek = () => {
+    const newDate = new Date(currentWeek.value);
+    newDate.setDate(newDate.getDate() + 7);
+    currentWeek.value = newDate;
+};
+
+const previousDay = () => {
+    const newDate = new Date(currentDay.value);
+    newDate.setDate(newDate.getDate() - 1);
+    currentDay.value = newDate;
+};
+
+const nextDay = () => {
+    const newDate = new Date(currentDay.value);
+    newDate.setDate(newDate.getDate() + 1);
+    currentDay.value = newDate;
+};
+
+const goToToday = () => {
+    currentMonth.value = new Date();
+    currentWeek.value = new Date();
+    currentDay.value = new Date();
+    // Reload appointments for current month
+    onMonthChange(currentMonth.value.getFullYear(), currentMonth.value.getMonth());
+};
+
+const isToday = (date: Date) => {
+    const today = new Date();
+    return date.getDate() === today.getDate() &&
+           date.getMonth() === today.getMonth() &&
+           date.getFullYear() === today.getFullYear();
+};
+
 // Get count of appointments for each filter
 const getFilterCount = (filterKey: string) => {
     const today = new Date().toISOString().split('T')[0];
     const weekFromNow = new Date();
     weekFromNow.setDate(weekFromNow.getDate() + 7);
     const weekEnd = weekFromNow.toISOString().split('T')[0];
+    const now = new Date();
 
     switch (filterKey) {
         case 'all':
@@ -494,10 +721,22 @@ const getFilterCount = (filterKey: string) => {
             return calendarEvents.value.filter(event => event.date === today).length;
         case 'week':
             return calendarEvents.value.filter(event => event.date >= today && event.date <= weekEnd).length;
-        case 'scheduled':
-            return calendarEvents.value.filter(event => event.status === 'scheduled').length;
         case 'pending':
             return calendarEvents.value.filter(event => event.status === 'pending').length;
+        case 'confirmed':
+            return calendarEvents.value.filter(event => event.status === 'confirmed').length;
+        case 'in_progress':
+            return calendarEvents.value.filter(event => event.status === 'in_progress').length;
+        case 'pending_completion':
+            return calendarEvents.value.filter(event => {
+                const eventDate = new Date(event.date);
+                return eventDate < now && 
+                       event.status !== 'completed' && 
+                       event.status !== 'cancelled' &&
+                       event.status !== 'no_show';
+            }).length;
+        case 'scheduled':
+            return calendarEvents.value.filter(event => event.status === 'scheduled').length;
         case 'completed':
             return calendarEvents.value.filter(event => event.status === 'completed').length;
         case 'cancelled':
@@ -509,19 +748,19 @@ const getFilterCount = (filterKey: string) => {
 </script>
 
 <template>
-    <Head title="Appointment Calendar" />
+    <Head title="Appointments" />
     
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
             <!-- Header with Stats -->
-            <div class="bg-white dark:bg-gray-800 rounded-xl border border-sidebar-border/70 dark:border-sidebar-border p-6">
+            <div class="rounded-lg border bg-card p-6">
                 <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
                     <div>
-                        <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2 flex items-center gap-2">
-                            <CalendarIcon class="h-6 w-6 text-blue-600" />
-                            Appointment Calendar
+                        <h1 class="text-2xl font-semibold mb-2 flex items-center gap-2">
+                            <CalendarIcon class="h-6 w-6 text-primary" />
+                            Appointments
                         </h1>
-                        <p class="text-gray-600 dark:text-gray-400">
+                        <p class="text-muted-foreground">
                             Manage and view your clinic appointments
                         </p>
                     </div>
@@ -529,20 +768,20 @@ const getFilterCount = (filterKey: string) => {
                     <!-- Control Panel -->
                     <div class="flex flex-col gap-3 mt-4 md:mt-0">
                         <!-- View Toggle -->
-                        <div class="flex gap-2">
+                        <div class="flex items-center gap-2 bg-muted rounded-md p-1">
                             <button @click="toggleView" 
-                                    :class="['px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2',
+                                    :class="['px-3 py-1 text-sm rounded transition-colors flex items-center gap-2',
                                             viewMode === 'calendar' 
-                                                ? 'bg-blue-600 text-white' 
-                                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600']">
+                                                ? 'bg-background shadow-sm font-medium' 
+                                                : 'text-muted-foreground']">
                                 <CalendarIcon class="h-4 w-4" />
                                 Calendar
                             </button>
                             <button @click="toggleView" 
-                                    :class="['px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2',
+                                    :class="['px-3 py-1 text-sm rounded transition-colors flex items-center gap-2',
                                             viewMode === 'list' 
-                                                ? 'bg-blue-600 text-white' 
-                                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600']">
+                                                ? 'bg-background shadow-sm font-medium' 
+                                                : 'text-muted-foreground']">
                                 <Users class="h-4 w-4" />
                                 List
                             </button>
@@ -552,7 +791,7 @@ const getFilterCount = (filterKey: string) => {
                         <div class="relative filter-dropdown">
                             <button 
                                 @click="toggleFilterDropdown"
-                                class="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-md text-sm font-medium transition-colors flex items-center gap-2 w-full justify-between"
+                                class="px-4 py-2 bg-muted hover:bg-muted/80 rounded-md text-sm font-medium transition-colors flex items-center gap-2 w-full justify-between"
                             >
                                 <div class="flex items-center gap-2">
                                     <Filter class="h-4 w-4" />
@@ -563,21 +802,22 @@ const getFilterCount = (filterKey: string) => {
                             
                             <!-- Dropdown Menu -->
                             <div v-if="showFilterDropdown" 
-                                 class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                                 class="absolute right-0 mt-2 w-48 bg-card rounded-md shadow-lg border z-50">
                                 <div class="py-1">
                                     <button v-for="filter in [
                                         { key: 'all', label: 'All Appointments', color: 'bg-gray-600' },
                                         { key: 'today', label: 'Today', color: 'bg-blue-600' },
                                         { key: 'week', label: 'This Week', color: 'bg-blue-500' },
-                                        { key: 'scheduled', label: 'Scheduled', color: 'bg-green-600' },
                                         { key: 'pending', label: 'Pending', color: 'bg-yellow-600' },
-                                        { key: 'completed', label: 'Completed', color: 'bg-indigo-600' },
-                                        { key: 'cancelled', label: 'Cancelled', color: 'bg-red-600' }
+                                        { key: 'confirmed', label: 'Confirmed', color: 'bg-blue-600' },
+                                        { key: 'in_progress', label: 'In Progress', color: 'bg-indigo-600' },
+                                        { key: 'pending_completion', label: 'Pending for Completion', color: 'bg-orange-600' },
+                                        { key: 'scheduled', label: 'Scheduled', color: 'bg-green-600' }
                                     ]" :key="filter.key"
                                             @click="selectFilter(filter.key)"
                                             :class="[
-                                                'w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3',
-                                                filterBy === filter.key ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'
+                                                'w-full text-left px-4 py-2 text-sm hover:bg-muted flex items-center gap-3',
+                                                filterBy === filter.key ? 'bg-primary/10 text-primary' : 'text-foreground'
                                             ]">
                                         <!-- Status icons -->
                                         <Filter v-if="filter.key === 'all'" class="h-4 w-4" />
@@ -587,7 +827,10 @@ const getFilterCount = (filterKey: string) => {
                                             'w-2 h-2 rounded-full inline-block',
                                             filter.key === 'scheduled' ? 'bg-green-400' :
                                             filter.key === 'pending' ? 'bg-yellow-400' :
-                                            filter.key === 'completed' ? 'bg-indigo-400' :
+                                            filter.key === 'confirmed' ? 'bg-blue-400' :
+                                            filter.key === 'in_progress' ? 'bg-indigo-400 animate-pulse' :
+                                            filter.key === 'pending_completion' ? 'bg-orange-400' :
+                                            filter.key === 'completed' ? 'bg-purple-400' :
                                             filter.key === 'cancelled' ? 'bg-red-400' : 'bg-gray-400'
                                         ]"></span>
                                         
@@ -595,7 +838,7 @@ const getFilterCount = (filterKey: string) => {
                                         
                                         <!-- Count badge -->
                                         <span v-if="getFilterCount(filter.key) > 0" 
-                                              class="bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 text-xs px-2 py-0.5 rounded-full">
+                                              class="bg-muted text-muted-foreground text-xs px-2 py-0.5 rounded-full">
                                             {{ getFilterCount(filter.key) }}
                                         </span>
                                     </button>
@@ -604,78 +847,237 @@ const getFilterCount = (filterKey: string) => {
                         </div>
                     </div>
                 </div>
-
-                <!-- Enhanced Stats Grid -->
-                <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
-                    <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border-l-4 border-blue-500">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm font-medium text-blue-600 dark:text-blue-400">Today</p>
-                                <p class="text-2xl font-bold text-blue-700 dark:text-blue-300">{{ stats.today }}</p>
-                            </div>
-                            <Clock class="h-8 w-8 text-blue-500" />
-                        </div>
-                    </div>
-                    
-                    <div class="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border-l-4 border-green-500">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm font-medium text-green-600 dark:text-green-400">This Week</p>
-                                <p class="text-2xl font-bold text-green-700 dark:text-green-300">{{ stats.thisWeek }}</p>
-                            </div>
-                            <Users class="h-8 w-8 text-green-500" />
-                        </div>
-                    </div>
-
-                    <div class="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg border-l-4 border-orange-500">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm font-medium text-orange-600 dark:text-orange-400">Scheduled</p>
-                                <p class="text-2xl font-bold text-orange-700 dark:text-orange-300">{{ stats.scheduled }}</p>
-                            </div>
-                            <Eye class="h-8 w-8 text-orange-500" />
-                        </div>
-                    </div>
-
-                    <div class="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg border-l-4 border-purple-500">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm font-medium text-purple-600 dark:text-purple-400">Pending</p>
-                                <p class="text-2xl font-bold text-purple-700 dark:text-purple-300">{{ stats.pending }}</p>
-                            </div>
-                            <Settings class="h-8 w-8 text-purple-500" />
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <!-- Calendar/List View Container -->
-            <div class="bg-white dark:bg-gray-800 rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
+            <div class="rounded-lg border bg-card">
                 <!-- Calendar View -->
-                <div v-if="viewMode === 'calendar'" class="p-6">
-                    
-                    <Calendar
-                        ref="calendarRef"
-                        :events="filteredAppointments"
-                        :show-events="true"
-                        :show-weekends="true"
-                        :highlight-today="true"
-                        :selectable="true"
-                        :max-events-per-day="3"
-                        :initial-date="selectedDate || new Date().toISOString().split('T')[0]"
-                        :theme="'professional'"
-                        :size="'medium'"
-                        @event-click="onEventClick"
-                        @date-select="onDateSelect"
-                        @day-double-click="onDateDoubleClick"
-                        @month-change="onMonthChange"
-                        class="user-appointment-calendar"
-                    />
+                <div v-if="viewMode === 'calendar'">
+                    <!-- Calendar Header -->
+                    <div class="p-3 sm:p-4 md:p-6 border-b">
+                        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
+                                <!-- Calendar View Toggle -->
+                                <div class="flex items-center gap-0.5 sm:gap-1 bg-muted rounded-md p-0.5 sm:p-1">
+                                    <button 
+                                        @click="calendarView = 'month'"
+                                        class="px-2 sm:px-3 py-1 text-[10px] sm:text-xs rounded transition-colors whitespace-nowrap"
+                                        :class="calendarView === 'month' ? 'bg-background shadow-sm font-medium' : 'text-muted-foreground'"
+                                    >
+                                        Month
+                                    </button>
+                                    <button 
+                                        @click="calendarView = 'week'"
+                                        class="px-2 sm:px-3 py-1 text-[10px] sm:text-xs rounded transition-colors whitespace-nowrap"
+                                        :class="calendarView === 'week' ? 'bg-background shadow-sm font-medium' : 'text-muted-foreground'"
+                                    >
+                                        Week
+                                    </button>
+                                    <button 
+                                        @click="calendarView = 'day'"
+                                        class="px-2 sm:px-3 py-1 text-[10px] sm:text-xs rounded transition-colors whitespace-nowrap"
+                                        :class="calendarView === 'day' ? 'bg-background shadow-sm font-medium' : 'text-muted-foreground'"
+                                    >
+                                        Day
+                                    </button>
+                                </div>
+                                
+                                <h2 class="text-sm sm:text-base md:text-lg font-semibold truncate max-w-full">
+                                    <span v-if="calendarView === 'month'">{{ formatMonthYear }}</span>
+                                    <span v-else-if="calendarView === 'week'">{{ formatWeekRange }}</span>
+                                    <span v-else>{{ formatDayDate }}</span>
+                                </h2>
+                            </div>
+                            
+                            <div class="flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto justify-end">
+                                <button 
+                                    @click="goToToday"
+                                    class="px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm border rounded-md hover:bg-muted transition-colors whitespace-nowrap"
+                                >
+                                    Today
+                                </button>
+                                <button 
+                                    @click="calendarView === 'month' ? previousMonth() : calendarView === 'week' ? previousWeek() : previousDay()"
+                                    class="p-1 sm:p-2 border rounded-md hover:bg-muted transition-colors"
+                                >
+                                    <ChevronLeft class="h-3 w-3 sm:h-4 sm:w-4" />
+                                </button>
+                                <button 
+                                    @click="calendarView === 'month' ? nextMonth() : calendarView === 'week' ? nextWeek() : nextDay()"
+                                    class="p-1 sm:p-2 border rounded-md hover:bg-muted transition-colors"
+                                >
+                                    <ChevronRight class="h-3 w-3 sm:h-4 sm:w-4" />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Month View -->
+                    <div v-if="calendarView === 'month'" class="p-2 sm:p-3 md:p-4">
+                        <!-- Day Headers -->
+                        <div class="grid grid-cols-7 gap-1 sm:gap-2 mb-2">
+                            <div class="text-center text-[10px] sm:text-xs md:text-sm font-medium text-muted-foreground p-1 sm:p-2">Sun</div>
+                            <div class="text-center text-[10px] sm:text-xs md:text-sm font-medium text-muted-foreground p-1 sm:p-2">Mon</div>
+                            <div class="text-center text-[10px] sm:text-xs md:text-sm font-medium text-muted-foreground p-1 sm:p-2">Tue</div>
+                            <div class="text-center text-[10px] sm:text-xs md:text-sm font-medium text-muted-foreground p-1 sm:p-2">Wed</div>
+                            <div class="text-center text-[10px] sm:text-xs md:text-sm font-medium text-muted-foreground p-1 sm:p-2">Thu</div>
+                            <div class="text-center text-[10px] sm:text-xs md:text-sm font-medium text-muted-foreground p-1 sm:p-2">Fri</div>
+                            <div class="text-center text-[10px] sm:text-xs md:text-sm font-medium text-muted-foreground p-1 sm:p-2">Sat</div>
+                        </div>
+
+                        <!-- Calendar Days -->
+                        <div class="grid grid-cols-7 gap-1 sm:gap-2">
+                            <div 
+                                v-for="(day, index) in calendarDays" 
+                                :key="index"
+                                @click="onDateSelect(day.date.toISOString().split('T')[0])"
+                                class="min-h-[80px] sm:min-h-[100px] md:min-h-[120px] border rounded-lg p-1 sm:p-1.5 md:p-2 transition-colors cursor-pointer"
+                                :class="{
+                                    'bg-muted/50': !day.isCurrentMonth,
+                                    'bg-card': day.isCurrentMonth,
+                                    'border-primary border-2': isToday(day.date),
+                                    'hover:bg-muted/30': day.isCurrentMonth
+                                }"
+                            >
+                                <div class="text-[10px] sm:text-xs md:text-sm font-medium mb-0.5 sm:mb-1"
+                                    :class="{
+                                        'text-muted-foreground/50': !day.isCurrentMonth,
+                                        'text-primary font-bold': isToday(day.date)
+                                    }"
+                                >
+                                    {{ day.date.getDate() }}
+                                </div>
+                                
+                                <!-- Appointments for this day -->
+                                <div class="space-y-0.5 sm:space-y-1">
+                                    <div 
+                                        v-for="appointment in day.appointments.slice(0, 3)" 
+                                        :key="appointment.id"
+                                        @click.stop="goToAppointmentDetails(appointment.id)"
+                                        class="text-[9px] sm:text-[10px] md:text-xs p-0.5 sm:p-1 rounded cursor-pointer hover:opacity-80 transition-opacity"
+                                        :class="[
+                                            appointment.status === 'scheduled' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
+                                            appointment.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' :
+                                            'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+                                        ]"
+                                    >
+                                        <div class="font-medium truncate">{{ appointment.time || formatTime(appointment.date) }}</div>
+                                        <div class="truncate hidden sm:block">{{ appointment.metadata?.petName || appointment.title }}</div>
+                                    </div>
+                                    
+                                    <!-- Show more indicator -->
+                                    <div 
+                                        v-if="day.appointments.length > 3"
+                                        class="text-[9px] sm:text-xs text-muted-foreground pl-0.5 sm:pl-1"
+                                    >
+                                        +{{ day.appointments.length - 3 }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Week View -->
+                    <div v-else-if="calendarView === 'week'" class="p-2 sm:p-3 md:p-4 overflow-x-auto">
+                        <div class="grid grid-cols-7 gap-1 sm:gap-2 md:gap-3 min-w-[700px] sm:min-w-0">
+                            <div 
+                                v-for="(day, index) in weekDays" 
+                                :key="index"
+                                class="border rounded-lg overflow-hidden min-w-[95px] sm:min-w-0"
+                                :class="{
+                                    'border-primary border-2': isToday(day.date)
+                                }"
+                            >
+                                <!-- Day Header -->
+                                <div class="bg-muted p-1 sm:p-1.5 md:p-2 text-center border-b">
+                                    <div class="text-[9px] sm:text-[10px] md:text-xs text-muted-foreground">
+                                        {{ day.date.toLocaleDateString('en-US', { weekday: 'short' }) }}
+                                    </div>
+                                    <div class="text-xs sm:text-sm md:text-base font-semibold mt-1"
+                                        :class="{
+                                            'text-primary': isToday(day.date)
+                                        }"
+                                    >
+                                        {{ day.date.getDate() }}
+                                    </div>
+                                </div>
+                                
+                                <!-- Appointments -->
+                                <div class="p-1 sm:p-1.5 md:p-2 space-y-1 sm:space-y-1.5 md:space-y-2 min-h-[200px] sm:min-h-[300px] md:min-h-[400px]">
+                                    <div 
+                                        v-for="appointment in day.appointments" 
+                                        :key="appointment.id"
+                                        @click="goToAppointmentDetails(appointment.id)"
+                                        class="text-[9px] sm:text-[10px] md:text-xs p-1 sm:p-1.5 md:p-2 rounded cursor-pointer hover:opacity-80 transition-opacity border"
+                                        :class="[
+                                            appointment.status === 'scheduled' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400 border-green-200' :
+                                            appointment.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400 border-yellow-200' :
+                                            'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400 border-blue-200'
+                                        ]"
+                                    >
+                                        <div class="font-semibold">{{ appointment.time }}</div>
+                                        <div class="truncate mt-0.5 sm:mt-1">{{ appointment.metadata?.petName || appointment.title }}</div>
+                                        <div class="truncate text-[8px] sm:text-[9px] md:text-[10px] opacity-75 mt-0.5 hidden sm:block">{{ appointment.metadata?.clinicName }}</div>
+                                    </div>
+                                    
+                                    <div v-if="day.appointments.length === 0" class="text-center py-4 sm:py-6 md:py-8 text-muted-foreground text-[10px] sm:text-xs">
+                                        No appointments
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Day View -->
+                    <div v-else class="p-2 sm:p-3 md:p-4">
+                        <div class="max-w-4xl mx-auto">
+                            <div class="space-y-1.5 sm:space-y-2">
+                                <div 
+                                    v-for="slot in hourSlots" 
+                                    :key="slot.hour"
+                                    class="flex gap-2 sm:gap-3 border-b pb-1.5 sm:pb-2"
+                                >
+                                    <!-- Time Column -->
+                                    <div class="w-14 sm:w-16 md:w-20 flex-shrink-0 pt-1 sm:pt-1.5 md:pt-2">
+                                        <div class="text-[10px] sm:text-xs md:text-sm font-medium text-muted-foreground">{{ slot.displayTime }}</div>
+                                    </div>
+                                    
+                                    <!-- Appointments Column -->
+                                    <div class="flex-1 min-h-[50px] sm:min-h-[60px]">
+                                        <div class="space-y-1.5 sm:space-y-2">
+                                            <div 
+                                                v-for="appointment in slot.appointments" 
+                                                :key="appointment.id"
+                                                @click="goToAppointmentDetails(appointment.id)"
+                                                class="p-2 sm:p-2.5 md:p-3 rounded-lg cursor-pointer hover:shadow-md transition-all border"
+                                                :class="[
+                                                    appointment.status === 'scheduled' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400 border-green-200' :
+                                                    appointment.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400 border-yellow-200' :
+                                                    'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400 border-blue-200'
+                                                ]"
+                                            >
+                                                <div class="flex items-start justify-between gap-2">
+                                                    <div class="flex-1 min-w-0">
+                                                        <div class="font-semibold text-xs sm:text-sm md:text-base truncate">{{ appointment.metadata?.petName || appointment.title }}</div>
+                                                        <div class="text-[10px] sm:text-xs md:text-sm opacity-90 mt-0.5 sm:mt-1 truncate">{{ appointment.metadata?.clinicName }}</div>
+                                                        <div class="text-[9px] sm:text-[10px] md:text-xs opacity-75 mt-0.5 sm:mt-1 truncate">{{ appointment.metadata?.serviceName }}</div>
+                                                    </div>
+                                                    <div class="text-[10px] sm:text-xs md:text-sm font-medium whitespace-nowrap flex-shrink-0">
+                                                        {{ appointment.time }}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 
                 <!-- List View -->
                 <div v-else class="p-6">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                    <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
                         <Users class="h-5 w-5" />
                         Appointment List ({{ filteredAppointments.length }} appointments)
                     </h3>
@@ -683,7 +1085,7 @@ const getFilterCount = (filterKey: string) => {
                     <div class="space-y-3">
                         <div v-for="appointment in filteredAppointments" 
                              :key="appointment.id"
-                             class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors border-l-4 cursor-pointer appointment-list-item"
+                             class="flex items-center justify-between p-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors border-l-4 cursor-pointer appointment-list-item"
                              :class="{
                                 'border-l-green-500': appointment.status === 'scheduled',
                                 'border-l-yellow-500': appointment.status === 'pending',
@@ -694,7 +1096,7 @@ const getFilterCount = (filterKey: string) => {
                              @click="goToAppointmentDetails(appointment.id)">
                             <div class="flex-1">
                                 <div class="flex items-center gap-3 mb-2">
-                                    <h4 class="font-medium text-gray-900 dark:text-gray-100">
+                                    <h4 class="font-medium">
                                         {{ appointment.title }}
                                     </h4>
                                     <span :class="[
@@ -725,7 +1127,7 @@ const getFilterCount = (filterKey: string) => {
                                         {{ appointment.priority?.charAt(0).toUpperCase() + appointment.priority?.slice(1) }}
                                     </span>
                                 </div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600 dark:text-gray-400">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-muted-foreground">
                                     <p class="flex items-center gap-1">
                                         <CalendarIcon class="h-4 w-4" />
                                         {{ appointment.date }} {{ appointment.time ? 'at ' + appointment.time : '' }}
@@ -736,17 +1138,17 @@ const getFilterCount = (filterKey: string) => {
                                     </p>
                                 </div>
                                 <p v-if="appointment.description" 
-                                   class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                                   class="text-sm text-muted-foreground mt-2">
                                     {{ appointment.description }}
                                 </p>
                             </div>
                         </div>
                         
                         <div v-if="filteredAppointments.length === 0" 
-                             class="text-center py-8 text-gray-500 dark:text-gray-400">
+                             class="text-center py-8 text-muted-foreground">
                             <p>No appointments found for the selected filter.</p>
                             <button @click="filterBy = 'all'" 
-                                    class="mt-2 px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm">
+                                    class="mt-2 px-3 py-1 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 text-sm">
                                 Show All Appointments
                             </button>
                         </div>
@@ -760,9 +1162,9 @@ const getFilterCount = (filterKey: string) => {
              class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
              @click="closeModal">
             <div @click.stop 
-                 class="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+                 class="bg-card rounded-xl p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto border">
                 <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                    <h3 class="text-lg font-semibold">
                         {{ selectedEvent.title }}
                     </h3>
                     <div :class="[
@@ -802,11 +1204,11 @@ const getFilterCount = (filterKey: string) => {
                 
                 <div class="flex gap-2 mt-6">
                     <button @click="goToAppointmentDetails(selectedEvent.id)" 
-                            class="flex-1 bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 text-sm">
+                            class="flex-1 bg-primary text-primary-foreground py-2 rounded-md hover:bg-primary/90 text-sm">
                         View Details
                     </button>
                     <button @click="closeModal" 
-                            class="flex-1 border border-gray-300 text-gray-700 py-2 rounded-md hover:bg-gray-50 text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
+                            class="flex-1 border py-2 rounded-md hover:bg-muted text-sm">
                         Cancel
                     </button>
                 </div>

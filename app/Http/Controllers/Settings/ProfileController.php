@@ -21,7 +21,12 @@ class ProfileController extends Controller
     {
         $user = $request->user();
         
-        return Inertia::render('settings/Profile', [
+        // Determine which profile page to render based on user type
+        $page = $user->is_clinic || $user->account_type === 'clinic' 
+            ? '2clinicPages/settings/Profile' 
+            : 'settings/Profile';
+        
+        return Inertia::render($page, [
             'mustVerifyEmail' => $user instanceof MustVerifyEmail,
             'status' => $request->session()->get('status'),
             'user' => [
@@ -69,8 +74,12 @@ class ProfileController extends Controller
         ]);
 
         $request->validate([
-            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:4096',
+            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:10240',
             'remove' => 'nullable|boolean',
+        ], [
+            'photo.max' => 'The profile photo must not be larger than 10MB.',
+            'photo.image' => 'The file must be an image.',
+            'photo.mimes' => 'The profile photo must be a file of type: jpeg, png, jpg, gif, svg, webp.',
         ]);
 
         $user = $request->user();

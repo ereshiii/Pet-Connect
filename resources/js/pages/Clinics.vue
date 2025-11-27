@@ -6,7 +6,7 @@ import { clinics as clinicsRoute, viewMap, clinicDetails, booking } from '@/rout
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/vue3';
 import { ref, onMounted, onUnmounted, computed } from 'vue';
-import { Heart } from 'lucide-vue-next';
+import { Heart, MapPin, Phone, Star, Clock, Calendar } from 'lucide-vue-next';
 
 // Props interface
 interface Clinic {
@@ -48,17 +48,23 @@ interface Clinic {
     travel_time?: string;
     has_emergency_hours?: boolean;
     weekly_schedule?: any;
+    clinic_photo?: string | null;
+    gallery?: string[];
 }
 
 interface Props {
     clinics: Clinic[];
     featured_clinics: Clinic[];
+    favorited_clinics: Clinic[];
+    nearby_clinics: Clinic[];
     user_favorites?: number[];
 }
 
 const props = withDefaults(defineProps<Props>(), {
     clinics: () => [],
     featured_clinics: () => [],
+    favorited_clinics: () => [],
+    nearby_clinics: () => [],
     user_favorites: () => [],
 });
 
@@ -269,10 +275,8 @@ const filteredClinics = computed(() => {
                 switch (selectedStatus) {
                     case 'open':
                         return clinic.operating_status?.is_open || clinic.is_open;
-                    case 'closed':
-                        return !(clinic.operating_status?.is_open || clinic.is_open);
-                    case '24_7':
-                        return clinic.is_open_24_7;
+                    case 'emergency':
+                        return clinic.is_emergency_clinic === true;
                     default:
                         return true;
                 }
@@ -281,6 +285,40 @@ const filteredClinics = computed(() => {
     }
 
     return filtered;
+});
+
+// Computed properties for different clinic sections
+const favoritedClinics = computed(() => {
+    return props.favorited_clinics || [];
+});
+
+const nearbyClinics = computed(() => {
+    // If user has location and we have nearby clinics from backend, use those
+    if (userLocation.value && props.nearby_clinics && props.nearby_clinics.length > 0) {
+        return props.nearby_clinics;
+    }
+    // Otherwise, return clinics sorted by distance if available
+    if (userLocation.value) {
+        return [...props.clinics]
+            .filter(clinic => clinic.distance_km !== undefined && clinic.distance_km < 10)
+            .sort((a, b) => (a.distance_km || 0) - (b.distance_km || 0))
+            .slice(0, 6);
+    }
+    return [];
+});
+
+const otherClinics = computed(() => {
+    // Get IDs of featured, favorited, and nearby clinics
+    const featuredIds = new Set(featuredClinics.value.map(c => c.id));
+    const favoritedIds = new Set(favoritedClinics.value.map(c => c.id));
+    const nearbyIds = new Set(nearbyClinics.value.map(c => c.id));
+    
+    // Filter out clinics that are already in other sections
+    return filteredClinics.value.filter(clinic => 
+        !featuredIds.has(clinic.id) && 
+        !favoritedIds.has(clinic.id) && 
+        !nearbyIds.has(clinic.id)
+    );
 });
 
 // Navigation function
@@ -495,18 +533,18 @@ const getDistanceValue = (clinic: Clinic) => {
                     @requestLocation="requestLocation"
                 />
                 <!-- Featured Clinic Cards -->
-                <div class="bg-white rounded-xl border border-sidebar-border/70 dark:border-sidebar-border dark:bg-gray-800 p-3 sm:p-4 md:p-5 lg:p-6">
+                <div class="bg-gray-900 dark:bg-gray-900 rounded-xl border border-gray-800 dark:border-gray-700 p-3 sm:p-4 md:p-5 lg:p-6">
                     <div class="flex justify-between items-center mb-3 sm:mb-4">
-                        <h3 class="text-base sm:text-lg md:text-xl font-semibold text-gray-900 dark:text-gray-100">Featured Clinics</h3>
+                        <h3 class="text-base sm:text-lg md:text-xl font-semibold text-white">Featured Clinics</h3>
                         <div class="flex items-center gap-2">
                             <button 
                                 @click="prevSlide" 
                                 @mouseover="stopAutoScroll" 
                                 @mouseleave="startAutoScroll"
-                                class="p-2 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                class="p-2 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors"
                                 :disabled="featuredClinics.length <= 1"
                             >
-                                <svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                                 </svg>
                             </button>
@@ -514,10 +552,10 @@ const getDistanceValue = (clinic: Clinic) => {
                                 @click="nextSlide" 
                                 @mouseover="stopAutoScroll" 
                                 @mouseleave="startAutoScroll"
-                                class="p-2 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                class="p-2 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors"
                                 :disabled="featuredClinics.length <= 1"
                             >
-                                <svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                                 </svg>
                             </button>
@@ -534,22 +572,36 @@ const getDistanceValue = (clinic: Clinic) => {
                         >
                             <div v-for="(clinic, index) in featuredClinics" 
                                  :key="clinic.id"
-                                 class="w-full flex-shrink-0 bg-gray-50 dark:bg-gray-700 rounded-xl p-3 sm:p-4 md:p-5 lg:p-6 border border-gray-200 dark:border-gray-600">
+                                 @click="viewClinicDetails(clinic.id)"
+                                 class="w-full flex-shrink-0 bg-black rounded-2xl p-3 sm:p-4 md:p-5 lg:p-6 border border-gray-800 cursor-pointer hover:border-gray-700 transition-all shadow-xl">
                                 
-                                <!-- Clinic Image Placeholder -->
-                                <div :class="['w-full h-40 sm:h-48 md:h-52 lg:h-56 xl:h-60 max-h-60 rounded-xl mb-3 sm:mb-4 md:mb-5 flex items-center justify-center', getRandomColor(index).bg]">
-                                    <span :class="['text-base sm:text-lg md:text-xl lg:text-2xl font-medium text-center px-2', getRandomColor(index).text]">{{ clinic.name }}</span>
+                                <!-- Clinic Image -->
+                                <div class="w-full h-48 sm:h-56 md:h-64 lg:h-72 xl:h-80 rounded-xl mb-3 sm:mb-4 md:mb-5 overflow-hidden bg-gray-700">
+                                    <img v-if="clinic.clinic_photo" 
+                                         :src="clinic.clinic_photo" 
+                                         :alt="clinic.name"
+                                         class="w-full h-full object-cover" />
+                                    <div v-else-if="clinic.gallery && clinic.gallery.length > 0"
+                                         class="w-full h-full">
+                                        <img :src="clinic.gallery[0]" 
+                                             :alt="clinic.name"
+                                             class="w-full h-full object-cover" />
+                                    </div>
+                                    <div v-else 
+                                         :class="['w-full h-full flex items-center justify-center', getRandomColor(index).bg]">
+                                        <span :class="['text-base sm:text-lg md:text-xl lg:text-2xl font-medium text-center px-2', getRandomColor(index).text]">{{ clinic.name }}</span>
+                                    </div>
                                 </div>
                                 
-                                <h4 class="font-semibold text-gray-900 dark:text-gray-100 mb-2 sm:mb-3 md:mb-4 text-lg sm:text-xl md:text-2xl lg:text-2xl xl:text-3xl leading-tight">{{ clinic.name }}</h4>
+                                <h4 class="font-semibold text-white mb-2 sm:mb-3 md:mb-4 text-lg sm:text-xl md:text-2xl lg:text-2xl xl:text-3xl leading-tight">{{ clinic.name }}</h4>
                                 
                                 <!-- Location -->
                                 <div class="flex items-start mb-2 sm:mb-3">
-                                    <svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 dark:text-gray-400 mt-0.5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 mt-0.5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                                     </svg>
-                                    <p class="text-xs sm:text-sm md:text-base text-gray-600 dark:text-gray-400 leading-relaxed">{{ clinic.address }}</p>
+                                    <p class="text-xs sm:text-sm md:text-base text-gray-300 leading-relaxed">{{ clinic.address }}</p>
                                 </div>
 
                                 <!-- Rating and Reviews -->
@@ -557,26 +609,26 @@ const getDistanceValue = (clinic: Clinic) => {
                                     <div class="flex text-yellow-400 text-base sm:text-lg md:text-xl mr-1 sm:mr-2">
                                         {{ clinic.stars }}
                                     </div>
-                                    <span class="text-xs sm:text-sm md:text-base text-gray-600 dark:text-gray-400">({{ Number(clinic.rating || 0).toFixed(1) }})</span>
-                                    <span class="text-xs sm:text-sm text-gray-500 dark:text-gray-500">{{ clinic.total_reviews }} review{{ clinic.total_reviews !== 1 ? 's' : '' }}</span>
+                                    <span class="text-xs sm:text-sm md:text-base text-gray-300">({{ Number(clinic.rating || 0).toFixed(1) }})</span>
+                                    <span class="text-xs sm:text-sm text-gray-400">{{ clinic.total_reviews }} review{{ clinic.total_reviews !== 1 ? 's' : '' }}</span>
                                 </div>
 
                                 <!-- Services -->
                                 <div class="mb-3 sm:mb-4">
                                     <div class="flex items-center mb-1 sm:mb-2">
-                                        <svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 dark:text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5.291A7.962 7.962 0 0112 20c-4.411 0-8-3.589-8-8 0-1.201.264-2.34.74-3.37M8 4a8 8 0 018 8"/>
                                         </svg>
-                                        <span class="text-xs sm:text-sm md:text-base font-medium text-gray-700 dark:text-gray-300">Services:</span>
+                                        <span class="text-xs sm:text-sm md:text-base font-medium text-gray-300">Services:</span>
                                     </div>
                                     <div class="flex flex-wrap gap-1 sm:gap-2">
                                         <span v-for="(service, serviceIndex) in clinic.services.slice(0, maxServicesToShow)" 
                                               :key="serviceIndex"
-                                              class="inline-block bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-full">
+                                              class="inline-block bg-blue-900 text-blue-200 text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-full">
                                             {{ service }}
                                         </span>
                                         <span v-if="clinic.services.length > maxServicesToShow"
-                                              class="inline-block bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-full">
+                                              class="inline-block bg-gray-700 text-gray-300 text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-full">
                                             +{{ clinic.services.length - maxServicesToShow }} more
                                         </span>
                                     </div>
@@ -584,7 +636,7 @@ const getDistanceValue = (clinic: Clinic) => {
 
                                 <!-- Contact Info -->
                                 <div class="mb-3 sm:mb-4">
-                                    <div class="flex items-center text-xs sm:text-sm md:text-base text-gray-600 dark:text-gray-400">
+                                    <div class="flex items-center text-xs sm:text-sm md:text-base text-gray-300">
                                         <svg class="w-4 h-4 sm:w-5 sm:h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
                                         </svg>
@@ -592,31 +644,27 @@ const getDistanceValue = (clinic: Clinic) => {
                                     </div>
                                 </div>
                                 
-                                <div class="flex justify-between items-center mb-3 sm:mb-4 pt-2 sm:pt-3 border-t border-gray-200 dark:border-gray-600">
+                                <div class="flex justify-between items-center mb-3 sm:mb-4 pt-2 sm:pt-3 border-t border-gray-700">
                                     <div class="flex flex-col">
                                         <span :class="['text-xs sm:text-sm md:text-base font-medium', clinic.operating_status?.status_color || clinic.status_color]">
                                             {{ clinic.operating_status?.status || clinic.status }}
                                         </span>
-                                        <span v-if="clinic.operating_status?.message" class="text-xs text-gray-500 dark:text-gray-400">
+                                        <span v-if="clinic.operating_status?.message" class="text-xs text-gray-400">
                                             {{ clinic.operating_status.message }}
                                         </span>
                                     </div>
                                     <div class="flex flex-col items-end">
-                                        <span class="text-xs sm:text-sm md:text-base text-gray-600 dark:text-gray-400">{{ calculateDistance(clinic) }}</span>
-                                        <span v-if="clinic.travel_time" class="text-xs text-gray-500 dark:text-gray-400">
+                                        <span class="text-xs sm:text-sm md:text-base text-gray-300">{{ calculateDistance(clinic) }}</span>
+                                        <span v-if="clinic.travel_time" class="text-xs text-gray-400">
                                             {{ clinic.travel_time }}
                                         </span>
                                     </div>
                                 </div>
                                 
-                                <!-- Action Buttons -->
-                                <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                                    <button @click="viewClinicDetails(clinic.id)" 
-                                            class="flex-1 bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200 py-2 sm:py-3 px-3 sm:px-4 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-500 text-xs sm:text-sm md:text-base font-medium transition-colors">
-                                        View Details
-                                    </button>
-                                    <button @click="bookAppointment(clinic)" 
-                                            class="flex-1 bg-blue-600 text-white py-2 sm:py-3 px-3 sm:px-4 rounded-lg hover:bg-blue-700 text-xs sm:text-sm md:text-base font-medium transition-colors">
+                                <!-- Action Button -->
+                                <div class="flex">
+                                    <button @click.stop="bookAppointment(clinic)" 
+                                            class="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2 sm:py-3 px-3 sm:px-4 rounded-lg hover:from-blue-700 hover:to-purple-700 text-xs sm:text-sm md:text-base font-medium transition-all">
                                         Book Now
                                     </button>
                                 </div>
@@ -651,108 +699,267 @@ const getDistanceValue = (clinic: Clinic) => {
                 </div>
             </div>
             <div
-                class="relative min-h-[100vh] flex-1 rounded-xl border border-sidebar-border/70 md:min-h-min dark:border-sidebar-border bg-white dark:bg-gray-800"
+                class="relative min-h-[100vh] flex-1 rounded-xl border border-gray-800 md:min-h-min bg-gray-900"
             >
-                <!-- Nearby Clinics Section -->
-                <div class="p-6">
-                    <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                            {{ Object.values(filters).some(v => v) ? 'Search Results' : 'Available Clinics' }}
-                        </h2>
-                        <span class="text-sm text-gray-600 dark:text-gray-400">
-                            {{ filteredClinics.length }} clinic{{ filteredClinics.length !== 1 ? 's' : '' }} found
-                        </span>
-                    </div>
-                    
-                    <!-- Clinics Grid -->
-                    <div v-if="filteredClinics.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <div v-for="(clinic, index) in filteredClinics" 
-                             :key="clinic.id"
-                             class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600 hover:shadow-lg transition-shadow relative">
-                            <!-- Favorite Button -->
-                            <button
-                                @click.stop="toggleFavorite(clinic)"
-                                :disabled="favoritingClinics.has(clinic.id)"
-                                class="absolute top-3 right-3 z-10 p-2 rounded-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200 dark:border-gray-600 hover:bg-white dark:hover:bg-gray-800 transition-all group"
-                                :class="{ 'opacity-50 cursor-not-allowed': favoritingClinics.has(clinic.id) }"
-                            >
-                                <Heart 
-                                    class="h-4 w-4 transition-all duration-200 group-hover:scale-110"
-                                    :class="[
-                                        isClinicFavorited(clinic.id) 
-                                            ? 'text-red-500 fill-red-500' 
-                                            : 'text-gray-400 hover:text-red-500',
-                                        { 'animate-pulse': favoritingClinics.has(clinic.id) }
-                                    ]"
-                                />
-                            </button>
-                            
-                            <!-- Clinic Image Placeholder -->
-                            <div :class="['w-full h-40 rounded-lg mb-4 flex items-center justify-center', getRandomColor(index).bg]">
-                                <span :class="['text-sm font-medium', getRandomColor(index).text]">{{ clinic.name }}</span>
+                <div class="p-6 space-y-8">
+                    <!-- Favorited Clinics Section -->
+                    <div v-if="favoritedClinics.length > 0">
+                        <div class="flex justify-between items-center mb-6">
+                            <div class="flex items-center gap-3">
+                                <Heart class="h-6 w-6 text-red-500 fill-current" />
+                                <h2 class="text-xl font-semibold text-white">
+                                    Your Favorite Clinics
+                                </h2>
                             </div>
-                            
-                            <!-- Clinic Info -->
-                            <h3 class="font-semibold text-gray-900 dark:text-gray-100 mb-2">{{ clinic.name }}</h3>
-                            <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">📍 {{ clinic.address }}</p>
-                            
-                            <!-- Rating -->
-                            <div class="flex items-center mb-3">
-                                <div class="flex text-yellow-400">{{ clinic.stars }}</div>
-                                <span class="text-sm text-gray-600 dark:text-gray-400 ml-1">({{ Number(clinic.rating || 0).toFixed(1) }})</span>
-                                <span class="text-xs text-gray-500 dark:text-gray-500 ml-2">{{ clinic.total_reviews }} review{{ clinic.total_reviews !== 1 ? 's' : '' }}</span>
-                            </div>
-                            
-                            <!-- Status & Distance -->
-                            <div class="flex justify-between items-center mb-3">
-                                <div class="flex flex-col">
-                                    <span :class="['text-sm font-medium', clinic.operating_status?.status_color || clinic.status_color]">
-                                        {{ clinic.operating_status?.status || clinic.status }}
-                                    </span>
-                                    <span v-if="clinic.operating_status?.message" class="text-xs text-gray-500 dark:text-gray-400">
-                                        {{ clinic.operating_status.message }}
-                                    </span>
-                                </div>
-                                <div class="flex flex-col items-end">
-                                    <span class="text-sm text-gray-600 dark:text-gray-400">{{ calculateDistance(clinic) }}</span>
-                                    <span v-if="clinic.travel_time" class="text-xs text-gray-500 dark:text-gray-400">
-                                        {{ clinic.travel_time }}
-                                    </span>
-                                </div>
-                            </div>
-                            
-                            <!-- Services -->
-                            <div class="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                                <span class="font-medium">Services:</span>
-                                {{ clinic.services.slice(0, 3).join(', ') }}
-                                <span v-if="clinic.services.length > 3">...</span>
-                            </div>
-                            
-                            <!-- Action Buttons -->
-                            <div class="flex gap-2">
-                                <button @click="viewClinicDetails(clinic.id)" 
-                                        class="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 text-sm font-medium transition-colors">
-                                    View Details
+                            <span class="text-sm text-gray-400">
+                                {{ favoritedClinics.length }} clinic{{ favoritedClinics.length !== 1 ? 's' : '' }}
+                            </span>
+                        </div>
+                        
+                        <!-- Favorited Clinics Grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                            <div v-for="(clinic, index) in favoritedClinics" 
+                                 :key="clinic.id"
+                                 @click="viewClinicDetails(clinic.id)"
+                                 class="bg-black rounded-2xl p-6 border border-gray-800 hover:border-gray-700 transition-all cursor-pointer group relative overflow-hidden shadow-lg">
+                                <!-- Favorite Button -->
+                                <button
+                                    @click.stop="toggleFavorite(clinic)"
+                                    :disabled="favoritingClinics.has(clinic.id)"
+                                    class="absolute top-4 right-4 z-10 p-2 rounded-full bg-gray-800/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-700 dark:border-gray-600 hover:bg-gray-800 dark:hover:bg-gray-700 transition-all"
+                                    :class="{ 'opacity-50 cursor-not-allowed': favoritingClinics.has(clinic.id) }"
+                                >
+                                    <Heart 
+                                        class="h-5 w-5 text-red-500 fill-current group-hover:scale-110 transition-transform"
+                                        :class="{ 'animate-pulse': favoritingClinics.has(clinic.id) }"
+                                    />
                                 </button>
-                                <button @click="bookAppointment(clinic)" 
-                                        class="flex-1 border border-blue-600 text-blue-600 py-2 px-4 rounded-md hover:bg-blue-50 text-sm font-medium transition-colors dark:border-blue-400 dark:text-blue-400 dark:hover:bg-blue-900/20">
-                                    Book Visit
-                                </button>
+                                
+                                <!-- Clinic Image -->
+                                <div class="w-full h-40 rounded-lg mb-4 overflow-hidden bg-gray-700">
+                                    <img v-if="clinic.clinic_photo" 
+                                         :src="clinic.clinic_photo" 
+                                         :alt="clinic.name"
+                                         class="w-full h-full object-cover" />
+                                    <div v-else-if="clinic.gallery && clinic.gallery.length > 0"
+                                         class="w-full h-full">
+                                        <img :src="clinic.gallery[0]" 
+                                             :alt="clinic.name"
+                                             class="w-full h-full object-cover" />
+                                    </div>
+                                    <div v-else :class="['w-full h-full flex items-center justify-center', getRandomColor(index).bg]">
+                                        <span :class="['text-base font-medium text-center px-2', getRandomColor(index).text]">{{ clinic.name }}</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Clinic Info -->
+                                <h3 class="font-semibold text-white text-lg mb-3 line-clamp-1">{{ clinic.name }}</h3>
+                                
+                                <!-- Rating -->
+                                <div class="flex items-center mb-3">
+                                    <Star class="h-4 w-4 text-yellow-400 fill-yellow-400 mr-1" />
+                                    <span class="text-sm text-white font-medium">{{ Number(clinic.rating || 0).toFixed(1) }}</span>
+                                    <span class="text-xs text-gray-400 ml-2">({{ clinic.total_reviews }} review{{ clinic.total_reviews !== 1 ? 's' : '' }})</span>
+                                </div>
+                                
+                                <p class="text-sm text-gray-400 mb-3 line-clamp-2">{{ clinic.description || 'Professional veterinary care for your beloved pets.' }}</p>
+                                
+                                <!-- Location -->
+                                <div class="flex items-start gap-2 text-sm text-gray-400 mb-4">
+                                    <MapPin class="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                    <span class="line-clamp-1">{{ clinic.address }}</span>
+                                </div>
+                                
+                                <!-- Status & Operating Hours - Single Row -->
+                                <div class="flex items-center justify-between text-xs pb-4 border-b border-gray-800">
+                                    <div class="flex items-center gap-1">
+                                        <Clock class="h-3 w-3" :class="clinic.operating_status?.is_open || clinic.is_open ? 'text-green-400' : 'text-red-400'" />
+                                        <span :class="clinic.operating_status?.is_open || clinic.is_open ? 'text-green-400' : 'text-red-400'">{{ clinic.operating_status?.status || clinic.status }}</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
+
+                    <!-- Nearby Clinics Section -->
+                    <div v-if="nearbyClinics.length > 0">
+                        <div class="flex justify-between items-center mb-6">
+                            <div class="flex items-center gap-3">
+                                <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                <h2 class="text-xl font-semibold text-white">
+                                    Nearby Clinics
+                                </h2>
+                            </div>
+                            <span class="text-sm text-gray-400">
+                                {{ nearbyClinics.length }} clinic{{ nearbyClinics.length !== 1 ? 's' : '' }} within 10km
+                            </span>
+                        </div>
+                        
+                        <!-- Nearby Clinics Grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                            <div v-for="(clinic, index) in nearbyClinics" 
+                                 :key="clinic.id"
+                                 @click="viewClinicDetails(clinic.id)"
+                                 class="bg-black rounded-2xl p-6 border border-gray-800 hover:border-gray-700 transition-all cursor-pointer group relative overflow-hidden shadow-lg">
+                                <!-- Favorite Button -->
+                                <button
+                                    @click.stop="toggleFavorite(clinic)"
+                                    :disabled="favoritingClinics.has(clinic.id)"
+                                    class="absolute top-4 right-4 z-10 p-2 rounded-full bg-gray-800/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-700 dark:border-gray-600 hover:bg-gray-800 dark:hover:bg-gray-700 transition-all"
+                                    :class="{ 'opacity-50 cursor-not-allowed': favoritingClinics.has(clinic.id) }"
+                                >
+                                    <Heart 
+                                        class="h-5 w-5 transition-all group-hover:scale-110"
+                                        :class="[
+                                            isClinicFavorited(clinic.id) 
+                                                ? 'text-red-500 fill-current' 
+                                                : 'text-gray-400 hover:text-red-500',
+                                            { 'animate-pulse': favoritingClinics.has(clinic.id) }
+                                        ]"
+                                    />
+                                </button>
+                                
+                                <!-- Clinic Image -->
+                                <div class="w-full h-40 rounded-lg mb-4 overflow-hidden bg-gray-700">
+                                    <img v-if="clinic.clinic_photo" 
+                                         :src="clinic.clinic_photo" 
+                                         :alt="clinic.name"
+                                         class="w-full h-full object-cover" />
+                                    <div v-else-if="clinic.gallery && clinic.gallery.length > 0"
+                                         class="w-full h-full">
+                                        <img :src="clinic.gallery[0]" 
+                                             :alt="clinic.name"
+                                             class="w-full h-full object-cover" />
+                                    </div>
+                                    <div v-else :class="['w-full h-full flex items-center justify-center', getRandomColor(index).bg]">
+                                        <span :class="['text-base font-medium text-center px-2', getRandomColor(index).text]">{{ clinic.name }}</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Clinic Info -->
+                                <h3 class="font-semibold text-white text-lg mb-3 line-clamp-1">{{ clinic.name }}</h3>
+                                
+                                <!-- Rating -->
+                                <div class="flex items-center mb-3">
+                                    <Star class="h-4 w-4 text-yellow-400 fill-yellow-400 mr-1" />
+                                    <span class="text-sm text-white font-medium">{{ Number(clinic.rating || 0).toFixed(1) }}</span>
+                                    <span class="text-xs text-gray-400 ml-2">({{ clinic.total_reviews }} review{{ clinic.total_reviews !== 1 ? 's' : '' }})</span>
+                                </div>
+                                
+                                <p class="text-sm text-gray-400 mb-3 line-clamp-2">{{ clinic.description || 'Professional veterinary care for your beloved pets.' }}</p>
+                                
+                                <!-- Location -->
+                                <div class="flex items-start gap-2 text-sm text-gray-400 mb-4">
+                                    <MapPin class="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                    <span class="line-clamp-1">{{ clinic.address }}</span>
+                                </div>
+                                
+                                <!-- Status & Operating Hours - Single Row -->
+                                <div class="flex items-center justify-between text-xs pb-4 border-b border-gray-800">
+                                    <div class="flex items-center gap-1">
+                                        <Clock class="h-3 w-3" :class="clinic.operating_status?.is_open || clinic.is_open ? 'text-green-400' : 'text-red-400'" />
+                                        <span :class="clinic.operating_status?.is_open || clinic.is_open ? 'text-green-400' : 'text-red-400'">{{ clinic.operating_status?.status || clinic.status }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Other Clinics Section -->
+                    <div>
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-xl font-semibold text-white">
+                                {{ Object.values(filters).some(v => v) ? 'Search Results' : 'Other Clinics' }}
+                            </h2>
+                            <span class="text-sm text-gray-400">
+                                {{ otherClinics.length }} clinic{{ otherClinics.length !== 1 ? 's' : '' }} found
+                            </span>
+                        </div>
+                        </div>
+                        
+                        <!-- Clinics Grid -->
+                        <div v-if="otherClinics.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div v-for="(clinic, index) in otherClinics" 
+                                 :key="clinic.id"
+                                 @click="viewClinicDetails(clinic.id)"
+                                 class="bg-black rounded-2xl p-6 border border-gray-800 hover:border-gray-700 transition-all cursor-pointer group relative overflow-hidden shadow-lg">
+                                <!-- Favorite Button -->
+                                <button
+                                    @click.stop="toggleFavorite(clinic)"
+                                    :disabled="favoritingClinics.has(clinic.id)"
+                                    class="absolute top-4 right-4 z-10 p-2 rounded-full bg-gray-800/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-700 dark:border-gray-600 hover:bg-gray-800 dark:hover:bg-gray-700 transition-all"
+                                    :class="{ 'opacity-50 cursor-not-allowed': favoritingClinics.has(clinic.id) }"
+                                >
+                                    <Heart 
+                                        class="h-5 w-5 transition-all duration-200 group-hover:scale-110"
+                                        :class="[
+                                            isClinicFavorited(clinic.id) 
+                                                ? 'text-red-500 fill-red-500' 
+                                                : 'text-gray-400 hover:text-red-500',
+                                            { 'animate-pulse': favoritingClinics.has(clinic.id) }
+                                        ]"
+                                    />
+                                </button>
+                                
+                                <!-- Clinic Image -->
+                                <div class="w-full h-40 rounded-lg mb-4 overflow-hidden bg-gray-700">
+                                    <img v-if="clinic.clinic_photo" 
+                                         :src="clinic.clinic_photo" 
+                                         :alt="clinic.name"
+                                         class="w-full h-full object-cover" />
+                                    <div v-else-if="clinic.gallery && clinic.gallery.length > 0"
+                                         class="w-full h-full">
+                                        <img :src="clinic.gallery[0]" 
+                                             :alt="clinic.name"
+                                             class="w-full h-full object-cover" />
+                                    </div>
+                                    <div v-else :class="['w-full h-full flex items-center justify-center', getRandomColor(index).bg]">
+                                        <span :class="['text-base font-medium text-center px-2', getRandomColor(index).text]">{{ clinic.name }}</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Clinic Info -->
+                                <h3 class="font-semibold text-white text-lg mb-3 line-clamp-1">{{ clinic.name }}</h3>
+                                
+                                <!-- Rating -->
+                                <div class="flex items-center mb-3">
+                                    <Star class="h-4 w-4 text-yellow-400 fill-yellow-400 mr-1" />
+                                    <span class="text-sm text-white font-medium">{{ Number(clinic.rating || 0).toFixed(1) }}</span>
+                                    <span class="text-xs text-gray-400 ml-2">({{ clinic.total_reviews }} review{{ clinic.total_reviews !== 1 ? 's' : '' }})</span>
+                                </div>
+                                
+                                <p class="text-sm text-gray-400 mb-3 line-clamp-2">{{ clinic.description || 'Professional veterinary care for your beloved pets.' }}</p>
+                                
+                                <!-- Location -->
+                                <div class="flex items-start gap-2 text-sm text-gray-400 mb-4">
+                                    <MapPin class="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                    <span class="line-clamp-1">{{ clinic.address }}</span>
+                                </div>
+                                
+                                <!-- Status & Operating Hours - Single Row -->
+                                <div class="flex items-center justify-between text-xs pb-4 border-b border-gray-800">
+                                    <div class="flex items-center gap-1">
+                                        <Clock class="h-3 w-3" :class="clinic.operating_status?.is_open || clinic.is_open ? 'text-green-400' : 'text-red-400'" />
+                                        <span :class="clinic.operating_status?.is_open || clinic.is_open ? 'text-green-400' : 'text-red-400'">{{ clinic.operating_status?.status || clinic.status }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     
                     <!-- No Results Message -->
-                    <div v-else class="text-center py-12">
-                        <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div v-else-if="filteredClinics.length === 0" class="text-center py-12">
+                        <svg class="w-16 h-16 mx-auto text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 20c-4.411 0-8-3.589-8-8 0-1.201.264-2.34.74-3.37M8 4a8 8 0 018 8"></path>
                         </svg>
-                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No clinics found</h3>
-                        <p class="text-gray-600 dark:text-gray-400 mb-4">
+                        <h3 class="text-lg font-medium text-white mb-2">No clinics found</h3>
+                        <p class="text-gray-400 mb-4">
                             {{ Object.values(filters).some(v => v) ? 'Try adjusting your search filters' : 'No approved clinics are currently available' }}
                         </p>
                         <button @click="clearFilters" 
-                                class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors">
+                                class="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all">
                             Clear Filters
                         </button>
                     </div>

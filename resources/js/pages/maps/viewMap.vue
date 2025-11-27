@@ -308,25 +308,25 @@ onMounted(() => {
             <!-- Page Header -->
             <div class="flex items-center justify-between">
                 <div>
-                    <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">Clinic Locations</h1>
-                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    <h1 class="text-2xl font-semibold text-white">Clinic Locations</h1>
+                    <p class="text-sm text-gray-400 mt-1">
                         {{ props.clinics.length }} veterinary clinic{{ props.clinics.length !== 1 ? 's' : '' }} available
                     </p>
                 </div>
                 <div class="flex gap-2">
                     <button @click="toggleFilters" 
-                            class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
+                            class="px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800 text-sm">
                         {{ showFilters ? 'Hide' : 'Show' }} Filters
                     </button>
                     <button @click="goFullscreen" 
-                            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm flex items-center gap-2">
+                            class="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 text-sm flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
                         </svg>
                         Fullscreen
                     </button>
                     <button @click="goBack" 
-                            class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm">
+                            class="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 text-sm">
                         Back to List
                     </button>
                 </div>
@@ -334,14 +334,14 @@ onMounted(() => {
 
             <div class="flex flex-col lg:flex-row gap-4 h-full">
                 <!-- No Clinics Message -->
-                <div v-if="props.clinics.length === 0" class="flex items-center justify-center h-64 bg-white dark:bg-gray-800 rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                    <div class="text-center text-gray-500 dark:text-gray-400">
+                <div v-if="props.clinics.length === 0" class="flex items-center justify-center h-64 bg-gray-900 rounded-xl border border-gray-800">
+                    <div class="text-center text-gray-400">
                         <svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                         </svg>
-                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No Clinic Locations Available</h3>
-                        <p class="text-gray-600 dark:text-gray-400">
+                        <h3 class="text-lg font-medium text-white mb-2">No Clinic Locations Available</h3>
+                        <p class="text-gray-400">
                             No approved clinics with location data are currently available.
                         </p>
                     </div>
@@ -350,26 +350,26 @@ onMounted(() => {
                 <template v-else>
                 <!-- Filters Panel -->
                 <div v-if="showFilters" 
-                     class="lg:w-80 bg-white dark:bg-gray-800 rounded-xl border border-sidebar-border/70 dark:border-sidebar-border p-4">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Filters</h3>
+                     class="lg:w-80 bg-gray-900 rounded-xl border border-gray-800 p-5">
+                    <h3 class="text-lg font-semibold text-white mb-4">Filters</h3>
                     
                     <div class="space-y-4">
                         <!-- Search Filter -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Search</label>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Search</label>
                             <input 
                                 v-model="searchFilter"
                                 type="text" 
                                 placeholder="Search clinics..."
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+                                class="w-full px-3 py-2 border border-gray-700 rounded-lg text-sm bg-gray-800 text-gray-100"
                             />
                         </div>
 
                         <!-- Category Filter -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Category</label>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Category</label>
                             <select v-model="serviceFilter" 
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
+                                    class="w-full px-3 py-2 border border-gray-700 rounded-lg text-sm bg-gray-800 text-gray-100">
                                 <option value="">All categories</option>
                                 <option value="consultation">Consultation</option>
                                 <option value="vaccination">Vaccination</option>
@@ -389,9 +389,9 @@ onMounted(() => {
 
                         <!-- Rating Filter -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Minimum rating</label>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Minimum rating</label>
                             <select v-model="ratingFilter" 
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
+                                    class="w-full px-3 py-2 border border-gray-700 rounded-lg text-sm bg-gray-800 text-gray-100">
                                 <option value="">Any rating</option>
                                 <option value="5">5 stars</option>
                                 <option value="4">4+ stars</option>
@@ -402,9 +402,9 @@ onMounted(() => {
 
                         <!-- Distance Filter -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Distance</label>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Distance</label>
                             <select v-model="distanceFilter" 
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
+                                    class="w-full px-3 py-2 border border-gray-700 rounded-lg text-sm bg-gray-800 text-gray-100">
                                 <option value="">Any</option>
                                 <option value="5">Within 5 km</option>
                                 <option value="10">Within 10 km</option>
@@ -416,40 +416,40 @@ onMounted(() => {
                         <!-- Filter Buttons -->
                         <div class="flex gap-2 pt-2">
                             <button @click="applyFilters" 
-                                    class="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 text-sm font-medium">
+                                    class="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2 px-4 rounded-lg hover:from-blue-700 hover:to-purple-700 text-sm font-medium">
                                 Apply
                             </button>
                             <button @click="clearFilters" 
-                                    class="flex-1 border border-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-50 text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
+                                    class="flex-1 border border-gray-700 text-gray-300 py-2 px-4 rounded-lg hover:bg-gray-800 text-sm">
                                 Clear
                             </button>
                         </div>
                     </div>
 
                     <!-- Selected Clinic Info -->
-                    <div v-if="selectedClinic" class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-600">
-                        <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-2">Selected Clinic</h4>
-                        <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
-                            <h5 class="font-semibold text-blue-900 dark:text-blue-100 text-sm">{{ selectedClinic.name }}</h5>
-                            <p class="text-blue-700 dark:text-blue-300 text-xs mt-1">📍 {{ selectedClinic.address }}</p>
+                    <div v-if="selectedClinic" class="mt-6 pt-4 border-t border-gray-700">
+                        <h4 class="font-medium text-white mb-2">Selected Clinic</h4>
+                        <div class="bg-gray-800 border border-gray-700 rounded-lg p-3">
+                            <h5 class="font-semibold text-white text-sm">{{ selectedClinic.name }}</h5>
+                            <p class="text-gray-300 text-xs mt-1">📍 {{ selectedClinic.address }}</p>
                             <div class="flex items-center mt-2 text-xs">
-                                <span class="text-yellow-500">{{ selectedClinic.stars }}</span>
-                                <span class="text-blue-700 dark:text-blue-300 ml-1">({{ Number(selectedClinic.rating || 0).toFixed(1) }})</span>
-                                <span class="text-blue-600 dark:text-blue-400 ml-2">{{ selectedClinic.total_reviews }} reviews</span>
+                                <span class="text-yellow-400">{{ selectedClinic.stars }}</span>
+                                <span class="text-gray-300 ml-1">({{ Number(selectedClinic.rating || 0).toFixed(1) }})</span>
+                                <span class="text-gray-400 ml-2">{{ selectedClinic.total_reviews }} reviews</span>
                             </div>
                             <div class="flex items-center mt-1 text-xs">
                                 <span :class="selectedClinic.status_color">{{ selectedClinic.status }}</span>
-                                <span v-if="selectedClinic.is_open_24_7" class="ml-2 bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs dark:bg-green-900 dark:text-green-200">
+                                <span v-if="selectedClinic.is_open_24_7" class="ml-2 bg-green-900 text-green-200 px-2 py-1 rounded-full text-xs">
                                     24/7
                                 </span>
                             </div>
                             <div class="flex gap-2 mt-3">
                                 <button @click="bookSelectedClinic" 
-                                        class="flex-1 bg-blue-600 text-white py-1 px-2 rounded text-xs hover:bg-blue-700">
+                                        class="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-1 px-2 rounded-lg text-xs hover:from-blue-700 hover:to-purple-700">
                                     Book Appointment
                                 </button>
                                 <button @click="viewSelectedClinicDetails" 
-                                        class="flex-1 border border-blue-300 text-blue-700 py-1 px-2 rounded text-xs hover:bg-blue-100 dark:border-blue-600 dark:text-blue-300 dark:hover:bg-blue-800">
+                                        class="flex-1 border border-gray-600 text-gray-300 py-1 px-2 rounded-lg text-xs hover:bg-gray-700">
                                     View Details
                                 </button>
                             </div>
@@ -457,8 +457,8 @@ onMounted(() => {
                     </div>
 
                     <!-- Filter Results Summary -->
-                    <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
-                        <div class="text-xs text-gray-600 dark:text-gray-400">
+                    <div class="mt-4 pt-4 border-t border-gray-700">
+                        <div class="text-xs text-gray-400">
                             <strong>{{ filteredClinics.length }}</strong> of <strong>{{ props.clinics.length }}</strong> clinics shown
                         </div>
                         <div v-if="searchFilter || serviceFilter || ratingFilter" class="mt-2 space-y-1">
@@ -505,20 +505,20 @@ onMounted(() => {
                         </template>
                         
                         <template #legend>
-                            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-3 text-xs">
-                                <h6 class="font-semibold mb-2 text-gray-900 dark:text-gray-100">Legend</h6>
+                            <div class="bg-gray-900 border border-gray-800 rounded-lg shadow-lg p-3 text-xs">
+                                <h6 class="font-semibold mb-2 text-white">Legend</h6>
                                 <div class="space-y-1">
                                     <div class="flex items-center gap-2">
                                         <div class="w-3 h-3 bg-blue-600 rounded-full"></div>
-                                        <span class="text-gray-700 dark:text-gray-300">Veterinary Clinic</span>
+                                        <span class="text-gray-300">Veterinary Clinic</span>
                                     </div>
                                     <div class="flex items-center gap-2">
                                         <div class="w-3 h-3 bg-red-600 rounded-full"></div>
-                                        <span class="text-gray-700 dark:text-gray-300">Emergency Hospital</span>
+                                        <span class="text-gray-300">Emergency Hospital</span>
                                     </div>
                                     <div class="flex items-center gap-2">
                                         <div class="w-3 h-3 bg-green-600 rounded-full"></div>
-                                        <span class="text-gray-700 dark:text-gray-300">Your Location</span>
+                                        <span class="text-gray-300">Your Location</span>
                                     </div>
                                 </div>
                             </div>
@@ -528,16 +528,16 @@ onMounted(() => {
                     <!-- No Results Overlay -->
                     <div v-if="filteredClinics.length === 0 && (searchFilter || serviceFilter || ratingFilter || distanceFilter)" 
                          class="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none">
-                        <div class="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-sm mx-4 text-center shadow-lg pointer-events-auto">
+                        <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 max-w-sm mx-4 text-center shadow-lg pointer-events-auto">
                             <svg class="w-12 h-12 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.347 0-4.518-.826-6.207-2.209M12 21C8.686 21 6 18.314 6 15c0-3.314 2.686-6 6-6s6 2.686 6 6c0 3.314-2.686 6-6 6z"/>
                             </svg>
-                            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">No Clinics Found</h3>
-                            <p class="text-gray-600 dark:text-gray-400 mb-4">
+                            <h3 class="text-lg font-semibold text-white mb-2">No Clinics Found</h3>
+                            <p class="text-gray-400 mb-4">
                                 No clinics match your current filters. You can still navigate the map.
                             </p>
                             <button @click="clearFilters" 
-                                    class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm font-medium">
+                                    class="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg hover:from-blue-700 hover:to-purple-700 text-sm font-medium">
                                 Clear Filters
                             </button>
                         </div>

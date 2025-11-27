@@ -268,168 +268,122 @@ const addressSettingsLink = '/settings/address';
                         <h1 class="text-2xl font-bold mb-2">Welcome back, {{ user.name }}!</h1>
                         <p class="text-blue-100">Here's what's happening with your pets today</p>
                     </div>
-                    <div class="hidden md:flex items-center space-x-4">
-                        <button @click="navigateToAddPet" class="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg hover:bg-white/30 transition-colors">
-                            <Plus class="h-4 w-4 inline mr-2" />
-                            Add Pet
-                        </button>
-                        <button @click="navigateToBookAppointment" class="bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 transition-colors">
-                            <Calendar class="h-4 w-4 inline mr-2" />
-                            Book Appointment
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Key Metrics -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <!-- Total Pets -->
-                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Pets</p>
-                            <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ dashboard_stats.pets.total }}</p>
-                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                {{ dashboard_stats.pets.needs_attention }} need attention
-                            </p>
-                        </div>
-                        <div class="p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
-                            <PawPrint class="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Upcoming Appointments -->
-                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Upcoming Appointments</p>
-                            <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ dashboard_stats.appointments.upcoming }}</p>
-                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                {{ dashboard_stats.appointments.this_month }} this month
-                            </p>
-                        </div>
-                        <div class="p-3 bg-green-100 dark:bg-green-900 rounded-full">
-                            <Calendar class="h-6 w-6 text-green-600 dark:text-green-400" />
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Health Alerts -->
-                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Health Alerts</p>
-                            <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ dashboard_stats.health.active_conditions }}</p>
-                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                {{ dashboard_stats.pets.vaccination_due }} vaccinations due
-                            </p>
-                        </div>
-                        <div class="p-3 bg-yellow-100 dark:bg-yellow-900 rounded-full">
-                            <AlertTriangle class="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Total Spending -->
-                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">This Year's Spending</p>
-                            <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">${{ dashboard_stats.spending.this_year.toLocaleString() }}</p>
-                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                ${{ dashboard_stats.spending.average_per_visit }} avg per visit
-                            </p>
-                        </div>
-                        <div class="p-3 bg-purple-100 dark:bg-purple-900 rounded-full">
-                            <DollarSign class="h-6 w-6 text-purple-600 dark:text-purple-400" />
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Charts Section -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- Pet Species Distribution -->
-                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Pet Distribution</h3>
-                        <BarChart3 class="h-5 w-5 text-gray-400" />
-                    </div>
-                    <div class="h-64">
-                        <Chart 
-                            type="doughnut" 
-                            :data="petSpeciesChartData"
-                            :options="{ plugins: { legend: { position: 'bottom' } } }"
-                        />
-                    </div>
-                </div>
-
-                <!-- Appointment Status -->
-                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Appointment Status</h3>
-                        <Activity class="h-5 w-5 text-gray-400" />
-                    </div>
-                    <div class="h-64">
-                        <Chart 
-                            type="pie" 
-                            :data="appointmentStatusChartData"
-                            :options="{ plugins: { legend: { position: 'bottom' } } }"
-                        />
-                    </div>
-                </div>
-            </div>
-
-            <!-- Main Content Grid -->
-            <div class="grid grid-cols-1 gap-6">
-                <!-- Pets Section -->
-                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-                    <div class="flex items-center justify-between mb-6">
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                            <PawPrint class="h-5 w-5" />
-                            Your Pets
-                        </h3>
-                        <Link :href="petsIndex().url" class="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium flex items-center gap-1">
-                            View All
-                            <ArrowUpRight class="h-4 w-4" />
-                        </Link>
-                    </div>
-
-                    <div v-if="pets.length === 0" class="text-center py-8">
-                        <PawPrint class="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-                        <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No pets added yet</h4>
-                        <p class="text-gray-600 dark:text-gray-400 mb-4">Add your first pet to get started</p>
-                        <button @click="navigateToAddPet" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-                            <Plus class="h-4 w-4 inline mr-2" />
-                            Add Your First Pet
-                        </button>
-                    </div>
-
-                    <div v-else class="space-y-4">
-                        <div v-for="pet in pets.slice(0, 4)" :key="pet.id" 
-                             class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                            <div class="flex items-center space-x-3">
-                                <div class="w-12 h-12 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center">
-                                    <PawPrint class="h-6 w-6 text-white" />
+                    <div class="hidden md:flex items-center">
+                        <button @click="navigateToAddPet" class="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20 hover:bg-white/20 transition-colors cursor-pointer">
+                            <div class="flex items-center gap-3">
+                                <div class="p-2 bg-white/20 rounded-lg">
+                                    <PawPrint class="h-5 w-5 text-white" />
                                 </div>
                                 <div>
-                                    <h4 class="font-medium text-gray-900 dark:text-gray-100">{{ pet.name }}</h4>
-                                    <p class="text-sm text-gray-600 dark:text-gray-400">{{ pet.species }} • {{ pet.breed || 'Mixed' }}</p>
+                                    <p class="text-sm font-medium text-blue-100">My Pets</p>
+                                    <p class="text-2xl font-bold text-white">{{ dashboard_stats.pets.total }}</p>
                                 </div>
                             </div>
-                            <div class="flex items-center space-x-2">
-                                <span :class="[
-                                    'px-2 py-1 text-xs font-medium rounded-full',
-                                    pet.health_status.overall === 'excellent' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                                    pet.health_status.overall === 'good' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
-                                    pet.health_status.overall === 'fair' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
-                                    'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                                ]">
-                                    {{ pet.health_status.overall }}
-                                </span>
-                                <div v-if="pet.health_status.alerts.length > 0" class="relative">
-                                    <AlertTriangle class="h-4 w-4 text-yellow-500" />
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Schedule Overview -->
+            <div class="rounded-lg border bg-card">
+                <div class="p-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                        <h2 class="text-xl font-semibold">Schedule Overview</h2>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Today's Appointment -->
+                        <div class="lg:col-span-1">
+                            <div v-if="upcoming_appointments.length > 0 && upcoming_appointments[0]" class="bg-primary/5 rounded-lg p-4 border">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h3 class="font-semibold">Next Appointment</h3>
+                                    <span :class="['px-2 py-1 text-xs font-medium rounded-full', 
+                                        upcoming_appointments[0].status === 'confirmed' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300' :
+                                        upcoming_appointments[0].status === 'scheduled' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300' :
+                                        'bg-muted text-muted-foreground'
+                                    ]">
+                                        {{ upcoming_appointments[0].status === 'confirmed' ? 'Confirmed' : 
+                                           upcoming_appointments[0].status === 'scheduled' ? 'Scheduled' : 'Unknown' }}
+                                    </span>
+                                </div>
+                                
+                                <div class="space-y-3">
+                                    <div>
+                                        <p class="text-sm font-medium">
+                                            {{ upcoming_appointments[0].pet.name }} - {{ upcoming_appointments[0].type }}
+                                        </p>
+                                        <p class="text-xs text-muted-foreground">
+                                            {{ upcoming_appointments[0].pet.species }}
+                                        </p>
+                                    </div>
+                                    
+                                    <div>
+                                        <p class="text-sm font-medium">{{ upcoming_appointments[0].clinic.name }}</p>
+                                    </div>
+                                    
+                                    <div class="bg-muted rounded-lg p-3">
+                                        <div class="flex items-center justify-between">
+                                            <div>
+                                                <p class="text-sm font-medium">
+                                                    {{ new Date(upcoming_appointments[0].scheduled_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }}
+                                                </p>
+                                            </div>
+                                            <div class="text-right">
+                                                <p class="text-sm font-medium">
+                                                    {{ new Date(upcoming_appointments[0].scheduled_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) }}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- No appointment today -->
+                            <div v-else class="bg-muted/50 rounded-lg p-4 border border-dashed">
+                                <div class="text-center py-6">
+                                    <Calendar class="h-10 w-10 mx-auto mb-2 text-muted-foreground opacity-50" />
+                                    <h3 class="font-semibold mb-1">No appointments scheduled</h3>
+                                    <p class="text-sm text-muted-foreground">Ready to schedule your next visit?</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Upcoming Appointments -->
+                        <div class="lg:col-span-2">
+                            <div>
+                                <div class="flex items-center justify-between mb-4">
+                                    <h4 class="font-medium">Upcoming Appointments</h4>
+                                </div>
+                                <div v-if="upcoming_appointments.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div v-for="appointment in upcoming_appointments.slice(0, 6)" :key="appointment.id" 
+                                         class="p-3 bg-card rounded-lg cursor-pointer border hover:bg-muted transition-colors">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <div class="min-w-0 flex-1">
+                                                <p class="text-sm font-medium truncate">
+                                                    {{ appointment.pet.name }} - {{ appointment.type }}
+                                                </p>
+                                                <p class="text-xs text-muted-foreground">
+                                                    {{ new Date(appointment.scheduled_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }} • 
+                                                    {{ new Date(appointment.scheduled_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) }}
+                                                </p>
+                                            </div>
+                                            <span :class="['px-2 py-1 text-xs rounded-full font-medium ml-2 flex-shrink-0',
+                                                appointment.status === 'confirmed' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300' :
+                                                appointment.status === 'scheduled' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300' :
+                                                'bg-muted text-muted-foreground'
+                                            ]">
+                                                {{ appointment.status === 'confirmed' ? 'Confirmed' : 
+                                                   appointment.status === 'scheduled' ? 'Scheduled' : 'Unknown' }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- No upcoming appointments -->
+                                <div v-else class="text-center py-8">
+                                    <Activity class="h-10 w-10 mx-auto mb-3 text-muted-foreground opacity-50" />
+                                    <h3 class="font-semibold mb-2">No upcoming appointments</h3>
+                                    <p class="text-sm text-muted-foreground">Ready to schedule your next visit?</p>
                                 </div>
                             </div>
                         </div>

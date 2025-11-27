@@ -14,9 +14,16 @@ class PasswordController extends Controller
     /**
      * Show the user's password settings page.
      */
-    public function edit(): Response
+    public function edit(Request $request): Response
     {
-        return Inertia::render('settings/Password');
+        $user = $request->user();
+        
+        // Determine which password page to render based on user type
+        $page = $user->is_clinic || $user->account_type === 'clinic' 
+            ? '2clinicPages/settings/Password' 
+            : 'settings/Password';
+        
+        return Inertia::render($page);
     }
 
     /**

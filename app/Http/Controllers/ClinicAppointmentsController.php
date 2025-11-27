@@ -7,6 +7,7 @@ use App\Models\Pet;
 use App\Models\User;
 use App\Models\ClinicService;
 use App\Models\ClinicRegistration;
+use App\Models\PetMedicalRecord;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -192,11 +193,15 @@ class ClinicAppointmentsController extends Controller
             'pet.breed',
             'service',
             'clinic',
-            'veterinarian'
+            'veterinarian',
+            'medicalRecord'
         ])
         ->where('id', $id)
         ->where('clinic_id', $clinicRegistration->id)
         ->firstOrFail();
+
+        // Auto-update status if appointment time has arrived
+        $this->updateAppointmentStatusIfNeeded($appointment);
 
         // Get visit history for this pet
         $visitHistory = Appointment::with(['service', 'veterinarian'])
@@ -223,6 +228,7 @@ class ClinicAppointmentsController extends Controller
             'confirmationNumber' => 'PC-' . str_pad($appointment->id, 6, '0', STR_PAD_LEFT),
             'status' => $appointment->status,
             'statusDisplay' => $this->getStatusDisplay($appointment->status),
+            'scheduledAt' => $appointment->scheduled_at->toIso8601String(),
             'date' => Carbon::parse($appointment->scheduled_at)->format('M j, Y'),
             'time' => Carbon::parse($appointment->scheduled_at)->format('g:i A'),
             'duration' => $appointment->duration ?? '30 minutes',
@@ -255,7 +261,6 @@ class ClinicAppointmentsController extends Controller
             'service' => $appointment->service ? [
                 'id' => $appointment->service->id,
                 'name' => $appointment->service->name,
-                'cost' => $appointment->service->base_price,
                 'description' => $appointment->service->description,
             ] : null,
             'owner' => [
@@ -267,11 +272,55 @@ class ClinicAppointmentsController extends Controller
                     'phone' => $appointment->pet->owner->emergency_contact_phone ?? null,
                 ],
             ],
+            'medicalRecord' => $appointment->medicalRecord ? [
+                'id' => $appointment->medicalRecord->id,
+                'record_type' => $appointment->medicalRecord->record_type,
+                'diagnosis' => $appointment->medicalRecord->diagnosis,
+                'treatment' => $appointment->medicalRecord->treatment,
+                'medications' => $appointment->medicalRecord->medications,
+                'clinical_notes' => $appointment->medicalRecord->clinical_notes,
+                'physical_exam' => $appointment->medicalRecord->physical_exam,
+                'vital_signs' => $appointment->medicalRecord->vital_signs,
+                'vaccine_name' => $appointment->medicalRecord->vaccine_name,
+                'vaccine_batch' => $appointment->medicalRecord->vaccine_batch,
+                'administration_site' => $appointment->medicalRecord->administration_site,
+                'next_due_date' => $appointment->medicalRecord->next_due_date,
+                'adverse_reactions' => $appointment->medicalRecord->adverse_reactions,
+                'procedures_performed' => $appointment->medicalRecord->procedures_performed,
+                'treatment_response' => $appointment->medicalRecord->treatment_response,
+                'surgery_type' => $appointment->medicalRecord->surgery_type,
+                'procedure_details' => $appointment->medicalRecord->procedure_details,
+                'anesthesia_used' => $appointment->medicalRecord->anesthesia_used,
+                'complications' => $appointment->medicalRecord->complications,
+                'post_op_instructions' => $appointment->medicalRecord->post_op_instructions,
+                'presenting_complaint' => $appointment->medicalRecord->presenting_complaint,
+                'triage_level' => $appointment->medicalRecord->triage_level,
+                'emergency_treatment' => $appointment->medicalRecord->emergency_treatment,
+                'stabilization_measures' => $appointment->medicalRecord->stabilization_measures,
+                'disposition' => $appointment->medicalRecord->disposition,
+                'follow_up_date' => $appointment->medicalRecord->follow_up_date,
+            ] : null,
         ];
+
+        // Get available veterinarians for this clinic
+        $availableVeterinarians = \App\Models\ClinicStaff::where('clinic_id', $clinicRegistration->id)
+            ->where('role', 'veterinarian')
+            ->active() // Use the active scope instead of status column
+            ->select('id', 'name', 'specializations', 'license_number')
+            ->get()
+            ->map(function ($vet) {
+                return [
+                    'id' => $vet->id,
+                    'name' => $vet->name,
+                    'specializations' => $vet->specializations_string, // Use the string attribute
+                    'license_number' => $vet->license_number,
+                ];
+            });
 
         return Inertia::render('2clinicPages/appointments/ClinicAppointmentDetails', [
             'appointment' => $transformedAppointment,
             'visitHistory' => $visitHistory,
+            'availableVeterinarians' => $availableVeterinarians,
             'clinic' => [
                 'id' => $clinicRegistration->id,
                 'name' => $clinicRegistration->clinic_name,
@@ -297,7 +346,7 @@ class ClinicAppointmentsController extends Controller
             ->firstOrFail();
 
         $request->validate([
-            'status' => 'required|in:scheduled,confirmed,in_progress,completed,cancelled,no_show',
+            'status' => 'required|in:pending,confirmed,scheduled,in_progress,completed,cancelled,no_show',
             'notes' => 'nullable|string|max:1000',
             'actualCost' => 'nullable|numeric|min:0',
         ]);
@@ -309,6 +358,170 @@ class ClinicAppointmentsController extends Controller
         ]);
 
         return back()->with('success', 'Appointment status updated successfully.');
+    }
+
+    /**
+     * Confirm a pending appointment (clinic marks as ready to proceed)
+     * Pending → Scheduled after clinic confirmation
+     */
+    public function confirmAppointment(Request $request, $id)
+    {
+        $user = Auth::user();
+        
+        if (!$user->isClinic()) {
+            abort(403, 'Access denied. Clinic account required.');
+        }
+
+        $clinicRegistration = $user->clinicRegistration;
+        
+        $appointment = Appointment::where('id', $id)
+            ->where('clinic_id', $clinicRegistration->id)
+            ->firstOrFail();
+
+        // Only allow confirming pending appointments
+        if ($appointment->status !== 'pending') {
+            return back()->with('error', 'Only pending appointments can be confirmed.');
+        }
+
+        // Check if appointment date has passed (auto-cancel if past and not confirmed)
+        if ($appointment->scheduled_at->isPast()) {
+            $appointment->update([
+                'status' => 'cancelled',
+                'notes' => ($appointment->notes ? $appointment->notes . '\n' : '') . 'Auto-cancelled: Appointment date has passed without confirmation.'
+            ]);
+            return back()->with('error', 'Cannot confirm appointment. The scheduled date has already passed.');
+        }
+
+        // Confirm the appointment (move to scheduled status)
+        $appointment->update(['status' => 'scheduled']);
+
+        return back()->with('success', 'Appointment confirmed and moved to scheduled status.');
+    }
+
+    /**
+     * Assign a veterinarian to an appointment
+     */
+    public function assignVeterinarian(Request $request, $id)
+    {
+        $user = Auth::user();
+        
+        if (!$user->isClinic()) {
+            abort(403, 'Access denied. Clinic account required.');
+        }
+
+        $clinicRegistration = $user->clinicRegistration;
+        
+        $appointment = Appointment::where('id', $id)
+            ->where('clinic_id', $clinicRegistration->id)
+            ->firstOrFail();
+
+        // If removing veterinarian (null value)
+        if ($request->veterinarian_id === null) {
+            $appointment->update([
+                'clinic_staff_id' => null,
+            ]);
+            return back()->with('success', 'Veterinarian assignment removed.');
+        }
+
+        $request->validate([
+            'veterinarian_id' => 'required|exists:clinic_staff,id',
+        ]);
+
+        // Verify the veterinarian belongs to this clinic
+        $veterinarian = \App\Models\ClinicStaff::where('id', $request->veterinarian_id)
+            ->where('clinic_id', $clinicRegistration->id)
+            ->where('role', 'veterinarian')
+            ->firstOrFail();
+
+        // Update appointment with veterinarian and change status to scheduled if it was pending
+        $updateData = ['clinic_staff_id' => $veterinarian->id];
+        
+        // Auto-confirm appointment when vet is assigned
+        if ($appointment->status === 'pending') {
+            $updateData['status'] = 'scheduled';
+        }
+
+        $appointment->update($updateData);
+
+        return back()->with('success', 'Veterinarian assigned successfully and appointment confirmed.');
+    }
+
+    /**
+     * Complete an appointment and create medical record
+     */
+    public function completeAppointment(Request $request, $id)
+    {
+        $user = Auth::user();
+        
+        if (!$user->isClinic()) {
+            abort(403, 'Access denied. Clinic account required.');
+        }
+
+        $clinicRegistration = $user->clinicRegistration;
+        
+        $appointment = Appointment::where('id', $id)
+            ->where('clinic_id', $clinicRegistration->id)
+            ->firstOrFail();
+
+        $request->validate([
+            'status' => 'required|in:completed',
+            'notes' => 'nullable|string',
+            'actualCost' => 'nullable|numeric|min:0',
+            'medical_record' => 'required|array',
+            'medical_record.record_type' => 'required|in:checkup,vaccination,treatment,surgery,emergency,other',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            // Update appointment status
+            $appointment->update([
+                'status' => 'completed',
+                'notes' => $request->notes,
+                'actual_cost' => $request->actualCost,
+                'checked_out_at' => now(),
+            ]);
+
+            // Create medical record
+            $medicalRecordData = $request->medical_record;
+            $medicalRecordData['pet_id'] = $appointment->pet_id;
+            $medicalRecordData['clinic_id'] = $clinicRegistration->id;
+            $medicalRecordData['veterinarian_id'] = $appointment->veterinarian_id;
+            $medicalRecordData['appointment_id'] = $appointment->id;
+            $medicalRecordData['date'] = $appointment->scheduled_at;
+            $medicalRecordData['title'] = $this->generateMedicalRecordTitle($medicalRecordData['record_type']);
+            $medicalRecordData['description'] = $medicalRecordData['diagnosis'] ?? $medicalRecordData['clinical_notes'] ?? 'Medical record from appointment';
+            $medicalRecordData['cost'] = $request->actualCost;
+
+            PetMedicalRecord::create($medicalRecordData);
+
+            DB::commit();
+
+            return redirect()->route('clinicHistory')
+                ->with('success', 'Appointment completed and medical record saved successfully.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Error completing appointment: ' . $e->getMessage());
+            return back()->withErrors(['error' => 'Failed to complete appointment. Please try again.']);
+        }
+    }
+
+    /**
+     * Generate a title for the medical record based on type
+     */
+    private function generateMedicalRecordTitle(string $type): string
+    {
+        $titles = [
+            'checkup' => 'Routine Checkup',
+            'vaccination' => 'Vaccination Record',
+            'treatment' => 'Treatment Record',
+            'surgery' => 'Surgical Procedure',
+            'emergency' => 'Emergency Visit',
+            'other' => 'Medical Record',
+        ];
+
+        return $titles[$type] ?? 'Medical Record';
     }
 
     /**
@@ -384,5 +597,16 @@ class ClinicAppointmentsController extends Controller
         ];
 
         return $statusMap[$status] ?? ucfirst($status);
+    }
+
+    /**
+     * Update appointment status to in_progress if needed
+     */
+    private function updateAppointmentStatusIfNeeded(Appointment $appointment)
+    {
+        // Only auto-update if status is scheduled and appointment time has arrived
+        if ($appointment->status === 'scheduled' && $appointment->scheduled_at->isPast()) {
+            $appointment->update(['status' => 'in_progress']);
+        }
     }
 }
