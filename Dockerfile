@@ -29,19 +29,24 @@ WORKDIR /var/www/html
 # Copy existing application directory contents
 COPY . /var/www/html
 
-# Install dependencies
-RUN composer install --optimize-autoloader --no-dev
-
-# Install Node dependencies and build assets
-RUN npm install && npm run build
-
-# Create storage directories and set permissions
+# Create storage directories first
 RUN mkdir -p storage/framework/{sessions,views,cache} \
     && mkdir -p storage/logs \
     && mkdir -p bootstrap/cache \
     && mkdir -p database \
-    && touch database/database.sqlite \
-    && chown -R www-data:www-data /var/www/html \
+    && touch database/database.sqlite
+
+# Install dependencies
+RUN composer install --optimize-autoloader --no-dev
+
+# Generate APP_KEY for build process
+RUN php artisan key:generate --force
+
+# Install Node dependencies and build assets
+RUN npm install && npm run build
+
+# Set permissions
+RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 775 storage bootstrap/cache database
 
 # Enable Apache mod_rewrite
