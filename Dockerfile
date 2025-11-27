@@ -39,6 +39,9 @@ RUN mkdir -p storage/framework/{sessions,views,cache} \
 # Install dependencies
 RUN composer install --optimize-autoloader --no-dev
 
+# Create .env file from example (Railway will override with environment variables)
+RUN cp .env.example .env || echo "APP_KEY=" > .env
+
 # Generate APP_KEY for build process
 RUN php artisan key:generate --force
 
