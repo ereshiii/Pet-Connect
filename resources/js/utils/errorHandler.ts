@@ -5,6 +5,15 @@ export const setupGlobalErrorHandler = () => {
     // Handle global errors (like 500 errors that don't get caught by onError)
     router.on('error', (event) => {
         console.error('Global Inertia error:', event.detail);
+        console.error('Full error details:', JSON.stringify(event.detail, null, 2));
+        
+        // Log specific error properties if available
+        if (event.detail?.errors) {
+            console.error('Validation errors:', event.detail.errors);
+        }
+        if (event.detail?.message) {
+            console.error('Error message:', event.detail.message);
+        }
         
         // You can dispatch a global event or use a global store here
         window.dispatchEvent(new CustomEvent('inertia-error', {

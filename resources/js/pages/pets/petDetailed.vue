@@ -9,7 +9,6 @@ import {
     FileText,
     Folder,
     ShieldCheck,
-    Pill,
     Download,
     Trash2,
     Upload,
@@ -18,142 +17,118 @@ import {
     Building2,
     Edit,
     MoreVertical,
-    Camera
+    Camera,
+    Info
 } from 'lucide-vue-next';
 
-// Props from backend
-interface Props {
-    petId: string | number;
-    pet?: {
-        id: number;
-        name: string;
-        species: string;
-        breed: string;
-        age: string;
-        gender: string;
-        weight: string;
-        color: string;
-        microchip_id?: string;
-        vaccinated: boolean;
-        next_checkup: string;
-        last_visit: string;
-        owner: {
-            name: string;
-            email: string;
-            phone: string;
-            address: string;
-        };
-        medical_history: Array<{
-            id: number;
-            date: string;
-            type: string;
-            description: string;
-            veterinarian: string;
-            clinic: string;
-        }>;
-        vaccinations: Array<{
-            id: number;
-            vaccine: string;
-            date: string;
-            next_due: string;
-            veterinarian: string;
-        }>;
-        medications: Array<{
-            id: number;
-            name: string;
-            dosage: string;
-            frequency: string;
-            start_date: string;
-            end_date?: string;
-            notes?: string;
-        }>;
-    };
-    medical_records?: Array<any>;
-    vaccinations?: Array<any>;
-    health_conditions?: Array<any>;
+// TypeScript interfaces matching controller response
+interface PetType {
+    id: number;
+    name: string;
+    description: string | null;
 }
 
-const props = withDefaults(defineProps<Props>(), {
-    pet: () => ({
-        id: 1,
-        name: 'Bella',
-        species: 'Dog',
-        breed: 'Golden Retriever',
-        age: '3 years',
-        gender: 'Female',
-        weight: '28.5 kg',
-        color: 'Golden',
-        microchip_id: 'MC123456789',
-        vaccinated: true,
-        next_checkup: '2025-11-15',
-        last_visit: '2025-08-20',
-        owner: {
-            name: 'John Doe',
-            email: 'john.doe@email.com',
-            phone: '+1 (555) 123-4567',
-            address: '123 Main Street, City, State 12345',
-        },
-        medical_history: [
-            {
-                id: 1,
-                date: '2025-08-20',
-                type: 'Routine Checkup',
-                description: 'Annual wellness examination. Pet is in excellent health.',
-                veterinarian: 'Dr. Sarah Johnson',
-                clinic: 'PetCare Veterinary Clinic',
-            },
-            {
-                id: 2,
-                date: '2025-06-15',
-                type: 'Vaccination',
-                description: 'Annual vaccination booster shots administered.',
-                veterinarian: 'Dr. Michael Chen',
-                clinic: 'Happy Paws Veterinary',
-            },
-            {
-                id: 3,
-                date: '2025-03-10',
-                type: 'Dental Cleaning',
-                description: 'Professional dental cleaning and oral examination.',
-                veterinarian: 'Dr. Sarah Johnson',
-                clinic: 'PetCare Veterinary Clinic',
-            },
-        ],
-        vaccinations: [
-            {
-                id: 1,
-                vaccine: 'DHPP (Distemper, Hepatitis, Parvovirus, Parainfluenza)',
-                date: '2025-06-15',
-                next_due: '2026-06-15',
-                veterinarian: 'Dr. Michael Chen',
-            },
-            {
-                id: 2,
-                vaccine: 'Rabies',
-                date: '2025-06-15',
-                next_due: '2026-06-15',
-                veterinarian: 'Dr. Michael Chen',
-            },
-            {
-                id: 3,
-                vaccine: 'Bordetella',
-                date: '2025-01-10',
-                next_due: '2026-01-10',
-                veterinarian: 'Dr. Sarah Johnson',
-            },
-        ],
-        medications: [
-            {
-                id: 1,
-                name: 'Heartgard Plus',
-                dosage: '1 tablet',
-                frequency: 'Monthly',
-                start_date: '2025-01-01',
-                notes: 'Heartworm prevention',
-            },
-        ],
-    }),
-});
+interface PetBreed {
+    id: number;
+    name: string;
+    species: string;
+}
+
+interface Owner {
+    id: number;
+    name: string;
+    email: string;
+    profile: {
+        phone: string | null;
+        address: string | null;
+    } | null;
+}
+
+interface HealthStatus {
+    overall: string;
+    vaccination_status: string;
+    alerts: number;
+}
+
+interface Pet {
+    id: number;
+    name: string;
+    breed: PetBreed | null;
+    type: PetType | null;
+    gender: string;
+    gender_display: string;
+    age_in_years: number;
+    birth_date: string;
+    weight: string | null;
+    size: string | null;
+    size_display: string | null;
+    color: string | null;
+    markings: string | null;
+    microchip_number: string | null;
+    is_neutered: boolean;
+    special_needs: string | null;
+    notes: string | null;
+    profile_image: string | null;
+    images: string[] | null;
+    health_status: HealthStatus;
+    display_name: string;
+    created_at: string;
+    updated_at: string;
+    owner: Owner;
+}
+
+interface Clinic {
+    id: number;
+    name: string;
+}
+
+interface MedicalRecord {
+    id: number;
+    visit_date: string;
+    visit_type: string;
+    visit_type_display: string;
+    chief_complaint: string | null;
+    diagnosis: string | null;
+    treatment_provided: string | null;
+    medications_prescribed: string | null;
+    veterinarian_name: string | null;
+    clinic_name: string | null;
+    is_emergency: boolean;
+    days_since_visit: number;
+    clinic: Clinic | null;
+}
+
+interface Vaccination {
+    id: number;
+    vaccine_name: string;
+    vaccine_type: string | null;
+    administered_date: string;
+    next_due_date: string | null;
+    veterinarian_name: string | null;
+    clinic_name: string | null;
+    status: string;
+    is_expired: boolean;
+    is_due_soon: boolean;
+}
+
+interface HealthCondition {
+    id: number;
+    condition_name: string;
+    severity: string | null;
+    diagnosis_date: string | null;
+    is_active: boolean;
+    status: string;
+    clinic: Clinic | null;
+}
+
+interface Props {
+    pet: Pet;
+    medical_records: MedicalRecord[];
+    vaccinations: Vaccination[];
+    health_conditions: HealthCondition[];
+}
+
+const props = defineProps<Props>();
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -161,7 +136,7 @@ const breadcrumbs: BreadcrumbItem[] = [
         href: petsIndex().url,
     },
     {
-        title: props.pet?.name || 'Pet Details',
+        title: props.pet.name || 'Pet Details',
         href: '#',
     },
 ];
@@ -237,7 +212,7 @@ const uploadImage = () => {
         console.log(pair[0], pair[1]);
     }
     
-    router.post(`/pets/${props.pet?.id || props.petId}`, formData, {
+    router.post(`/pets/${props.pet.id}`, formData, {
         forceFormData: true,
         preserveState: false,
         onSuccess: (page) => {
@@ -258,7 +233,7 @@ const uploadImage = () => {
 
 const editProfile = () => {
     closeMenu();
-    router.visit(petsEdit(props.pet?.id || props.petId).url);
+    router.visit(petsEdit(props.pet.id).url);
 };
 
 const confirmDelete = () => {
@@ -271,7 +246,7 @@ const cancelDelete = () => {
 };
 
 const deletePet = () => {
-    router.delete(petsIndex().url + `/${props.pet?.id || props.petId}`, {
+    router.delete(petsIndex().url + `/${props.pet.id}`, {
         onSuccess: () => {
             router.visit(petsIndex().url);
         },
@@ -284,8 +259,10 @@ const generateReport = () => {
     alert('Report generation feature coming soon!');
 };
 
-const getVaccinationStatus = (nextDue: string) => {
-    const dueDate = new Date(nextDue);
+const getVaccinationStatus = (nextDueDate: string | null) => {
+    if (!nextDueDate) return { status: 'unknown', color: 'text-gray-600 bg-gray-100', text: 'N/A' };
+    
+    const dueDate = new Date(nextDueDate);
     const today = new Date();
     const daysUntilDue = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     
@@ -295,10 +272,10 @@ const getVaccinationStatus = (nextDue: string) => {
 };
 
 // Tab management
-const activeTab = ref('history');
+const activeTab = ref('info');
 const tabs = [
+    { id: 'info', name: 'Pet Information', icon: Info },
     { id: 'history', name: 'Visit History', icon: History },
-    { id: 'medical', name: 'Medical Records', icon: FileText },
     { id: 'documents', name: 'Documents', icon: Folder }
 ];
 
@@ -321,13 +298,13 @@ const getRecordTypeStyle = (type: string) => {
 
 const getRecordCountByType = (type: string) => {
     if (!props.medical_records) return 0;
-    return props.medical_records.filter(record => record.record_type === type).length;
+    return props.medical_records.filter(record => record.visit_type === type).length;
 };
 
 const filteredMedicalRecords = computed(() => {
     if (!props.medical_records) return [];
     if (selectedRecordType.value === 'all') return props.medical_records;
-    return props.medical_records.filter(record => record.record_type === selectedRecordType.value);
+    return props.medical_records.filter(record => record.visit_type === selectedRecordType.value);
 });
 
 // Documents management
@@ -370,7 +347,7 @@ const uploadDocument = (file: File) => {
     
     const formData = new FormData();
     formData.append('document', file);
-    formData.append('pet_id', String(props.pet?.id || props.petId));
+    formData.append('pet_id', String(props.pet.id));
     
     // Simulate upload
     setTimeout(() => {
@@ -401,96 +378,30 @@ const deleteDocument = (docId: number) => {
 </script>
 
 <template>
-    <Head :title="`${pet?.name} - Pet Details`" />
+    <Head :title="`${pet.name} - Pet Details`" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
             <!-- Pet Header with Gradient -->
-            <div class="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl p-6 shadow-lg">
-                <div class="flex flex-col md:flex-row items-start md:items-center gap-6">
+            <div class="relative bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl p-6 shadow-lg">
+                <div class="flex flex-col md:flex-row items-center md:items-center gap-6">
                     <!-- Pet Photo -->
                     <div class="relative group flex-shrink-0">
-                        <div @click="openImageViewer" 
-                             class="w-24 h-24 md:w-32 md:h-32 rounded-xl flex items-center justify-center cursor-pointer overflow-hidden ring-4 ring-white/20 shadow-xl"
-                             :class="pet?.profile_image ? '' : 'bg-white/20 backdrop-blur-sm'">
-                            <img v-if="pet?.profile_image" 
+                        <div @click="openImageUpload" 
+                             class="w-24 h-24 md:w-32 md:h-32 rounded-xl flex items-center justify-center cursor-pointer overflow-hidden ring-4 ring-white/20 shadow-xl hover:ring-white/40 transition-all"
+                             :class="pet.profile_image ? '' : 'bg-white/20 backdrop-blur-sm'">
+                            <img v-if="pet.profile_image" 
                                  :src="`/storage/${pet.profile_image}`" 
                                  :alt="pet.name"
                                  class="w-full h-full object-cover">
-                            <span v-else class="text-white text-xl font-bold">{{ pet?.name?.charAt(0) }}</span>
+                            <span v-else class="text-white text-xl font-bold">{{ pet.name.charAt(0) }}</span>
                         </div>
-                        
-                        <!-- Edit Photo Overlay -->
-                        <button @click="openImageUpload" 
-                             class="absolute bottom-0 right-0 p-2 bg-white text-primary rounded-lg shadow-lg hover:bg-white/90 transition-all transform hover:scale-105">
-                            <Camera class="w-4 h-4" />
-                        </button>
                     </div>
                     
                     <!-- Pet Info -->
-                    <div class="flex-1">
-                        <div class="flex items-start justify-between gap-4">
-                            <div>
-                                <h1 class="text-3xl md:text-4xl font-bold mb-2">{{ pet?.name }}</h1>
-                                <div class="flex flex-wrap items-center gap-4 text-blue-100">
-                                    <div class="flex items-center gap-2">
-                                        <span class="text-sm">{{ pet?.breed || 'Mixed Breed' }}</span>
-                                    </div>
-                                    <div class="flex items-center gap-2">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-blue-200"></span>
-                                        <span class="text-sm">{{ pet?.age || 'Age unknown' }}</span>
-                                    </div>
-                                    <div class="flex items-center gap-2">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-blue-200"></span>
-                                        <span class="text-sm">{{ pet?.gender }}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Action Menu -->
-                            <div class="relative flex-shrink-0">
-                                <button @click="toggleMenu" 
-                                        class="p-2 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 hover:bg-white/20 transition-colors">
-                                    <MoreVertical class="w-5 h-5" />
-                                </button>
-                                
-                                <!-- Dropdown Menu -->
-                                <div v-if="showMenu" @click.away="closeMenu" 
-                                     class="absolute right-0 mt-2 w-48 bg-card rounded-lg shadow-lg border py-1 z-10">
-                                    <button @click="editProfile" 
-                                            class="w-full text-left px-4 py-2 text-sm hover:bg-muted flex items-center gap-2">
-                                        <Edit class="w-4 h-4" />
-                                        Edit Profile
-                                    </button>
-                                    <hr class="my-1 border">
-                                    <button @click="confirmDelete" 
-                                            class="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2">
-                                        <Trash2 class="w-4 h-4" />
-                                        Delete Pet
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Quick Stats -->
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
-                            <div class="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
-                                <p class="text-xs text-blue-100 mb-1">Species</p>
-                                <p class="font-semibold text-white">{{ pet?.species }}</p>
-                            </div>
-                            <div class="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
-                                <p class="text-xs text-blue-100 mb-1">Weight</p>
-                                <p class="font-semibold text-white">{{ pet?.weight || 'Not set' }}</p>
-                            </div>
-                            <div class="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
-                                <p class="text-xs text-blue-100 mb-1">Color</p>
-                                <p class="font-semibold text-white">{{ pet?.color || 'Not specified' }}</p>
-                            </div>
-                            <div v-if="pet?.microchip_id" class="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
-                                <p class="text-xs text-blue-100 mb-1">Microchip</p>
-                                <p class="font-semibold text-white font-mono text-sm">{{ pet?.microchip_id }}</p>
-                            </div>
-                        </div>
+                    <div class="flex-1 text-center md:text-left">
+                        <h1 class="text-3xl md:text-4xl font-bold mb-2">{{ pet.name }}</h1>
+                        <p class="text-blue-100">{{ pet.type?.name || 'Pet' }}</p>
                     </div>
                 </div>
             </div>
@@ -519,36 +430,195 @@ const deleteDocument = (docId: number) => {
 
                 <!-- Tab Content -->
                 <div class="p-6">
+                    <!-- Pet Information Tab -->
+                    <div v-if="activeTab === 'info'" class="space-y-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold">Pet Information</h3>
+                            
+                            <!-- Action Menu -->
+                            <div class="relative">
+                                <button @click="toggleMenu" 
+                                        class="p-2 hover:bg-muted rounded-lg transition-colors">
+                                    <MoreVertical class="w-5 h-5" />
+                                </button>
+                                
+                                <!-- Dropdown Menu -->
+                                <div v-if="showMenu" @click.away="closeMenu" 
+                                     class="absolute right-0 mt-2 w-48 bg-card rounded-lg shadow-lg border py-1 z-10">
+                                    <button @click="editProfile" 
+                                            class="w-full text-left px-4 py-2 text-sm hover:bg-muted flex items-center gap-2">
+                                        <Edit class="w-4 h-4" />
+                                        Edit Profile
+                                    </button>
+                                    <hr class="my-1 border">
+                                    <button @click="confirmDelete" 
+                                            class="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2">
+                                        <Trash2 class="w-4 h-4" />
+                                        Delete Pet
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Combined Information -->
+                        <div class="bg-muted/30 rounded-lg p-6 border">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                                <!-- Basic Details Column -->
+                                <div class="space-y-3">
+                                    <h4 class="text-sm font-semibold text-muted-foreground mb-3 pb-2 border-b">Basic Details</h4>
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-muted-foreground">Name:</span>
+                                        <span class="text-sm font-medium">{{ pet.name }}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-muted-foreground">Type:</span>
+                                        <span class="text-sm font-medium">{{ pet.type?.name || 'Unknown' }}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-muted-foreground">Breed:</span>
+                                        <span class="text-sm font-medium">{{ pet.breed?.name || 'Mixed Breed' }}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-muted-foreground">Gender:</span>
+                                        <span class="text-sm font-medium">{{ pet.gender_display }}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-muted-foreground">Age:</span>
+                                        <span class="text-sm font-medium">{{ pet.age_in_years }} {{ pet.age_in_years === 1 ? 'year' : 'years' }} old</span>
+                                    </div>
+                                    <div v-if="pet.birth_date" class="flex justify-between">
+                                        <span class="text-sm text-muted-foreground">Birth Date:</span>
+                                        <span class="text-sm font-medium">{{ formatDate(pet.birth_date) }}</span>
+                                    </div>
+                                    <div v-if="pet.microchip_number" class="flex justify-between">
+                                        <span class="text-sm text-muted-foreground">Microchip:</span>
+                                        <span class="text-sm font-medium font-mono">{{ pet.microchip_number }}</span>
+                                    </div>
+                                </div>
+
+                                <!-- Physical Characteristics Column -->
+                                <div class="space-y-3">
+                                    <h4 class="text-sm font-semibold text-muted-foreground mb-3 pb-2 border-b">Physical Characteristics</h4>
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-muted-foreground">Weight:</span>
+                                        <span class="text-sm font-medium">{{ pet.weight ? `${pet.weight} kg` : 'Not recorded' }}</span>
+                                    </div>
+                                    <div v-if="pet.size_display" class="flex justify-between">
+                                        <span class="text-sm text-muted-foreground">Size:</span>
+                                        <span class="text-sm font-medium">{{ pet.size_display }}</span>
+                                    </div>
+                                    <div v-if="pet.color" class="flex justify-between">
+                                        <span class="text-sm text-muted-foreground">Color:</span>
+                                        <span class="text-sm font-medium">{{ pet.color }}</span>
+                                    </div>
+                                    <div v-if="pet.markings" class="flex justify-between">
+                                        <span class="text-sm text-muted-foreground">Markings:</span>
+                                        <span class="text-sm font-medium">{{ pet.markings }}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-muted-foreground">Neutered/Spayed:</span>
+                                        <span class="text-sm font-medium">{{ pet.is_neutered ? 'Yes' : 'No' }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Vaccinations Section -->
+                        <div v-if="vaccinations.length > 0">
+                            <h4 class="text-base font-semibold mb-3">Vaccinations</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div v-for="vaccination in vaccinations" :key="vaccination.id" 
+                                     class="bg-muted/30 rounded-lg p-4 border">
+                                    <div class="flex justify-between items-start mb-2">
+                                        <h5 class="font-medium">{{ vaccination.vaccine_name }}</h5>
+                                        <span :class="[
+                                            'px-2 py-1 text-xs rounded-full',
+                                            getVaccinationStatus(vaccination.next_due_date).color
+                                        ]">
+                                            {{ getVaccinationStatus(vaccination.next_due_date).text }}
+                                        </span>
+                                    </div>
+                                    <div class="space-y-1 text-sm text-muted-foreground">
+                                        <p>Administered: {{ formatDate(vaccination.administered_date) }}</p>
+                                        <p v-if="vaccination.next_due_date">Next Due: {{ formatDate(vaccination.next_due_date) }}</p>
+                                        <p v-if="vaccination.clinic_name">Clinic: {{ vaccination.clinic_name }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Health Conditions -->
+                        <div v-if="health_conditions.length > 0">
+                            <h4 class="text-base font-semibold mb-3">Health Conditions</h4>
+                            <div class="space-y-3">
+                                <div v-for="condition in health_conditions" :key="condition.id" 
+                                     class="bg-muted/30 rounded-lg p-4 border">
+                                    <div class="flex justify-between items-start mb-2">
+                                        <h5 class="font-medium">{{ condition.condition_name }}</h5>
+                                        <span :class="[
+                                            'px-2 py-1 text-xs rounded-full',
+                                            condition.is_active ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300' : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                                        ]">
+                                            {{ condition.is_active ? 'Active' : 'Resolved' }}
+                                        </span>
+                                    </div>
+                                    <div class="space-y-1 text-sm text-muted-foreground">
+                                        <p v-if="condition.severity_display">Severity: {{ condition.severity_display }}</p>
+                                        <p v-if="condition.diagnosis_date">Diagnosed: {{ formatDate(condition.diagnosis_date) }}</p>
+                                        <p v-if="condition.treatment_plan" class="text-sm mt-2">{{ condition.treatment_plan }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Visit History Tab -->
                     <div v-if="activeTab === 'history'" class="space-y-4">
                         <div class="flex items-center justify-between mb-4">
                             <h3 class="text-lg font-semibold">Visit History</h3>
-                            <span class="text-sm text-muted-foreground">{{ pet?.medical_history?.length || 0 }} visits</span>
+                            <span class="text-sm text-muted-foreground">{{ medical_records.length }} visits</span>
                         </div>
                         
-                        <div v-if="pet?.medical_history && pet.medical_history.length > 0" class="space-y-4">
-                            <div v-for="record in pet.medical_history" :key="record.id" 
+                        <div v-if="medical_records.length > 0" class="space-y-4">
+                            <div v-for="record in medical_records" :key="record.id" 
                                  class="bg-muted/30 rounded-lg p-4 border hover:bg-muted/50 transition-colors">
                                 <div class="flex justify-between items-start mb-3">
                                     <div>
-                                        <h4 class="font-semibold text-lg">{{ record.type }}</h4>
-                                        <p class="text-sm text-muted-foreground">{{ formatDate(record.date) }}</p>
+                                        <h4 class="font-semibold text-lg">{{ record.visit_type_display }}</h4>
+                                        <p class="text-sm text-muted-foreground">{{ formatDate(record.visit_date) }}</p>
                                     </div>
-                                    <span class="px-3 py-1 bg-primary/10 text-primary text-xs rounded-full font-medium">
+                                    <span v-if="record.is_emergency" class="px-3 py-1 bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 text-xs rounded-full font-medium">
+                                        Emergency
+                                    </span>
+                                    <span v-else class="px-3 py-1 bg-primary/10 text-primary text-xs rounded-full font-medium">
                                         Completed
                                     </span>
                                 </div>
                                 
-                                <p class="text-sm mb-3 leading-relaxed">{{ record.description }}</p>
+                                <div class="space-y-2 mb-3">
+                                    <p v-if="record.chief_complaint" class="text-sm leading-relaxed">
+                                        <span class="font-medium">Chief Complaint:</span> {{ record.chief_complaint }}
+                                    </p>
+                                    <p v-if="record.diagnosis" class="text-sm leading-relaxed">
+                                        <span class="font-medium">Diagnosis:</span> {{ record.diagnosis }}
+                                    </p>
+                                    <p v-if="record.treatment_provided" class="text-sm leading-relaxed">
+                                        <span class="font-medium">Treatment:</span> {{ record.treatment_provided }}
+                                    </p>
+                                </div>
                                 
                                 <div class="flex items-center gap-4 text-sm text-muted-foreground pt-3 border-t">
-                                    <div class="flex items-center gap-2">
+                                    <div v-if="record.veterinarian_name" class="flex items-center gap-2">
                                         <User class="w-4 h-4" />
-                                        <span>{{ record.veterinarian }}</span>
+                                        <span>{{ record.veterinarian_name }}</span>
+                                    </div>
+                                    <div v-if="record.clinic_name" class="flex items-center gap-2">
+                                        <Building2 class="w-4 h-4" />
+                                        <span>{{ record.clinic_name }}</span>
                                     </div>
                                     <div class="flex items-center gap-2">
-                                        <Building2 class="w-4 h-4" />
-                                        <span>{{ record.clinic }}</span>
+                                        <Clock class="w-4 h-4" />
+                                        <span>{{ record.days_since_visit }} days ago</span>
                                     </div>
                                 </div>
                             </div>
@@ -558,227 +628,6 @@ const deleteDocument = (docId: number) => {
                             <History class="w-16 h-16 mx-auto text-muted-foreground opacity-50 mb-4" />
                             <p class="text-muted-foreground">No visit history yet</p>
                             <p class="text-sm text-muted-foreground mt-2">Medical records from clinic visits will appear here</p>
-                        </div>
-                    </div>
-
-                    <!-- Medical Records Tab -->
-                    <div v-if="activeTab === 'medical'" class="space-y-6">
-                        <!-- Medical Records by Category -->
-                        <div v-if="medical_records && medical_records.length > 0">
-                            <div class="flex items-center justify-between mb-6">
-                                <h3 class="text-lg font-semibold">Medical Records</h3>
-                                <span class="text-sm text-muted-foreground">{{ medical_records.length }} record{{ medical_records.length !== 1 ? 's' : '' }}</span>
-                            </div>
-
-                            <!-- Categories Sidebar & Records -->
-                            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                                <!-- Categories -->
-                                <div class="lg:col-span-1">
-                                    <div class="bg-card border rounded-lg p-4 space-y-2 sticky top-4">
-                                        <h4 class="text-sm font-semibold mb-3 text-muted-foreground">Categories</h4>
-                                        <button 
-                                            @click="selectedRecordType = 'all'"
-                                            :class="[
-                                                'w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between',
-                                                selectedRecordType === 'all' ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted'
-                                            ]"
-                                        >
-                                            <span>All Records</span>
-                                            <span class="text-xs bg-muted px-2 py-0.5 rounded-full">{{ medical_records.length }}</span>
-                                        </button>
-                                        <button 
-                                            v-for="type in recordTypeCategories"
-                                            :key="type.value"
-                                            @click="selectedRecordType = type.value"
-                                            :class="[
-                                                'w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between',
-                                                selectedRecordType === type.value ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted'
-                                            ]"
-                                        >
-                                            <div class="flex items-center gap-2">
-                                                <span :class="type.iconColor">{{ type.icon }}</span>
-                                                <span>{{ type.label }}</span>
-                                            </div>
-                                            <span class="text-xs bg-muted px-2 py-0.5 rounded-full">
-                                                {{ getRecordCountByType(type.value) }}
-                                            </span>
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <!-- Records List -->
-                                <div class="lg:col-span-3 space-y-4">
-                                    <div v-for="record in filteredMedicalRecords" :key="record.id"
-                                         class="bg-card border rounded-lg p-5 hover:shadow-md transition-shadow">
-                                        <div class="flex items-start justify-between mb-4">
-                                            <div class="flex items-start gap-3 flex-1">
-                                                <div :class="[
-                                                    'p-2 rounded-lg',
-                                                    getRecordTypeStyle(record.record_type).bgClass
-                                                ]">
-                                                    <span class="text-2xl">{{ getRecordTypeStyle(record.record_type).icon }}</span>
-                                                </div>
-                                                <div class="flex-1">
-                                                    <div class="flex items-center gap-2 mb-1">
-                                                        <h4 class="font-semibold">{{ record.visit_type_display || getRecordTypeStyle(record.record_type).label }}</h4>
-                                                        <span :class="[
-                                                            'px-2 py-0.5 rounded-full text-xs font-medium',
-                                                            getRecordTypeStyle(record.record_type).badgeClass
-                                                        ]">
-                                                            {{ getRecordTypeStyle(record.record_type).label }}
-                                                        </span>
-                                                    </div>
-                                                    <div class="flex items-center gap-4 text-sm text-muted-foreground">
-                                                        <div class="flex items-center gap-1">
-                                                            <Clock class="w-4 h-4" />
-                                                            <span>{{ formatDate(record.visit_date || record.date) }}</span>
-                                                        </div>
-                                                        <div v-if="record.veterinarian_name" class="flex items-center gap-1">
-                                                            <User class="w-4 h-4" />
-                                                            <span>{{ record.veterinarian_name }}</span>
-                                                        </div>
-                                                        <div v-if="record.clinic?.clinic_name" class="flex items-center gap-1">
-                                                            <Building2 class="w-4 h-4" />
-                                                            <span>{{ record.clinic.clinic_name }}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- Record Details -->
-                                        <div class="space-y-3 text-sm">
-                                            <div v-if="record.diagnosis" class="bg-muted/30 rounded-lg p-3">
-                                                <span class="font-semibold text-xs text-muted-foreground uppercase">Diagnosis</span>
-                                                <p class="mt-1">{{ record.diagnosis }}</p>
-                                            </div>
-                                            <div v-if="record.treatment_provided || record.treatment" class="bg-muted/30 rounded-lg p-3">
-                                                <span class="font-semibold text-xs text-muted-foreground uppercase">Treatment</span>
-                                                <p class="mt-1">{{ record.treatment_provided || record.treatment }}</p>
-                                            </div>
-                                            <div v-if="record.medications_prescribed" class="bg-muted/30 rounded-lg p-3">
-                                                <span class="font-semibold text-xs text-muted-foreground uppercase">Medications</span>
-                                                <p class="mt-1">{{ record.medications_prescribed }}</p>
-                                            </div>
-                                            <div v-if="record.chief_complaint" class="bg-muted/30 rounded-lg p-3">
-                                                <span class="font-semibold text-xs text-muted-foreground uppercase">Chief Complaint</span>
-                                                <p class="mt-1">{{ record.chief_complaint }}</p>
-                                            </div>
-                                        </div>
-
-                                        <!-- Footer Info -->
-                                        <div v-if="record.next_visit_date || record.weight_recorded" class="mt-4 pt-4 border-t flex items-center gap-4 text-sm text-muted-foreground">
-                                            <div v-if="record.weight_recorded">
-                                                <span class="font-medium">Weight:</span> {{ record.weight_recorded }} kg
-                                            </div>
-                                            <div v-if="record.next_visit_date">
-                                                <span class="font-medium">Next Visit:</span> {{ formatDate(record.next_visit_date) }}
-                                            </div>
-                                            <div v-if="record.cost_formatted" class="ml-auto">
-                                                <span class="font-medium">Cost:</span> {{ record.cost_formatted }}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Empty State for Filtered Results -->
-                                    <div v-if="filteredMedicalRecords.length === 0" class="text-center py-12 bg-muted/30 rounded-lg">
-                                        <FileText class="w-12 h-12 mx-auto text-muted-foreground opacity-50 mb-3" />
-                                        <p class="text-muted-foreground">No {{ selectedRecordType === 'all' ? '' : selectedRecordType }} records found</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Empty State - No Medical Records -->
-                        <div v-else class="text-center py-12 bg-muted/30 rounded-lg">
-                            <FileText class="w-16 h-16 mx-auto text-muted-foreground opacity-50 mb-4" />
-                            <p class="text-lg font-medium mb-2">No Medical Records</p>
-                            <p class="text-sm text-muted-foreground">Medical records from clinic visits will appear here</p>
-                        </div>
-
-                        <!-- Vaccinations Section -->
-                        <div>
-                            <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                                <ShieldCheck class="w-5 h-5 text-primary" />
-                                Vaccinations
-                            </h3>
-                            
-                            <div v-if="pet?.vaccinations && pet.vaccinations.length > 0" class="space-y-3">
-                                <div v-for="vax in pet.vaccinations" :key="vax.id" 
-                                     class="bg-card border rounded-lg p-4">
-                                    <div class="flex items-start justify-between">
-                                        <div class="flex-1">
-                                            <h4 class="font-semibold mb-1">{{ vax.vaccine }}</h4>
-                                            <div class="text-sm text-muted-foreground space-y-1">
-                                                <div class="flex items-center gap-2">
-                                                    <span>Last administered:</span>
-                                                    <span class="font-medium text-foreground">{{ formatDate(vax.date) }}</span>
-                                                </div>
-                                                <div class="flex items-center gap-2">
-                                                    <span>Next due:</span>
-                                                    <span class="font-medium text-foreground">{{ formatDate(vax.next_due) }}</span>
-                                                </div>
-                                                <div class="flex items-center gap-2">
-                                                    <User class="w-4 h-4" />
-                                                    <span>{{ vax.veterinarian }}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <span :class="['px-3 py-1 rounded-full text-xs font-semibold', getVaccinationStatus(vax.next_due).color]">
-                                            {{ getVaccinationStatus(vax.next_due).text }}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div v-else class="text-center py-8 bg-muted/30 rounded-lg">
-                                <p class="text-muted-foreground">No vaccination records</p>
-                            </div>
-                        </div>
-
-                        <!-- Current Medications Section -->
-                        <div>
-                            <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                                <Pill class="w-5 h-5 text-primary" />
-                                Current Medications
-                            </h3>
-                            
-                            <div v-if="pet?.medications && pet.medications.length > 0" class="space-y-3">
-                                <div v-for="med in pet.medications" :key="med.id" 
-                                     class="bg-card border rounded-lg p-4">
-                                    <div class="flex items-start justify-between mb-2">
-                                        <h4 class="font-semibold">{{ med.name }}</h4>
-                                        <span class="px-2 py-1 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded text-xs font-medium">
-                                            Active
-                                        </span>
-                                    </div>
-                                    <div class="grid grid-cols-2 gap-3 text-sm">
-                                        <div>
-                                            <span class="text-muted-foreground">Dosage:</span>
-                                            <span class="ml-2 font-medium">{{ med.dosage }}</span>
-                                        </div>
-                                        <div>
-                                            <span class="text-muted-foreground">Frequency:</span>
-                                            <span class="ml-2 font-medium">{{ med.frequency }}</span>
-                                        </div>
-                                        <div>
-                                            <span class="text-muted-foreground">Started:</span>
-                                            <span class="ml-2 font-medium">{{ formatDate(med.start_date) }}</span>
-                                        </div>
-                                        <div v-if="med.end_date">
-                                            <span class="text-muted-foreground">Ends:</span>
-                                            <span class="ml-2 font-medium">{{ formatDate(med.end_date) }}</span>
-                                        </div>
-                                    </div>
-                                    <p v-if="med.notes" class="text-sm text-muted-foreground mt-3 pt-3 border-t">
-                                        {{ med.notes }}
-                                    </p>
-                                </div>
-                            </div>
-                            
-                            <div v-else class="text-center py-8 bg-muted/30 rounded-lg">
-                                <p class="text-muted-foreground">No active medications</p>
-                            </div>
                         </div>
                     </div>
 

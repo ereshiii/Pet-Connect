@@ -22,7 +22,7 @@ withDefaults(
         <div class="flex items-center gap-2 flex-1">
             <SidebarTrigger class="-ml-1" />
             <template v-if="breadcrumbs && breadcrumbs.length > 0">
-                <Breadcrumbs :breadcrumbs="breadcrumbs" />
+                <Breadcrumbs :breadcrumbs="breadcrumbs" class="hidden md:flex" />
             </template>
         </div>
         

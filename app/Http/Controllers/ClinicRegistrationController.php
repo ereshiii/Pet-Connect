@@ -62,29 +62,6 @@ class ClinicRegistrationController extends Controller
             }
         }
 
-        // Convert string boolean values to actual booleans (FormData sends booleans as strings)
-        if ($request->has('services')) {
-            $services = $request->input('services');
-            foreach ($services as $index => $service) {
-                if (isset($service['requires_appointment'])) {
-                    $request->merge([
-                        "services.{$index}.requires_appointment" => filter_var($service['requires_appointment'], FILTER_VALIDATE_BOOLEAN)
-                    ]);
-                }
-                if (isset($service['is_emergency_service'])) {
-                    $request->merge([
-                        "services.{$index}.is_emergency_service" => filter_var($service['is_emergency_service'], FILTER_VALIDATE_BOOLEAN)
-                    ]);
-                }
-            }
-        }
-
-        if ($request->has('is_emergency_clinic')) {
-            $request->merge([
-                'is_emergency_clinic' => filter_var($request->input('is_emergency_clinic'), FILTER_VALIDATE_BOOLEAN)
-            ]);
-        }
-
         // Validate the request
         $validated = $request->validate([
             // Step 1: Clinic Information
@@ -115,10 +92,7 @@ class ClinicRegistrationController extends Controller
             'services.*.category' => 'required|string|max:100',
             'services.*.description' => 'nullable|string',
             'services.*.duration_minutes' => 'required|integer|min:1',
-            'services.*.requires_appointment' => 'required|boolean',
-            'services.*.is_emergency_service' => 'required|boolean',
             'other_services' => 'nullable|string',
-            'is_emergency_clinic' => 'nullable|boolean',
             
             // Step 5: Veterinarians
             'veterinarians' => 'required|array|min:1',
@@ -167,7 +141,6 @@ class ClinicRegistrationController extends Controller
                 'longitude' => $validated['longitude'],
                 'operating_hours' => $validated['operating_hours'],
                 'is_24_hours' => $validated['is_24_hours'] ?? false,
-                'is_emergency_clinic' => $validated['is_emergency_clinic'] ?? false,
                 'services' => $validated['services'],
                 'other_services' => $validated['other_services'],
                 'veterinarians' => $validated['veterinarians'],

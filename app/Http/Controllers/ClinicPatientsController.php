@@ -80,15 +80,10 @@ class ClinicPatientsController extends Controller
             });
         }
 
-        // Apply pet type filter (check both species field and type relationship)
+        // Apply pet type filter (check type relationship)
         if ($petType !== 'all') {
-            $query->where(function ($q) use ($petType) {
-                // Check direct species field (for manually added pets)
-                $q->where('species', $petType)
-                  // OR check type relationship (for pets added through appointments)
-                  ->orWhereHas('type', function ($typeQuery) use ($petType) {
-                      $typeQuery->where('name', $petType);
-                  });
+            $query->whereHas('type', function ($typeQuery) use ($petType) {
+                $typeQuery->where('name', $petType);
             });
         }
 
@@ -153,10 +148,10 @@ class ClinicPatientsController extends Controller
             return [
                 'id' => $pet->id,
                 'name' => $pet->name,
-                'species' => $pet->species ?: ($pet->type ? $pet->type->species : 'Unknown'), // Use direct species field first
-                'breed' => $pet->breed ?: 'Mixed breed', // Use direct breed field (string) or default
-                'age' => $pet->age ?: $age, // Use direct age field first
-                'age_display' => $pet->age ? $pet->age . ' years old' : $ageDisplay,
+                'species' => $pet->type ? $pet->type->name : 'Unknown',
+                'breed' => $pet->breed ? $pet->breed->name : 'Mixed breed',
+                'age' => $age ?: 0,
+                'age_display' => $ageDisplay,
                 'gender' => $pet->gender,
                 'weight' => $pet->weight,
                 'color' => $pet->color,
@@ -185,14 +180,11 @@ class ClinicPatientsController extends Controller
         $stats = $this->getPatientsStats($clinicId);
         
         // Get available pet types for filter
-        $petTypes = Pet::where('is_active', true)
-        ->select('species')
-        ->whereNotNull('species')
-        ->distinct()
-        ->pluck('species')
-        ->filter()
-        ->unique()
-        ->values();
+        $petTypes = DB::table('pet_types')
+            ->distinct()
+            ->pluck('name')
+            ->filter()
+            ->values();
 
         return Inertia::render('2clinicPages/patients/PatientsList', [
             'patients' => $transformedPatients,
@@ -391,7 +383,7 @@ class ClinicPatientsController extends Controller
             'patient' => [
                 'id' => $pet->id,
                 'name' => $pet->name,
-                'species' => $pet->type ? $pet->type->species : ($pet->species ?? 'Unknown'),
+                'species' => $pet->type ? $pet->type->name : 'Unknown',
                 'type' => $pet->type ? $pet->type->name : 'Unknown',
                 'breed' => $pet->breed ? $pet->breed->name : 'Mixed breed',
                 'age' => $age,
@@ -691,7 +683,7 @@ class ClinicPatientsController extends Controller
             'patient' => [
                 'id' => $pet->id,
                 'name' => $pet->name,
-                'species' => $pet->type ? $pet->type->species : ($pet->species ?? 'Unknown'),
+                'species' => $pet->type ? $pet->type->name : 'Unknown',
                 'breed' => $pet->breed ? $pet->breed->name : 'Mixed breed',
                 'color' => $pet->color,
                 'gender' => $pet->gender,
@@ -786,8 +778,8 @@ class ClinicPatientsController extends Controller
             'patient' => [
                 'id' => $pet->id,
                 'name' => $pet->name,
-                'species' => $pet->species,
-                'breed' => $pet->breed,
+                'species' => $pet->type ? $pet->type->name : 'Unknown',
+                'breed' => $pet->breed ? $pet->breed->name : 'Mixed breed',
                 'owner_name' => $pet->owner ? $pet->owner->name : 'Unknown',
             ],
             'edit_logs' => $editLogs,

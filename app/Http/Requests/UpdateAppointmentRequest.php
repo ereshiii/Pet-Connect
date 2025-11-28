@@ -118,17 +118,17 @@ class UpdateAppointmentRequest extends FormRequest
                     $appointmentStart = $scheduledDate;
                     $appointmentEnd = $scheduledDate->copy()->addMinutes($duration);
                     
-                    $conflictingAppointment = Appointment::where('clinic_id', $clinicId)
+                    // Get all potentially conflicting appointments and check in PHP (SQLite compatible)
+                    $potentialConflicts = Appointment::where('clinic_id', $clinicId)
                         ->where('id', '!=', $appointment->id) // Exclude current appointment
                         ->whereIn('status', ['scheduled', 'confirmed', 'in_progress'])
-                        ->where(function ($query) use ($appointmentStart, $appointmentEnd) {
-                            $query->where(function ($q) use ($appointmentStart, $appointmentEnd) {
-                                // Check if existing appointment overlaps with new appointment
-                                $q->whereRaw("scheduled_at < ?", [$appointmentEnd])
-                                  ->whereRaw("DATE_ADD(scheduled_at, INTERVAL duration_minutes MINUTE) > ?", [$appointmentStart]);
-                            });
-                        })
-                        ->first();
+                        ->where('scheduled_at', '<', $appointmentEnd)
+                        ->get();
+                    
+                    $conflictingAppointment = $potentialConflicts->first(function ($apt) use ($appointmentStart) {
+                        $existingEnd = Carbon::parse($apt->scheduled_at)->addMinutes($apt->duration_minutes);
+                        return $existingEnd > $appointmentStart;
+                    });
                     
                     if ($conflictingAppointment) {
                         $existingStart = Carbon::parse($conflictingAppointment->scheduled_at);
@@ -147,10 +147,11 @@ class UpdateAppointmentRequest extends FormRequest
                 }
             ],
             'clinic_staff_id' => 'nullable|exists:clinic_staff,id',
-            'service_id' => 'nullable|exists:clinic_services,id',
-            'duration_minutes' => 'integer|min:15|max:480',
+            'service_ids' => 'required|array|size:1',
+            'service_ids.*' => 'required|exists:clinic_services,id',
+            'duration_minutes' => 'nullable|integer|min:15|max:480',
             'priority' => [
-                'required',
+                'nullable',
                 Rule::in(['low', 'normal', 'high', 'urgent'])
             ],
             'reason' => 'required|string|max:1000',
@@ -170,7 +171,11 @@ class UpdateAppointmentRequest extends FormRequest
             'scheduled_at.date' => 'Please provide a valid appointment date and time.',
             'scheduled_at.after' => 'Appointment must be rescheduled for a future date and time.',
             'clinic_staff_id.exists' => 'The selected veterinarian does not exist.',
-            'service_id.exists' => 'The selected service does not exist.',
+            'service_ids.required' => 'Please select a service for this appointment.',
+            'service_ids.array' => 'Service selection is invalid.',
+            'service_ids.size' => 'Please select exactly one service.',
+            'service_ids.*.required' => 'Please select a service.',
+            'service_ids.*.exists' => 'The selected service does not exist.',
             'duration_minutes.min' => 'Appointment duration must be at least 15 minutes.',
             'duration_minutes.max' => 'Appointment duration cannot exceed 8 hours.',
             'priority.required' => 'Please select an appointment priority.',
@@ -189,12 +194,42 @@ class UpdateAppointmentRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         // Format scheduled_at if it's from separate date and time fields
-        if ($this->has('new_date') && $this->has('new_time')) {
-            $scheduledAt = Carbon::createFromFormat(
-                'Y-m-d g:i A', 
-                $this->new_date . ' ' . $this->new_time
-            );
-            $this->merge(['scheduled_at' => $scheduledAt->toDateTimeString()]);
+        if ($this->has('preferred_date') && $this->has('preferred_time')) {
+            try {
+                $date = $this->preferred_date; // Format: YYYY-MM-DD
+                $time = $this->preferred_time; // Format: H:i AM/PM or H:i
+                
+                // Convert 12-hour format to 24-hour if needed
+                $time24 = $time;
+                if (stripos($time, 'AM') !== false || stripos($time, 'PM') !== false) {
+                    $isPM = stripos($time, 'PM') !== false;
+                    $time24 = str_ireplace([' AM', ' PM', 'AM', 'PM'], '', $time);
+                    $timeParts = explode(':', trim($time24));
+                    $hours = (int)$timeParts[0];
+                    $minutes = isset($timeParts[1]) ? $timeParts[1] : '00';
+                    
+                    // Convert to 24-hour format
+                    if ($isPM && $hours !== 12) {
+                        $hours += 12;
+                    } elseif (!$isPM && $hours === 12) {
+                        $hours = 0;
+                    }
+                    
+                    $time24 = sprintf('%02d:%s', $hours, $minutes);
+                }
+                
+                // Combine date and time explicitly in the application timezone
+                $dateTimeString = $date . ' ' . $time24;
+                $scheduledAt = Carbon::parse($dateTimeString, config('app.timezone'));
+                
+                $this->merge(['scheduled_at' => $scheduledAt->toDateTimeString()]);
+            } catch (\Exception $e) {
+                \Log::error('Date parsing failed in UpdateAppointmentRequest', [
+                    'preferred_date' => $this->preferred_date,
+                    'preferred_time' => $this->preferred_time,
+                    'error' => $e->getMessage()
+                ]);
+            }
         }
     }
 
@@ -206,7 +241,8 @@ class UpdateAppointmentRequest extends FormRequest
         return [
             'scheduled_at' => 'appointment date and time',
             'clinic_staff_id' => 'veterinarian',
-            'service_id' => 'service',
+            'service_ids' => 'service',
+            'service_ids.*' => 'service',
             'duration_minutes' => 'duration',
             'reschedule_reason' => 'reason for rescheduling',
         ];

@@ -64,9 +64,9 @@ const addNewPatient = () => {
                     <h1 class="text-2xl font-semibold text-foreground">Patient Records</h1>
                     <p class="text-muted-foreground">Manage patient information and medical records</p>
                 </div>
-                <button @click="addNewPatient" class="btn btn-primary" disabled>
+                <!-- <button @click="addNewPatient" class="btn btn-primary" disabled>
                     + Add New Patient
-                </button>
+                </button> -->
             </div>
 
             <!-- Search and Filters -->

@@ -91,17 +91,17 @@ const serviceBookingsChartData = computed(() => ({
     <Head title="Services Analytics" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto p-6">
+        <div class="flex h-full flex-1 flex-col gap-3 sm:gap-6 overflow-x-auto p-3 sm:p-6">
             <!-- Page Header -->
-            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div class="flex flex-col gap-2 sm:gap-4">
                 <div>
-                    <h1 class="text-3xl font-bold tracking-tight">Services Analytics</h1>
-                    <p class="text-muted-foreground mt-1">Service performance and booking trends</p>
+                    <h1 class="text-xl sm:text-3xl font-bold tracking-tight text-foreground">Services Analytics</h1>
+                    <p class="text-muted-foreground mt-0.5 sm:mt-1 text-xs sm:text-base">Service performance and booking trends</p>
                 </div>
                 <select 
                     v-model="selectedDateRange" 
                     @change="updateDateRange" 
-                    class="px-4 py-2 border rounded-lg bg-white dark:bg-slate-900 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-primary w-fit"
+                    class="px-3 py-1.5 sm:py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary w-full sm:w-fit text-xs sm:text-base"
                 >
                     <option value="1">Last 24 hours</option>
                     <option value="7">Last 7 days</option>
@@ -113,103 +113,107 @@ const serviceBookingsChartData = computed(() => ({
             </div>
 
             <!-- Key Metrics -->
-            <div class="grid gap-4 md:grid-cols-3">
-                <Card>
-                    <CardHeader class="flex flex-row items-center justify-between pb-2">
-                        <CardTitle class="text-sm font-medium">Total Bookings</CardTitle>
-                        <Users class="h-4 w-4 text-blue-600" />
+            <div class="grid gap-2 sm:gap-4 grid-cols-1 sm:grid-cols-3">
+                <Card class="bg-card border-border">
+                    <CardHeader class="flex flex-row items-center justify-between pb-1 sm:pb-2 space-y-0 p-3 sm:p-6">
+                        <CardTitle class="text-xs sm:text-base font-medium text-foreground">Total Bookings</CardTitle>
+                        <Users class="h-3.5 w-3.5 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
                     </CardHeader>
-                    <CardContent>
-                        <div class="text-2xl font-bold">{{ service_stats.total_bookings.toLocaleString() }}</div>
-                        <div class="flex items-center gap-1 text-xs mt-1" :class="getGrowthColor(service_stats.booking_growth)">
-                            <component :is="service_stats.booking_growth >= 0 ? ArrowUpRight : ArrowDownRight" class="h-3 w-3" />
+                    <CardContent class="p-3 pt-0 sm:p-6 sm:pt-0">
+                        <div class="text-lg sm:text-2xl font-bold text-foreground">{{ service_stats.total_bookings.toLocaleString() }}</div>
+                        <div class="flex items-center gap-1 text-[10px] sm:text-sm mt-0.5 sm:mt-1" :class="getGrowthColor(service_stats.booking_growth)">
+                            <component :is="service_stats.booking_growth >= 0 ? ArrowUpRight : ArrowDownRight" class="h-2.5 w-2.5 sm:h-4 sm:w-4" />
                             <span>{{ Math.abs(service_stats.booking_growth).toFixed(1) }}%</span>
                         </div>
                     </CardContent>
                 </Card>
 
-                <Card>
-                    <CardHeader class="flex flex-row items-center justify-between pb-2">
-                        <CardTitle class="text-sm font-medium">Avg Service Duration</CardTitle>
-                        <Activity class="h-4 w-4 text-purple-600" />
+                <Card class="bg-card border-border">
+                    <CardHeader class="flex flex-row items-center justify-between pb-1 sm:pb-2 space-y-0 p-3 sm:p-6">
+                        <CardTitle class="text-xs sm:text-base font-medium text-foreground">Avg Duration</CardTitle>
+                        <Activity class="h-3.5 w-3.5 sm:h-5 sm:w-5 text-purple-600 dark:text-purple-400 flex-shrink-0" />
                     </CardHeader>
-                    <CardContent>
-                        <div class="text-2xl font-bold">{{ service_stats.average_service_duration }} min</div>
-                        <p class="text-xs text-muted-foreground mt-1">Per appointment</p>
+                    <CardContent class="p-3 pt-0 sm:p-6 sm:pt-0">
+                        <div class="text-lg sm:text-2xl font-bold text-foreground">{{ service_stats.average_service_duration }} min</div>
+                        <p class="text-[10px] sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">Per appointment</p>
                     </CardContent>
                 </Card>
 
-                <Card>
-                    <CardHeader class="flex flex-row items-center justify-between pb-2">
-                        <CardTitle class="text-sm font-medium">Total Services</CardTitle>
-                        <Stethoscope class="h-4 w-4 text-orange-600" />
+                <Card class="bg-card border-border">
+                    <CardHeader class="flex flex-row items-center justify-between pb-1 sm:pb-2 space-y-0 p-3 sm:p-6">
+                        <CardTitle class="text-xs sm:text-base font-medium text-foreground">Total Services</CardTitle>
+                        <Stethoscope class="h-3.5 w-3.5 sm:h-5 sm:w-5 text-orange-600 dark:text-orange-400 flex-shrink-0" />
                     </CardHeader>
-                    <CardContent>
-                        <div class="text-2xl font-bold">{{ service_stats.total_services }}</div>
-                        <p class="text-xs text-muted-foreground mt-1">Services offered</p>
+                    <CardContent class="p-3 pt-0 sm:p-6 sm:pt-0">
+                        <div class="text-lg sm:text-2xl font-bold text-foreground">{{ service_stats.total_services }}</div>
+                        <p class="text-[10px] sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">Services offered</p>
                     </CardContent>
                 </Card>
             </div>
 
             <!-- Service Performance Chart -->
-            <Card>
-                <CardHeader>
-                    <CardTitle>Top Services by Bookings</CardTitle>
-                    <CardDescription>Most popular services</CardDescription>
+            <Card class="bg-card border-border">
+                <CardHeader class="p-3 sm:p-6">
+                    <CardTitle class="text-sm sm:text-xl text-foreground">Top Services by Bookings</CardTitle>
+                    <CardDescription class="text-[10px] sm:text-sm text-muted-foreground">Most popular services</CardDescription>
                 </CardHeader>
-                <CardContent>
-                    <BarChart 
-                        v-if="service_performance.length > 0"
-                        :data="serviceBookingsChartData" 
-                        :height="350"
-                        title=""
-                    />
-                    <div v-else class="flex items-center justify-center h-[350px] text-muted-foreground">
+                <CardContent class="p-0 sm:px-6 sm:pb-6">
+                    <div class="overflow-x-auto">
+                        <div class="min-w-[320px] sm:min-w-0 px-3 sm:px-0">
+                            <BarChart 
+                                v-if="service_performance.length > 0"
+                                :data="serviceBookingsChartData" 
+                                :height="200"
+                                title=""
+                            />
+                        </div>
+                    </div>
+                    <div v-if="service_performance.length === 0" class="flex items-center justify-center h-[200px] sm:h-[250px] text-muted-foreground px-3">
                         <div class="text-center">
-                            <Users class="h-12 w-12 mx-auto mb-3 opacity-30" />
-                            <p>No booking data available</p>
+                            <Users class="h-8 w-8 sm:h-12 sm:w-12 mx-auto mb-2 sm:mb-3 opacity-30" />
+                            <p class="text-xs sm:text-base">No booking data available</p>
                         </div>
                     </div>
                 </CardContent>
             </Card>
 
             <!-- Service Performance Details -->
-            <Card v-if="service_performance.length > 0">
-                <CardHeader>
-                    <CardTitle>All Services Performance</CardTitle>
-                    <CardDescription>Detailed breakdown of each service</CardDescription>
+            <Card v-if="service_performance.length > 0" class="bg-card border-border">
+                <CardHeader class="p-3 sm:p-6">
+                    <CardTitle class="text-sm sm:text-xl text-foreground">All Services Performance</CardTitle>
+                    <CardDescription class="text-[10px] sm:text-sm text-muted-foreground">Detailed breakdown of each service</CardDescription>
                 </CardHeader>
-                <CardContent>
-                    <div class="space-y-3">
+                <CardContent class="p-2 sm:p-6 pt-0 sm:pt-0">
+                    <div class="space-y-1.5 sm:space-y-3">
                         <div 
                             v-for="(service, index) in service_performance" 
                             :key="service.service_name"
-                            class="flex items-center gap-4 p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                            class="flex items-start gap-1.5 sm:gap-4 p-1.5 sm:p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors"
                         >
-                            <div class="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 text-primary font-bold">
+                            <div class="flex items-center justify-center w-5 h-5 sm:w-10 sm:h-10 rounded-full bg-primary/10 text-primary font-bold text-[10px] sm:text-base flex-shrink-0">
                                 {{ index + 1 }}
                             </div>
-                            <div class="flex-1">
-                                <div class="flex justify-between items-start mb-2">
-                                    <div>
-                                        <h4 class="font-semibold text-lg">{{ service.service_name }}</h4>
-                                        <p class="text-sm text-muted-foreground">
-                                            {{ service.total_bookings }} bookings • {{ service.average_duration }} min avg duration
+                            <div class="flex-1 min-w-0">
+                                <div class="flex justify-between items-start gap-1.5 sm:gap-2 mb-1 sm:mb-2">
+                                    <div class="flex-1 min-w-0">
+                                        <h4 class="font-semibold text-xs sm:text-lg text-foreground truncate">{{ service.service_name }}</h4>
+                                        <p class="text-[9px] sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">
+                                            {{ service.total_bookings }} bookings • {{ service.average_duration }} min
                                         </p>
                                     </div>
-                                    <div class="text-right">
-                                        <Badge variant="secondary" class="text-sm">
-                                            {{ service.total_bookings }} bookings
+                                    <div class="flex flex-col items-end gap-0.5 sm:gap-1 flex-shrink-0">
+                                        <Badge variant="secondary" class="text-[10px] sm:text-sm px-1.5 py-0 sm:px-2.5 sm:py-0.5 whitespace-nowrap">
+                                            {{ service.total_bookings }}
                                         </Badge>
-                                        <div class="flex items-center gap-1 text-xs justify-end mt-1" :class="getGrowthColor(service.growth_rate)">
-                                            <component :is="service.growth_rate >= 0 ? ArrowUpRight : ArrowDownRight" class="h-3 w-3" />
+                                        <div class="flex items-center gap-0.5 sm:gap-1 text-[10px] sm:text-sm" :class="getGrowthColor(service.growth_rate)">
+                                            <component :is="service.growth_rate >= 0 ? ArrowUpRight : ArrowDownRight" class="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                                             <span>{{ Math.abs(service.growth_rate).toFixed(1) }}%</span>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="w-full bg-muted rounded-full h-2.5">
+                                <div class="w-full bg-muted rounded-full h-1.5 sm:h-2.5">
                                     <div 
-                                        class="bg-blue-500 h-2.5 rounded-full transition-all" 
+                                        class="bg-blue-500 dark:bg-blue-400 h-1.5 sm:h-2.5 rounded-full transition-all" 
                                         :style="{ width: `${Math.min((service.total_bookings / Math.max(...service_performance.map(s => s.total_bookings))) * 100, 100)}%` }"
                                     ></div>
                                 </div>
@@ -220,11 +224,11 @@ const serviceBookingsChartData = computed(() => ({
             </Card>
 
             <!-- Empty State -->
-            <Card v-else>
-                <CardContent class="flex flex-col items-center justify-center h-64 text-muted-foreground">
-                    <Stethoscope class="h-16 w-16 mb-4 opacity-30" />
-                    <p class="text-lg font-medium">No service data available</p>
-                    <p class="text-sm">Service analytics will appear here once you start offering services</p>
+            <Card v-else class="bg-card border-border">
+                <CardContent class="flex flex-col items-center justify-center h-40 sm:h-64 text-muted-foreground p-3 sm:p-6">
+                    <Stethoscope class="h-10 w-10 sm:h-16 sm:w-16 mb-2 sm:mb-4 opacity-30" />
+                    <p class="text-sm sm:text-lg font-medium text-center">No service data available</p>
+                    <p class="text-[10px] sm:text-sm text-center mt-1 sm:mt-2">Service analytics will appear here once you start offering services</p>
                 </CardContent>
             </Card>
         </div>

@@ -65,7 +65,6 @@ class TestDataSeeder extends Seeder
                 'description' => 'General veterinary consultation',
                 'category' => 'consultation',
                 'duration_minutes' => 30,
-                'is_active' => true,
             ]);
         }
 

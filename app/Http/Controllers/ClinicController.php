@@ -31,14 +31,12 @@ class ClinicController extends Controller
 
         // Get approved clinics from ClinicRegistration for now
         // TODO: Migrate to use organized Clinic model when data is populated
-        $clinics = ClinicRegistration::with(['user.subscriptions', 'clinicServices' => function($query) {
-                $query->where('is_active', true);
-            }])
+        $clinics = ClinicRegistration::with(['user.subscriptions', 'clinicServices'])
             ->where('status', 'approved')
             ->get()
             ->map(function ($clinic) use ($userLat, $userLng) {
-                // Get operating status
-                $operatingStatus = ClinicOperatingStatusService::getOperatingStatus($clinic->operating_hours);
+                // Get operating status from database table
+                $operatingStatus = $this->getCurrentStatusFromTable($clinic);
                 
                 // Calculate distance if user location is available
                 $distance = null;
@@ -64,9 +62,13 @@ class ClinicController extends Controller
                 // Check if clinic has an active paid subscription (not basic)
                 $hasActiveSubscription = false;
                 $subscriptionType = null;
-                if ($clinic->user && $clinic->user->subscribed('default')) {
-                    $subscription = $clinic->user->subscription('default');
-                    if ($subscription && $subscription->stripe_status === 'active') {
+                if ($clinic->user) {
+                    // Check for any active subscription
+                    $subscription = $clinic->user->subscriptions()
+                        ->where('stripe_status', 'active')
+                        ->first();
+                    
+                    if ($subscription) {
                         // Get the subscription type from the type column
                         $subscriptionType = $subscription->type;
                         // Featured only if NOT basic-clinic
@@ -276,9 +278,8 @@ class ClinicController extends Controller
         
         // Get services - prefer database table, fallback to array field
         $services = [];
-        if ($clinicRegistration->clinicServices()->where('is_active', true)->exists()) {
+        if ($clinicRegistration->clinicServices()->exists()) {
             $services = $clinicRegistration->clinicServices()
-                ->where('is_active', true)
                 ->get()
                 ->map(function ($service) {
                     return [
@@ -287,10 +288,7 @@ class ClinicController extends Controller
                         'description' => $service->description,
                         'category' => $service->category,
                         'category_display' => $service->category_display,
-                        'price' => $service->formatted_price,
                         'duration' => $service->formatted_duration,
-                        'requires_appointment' => $service->requires_appointment,
-                        'emergency_service' => $service->is_emergency_service,
                     ];
                 })
                 ->toArray();
@@ -375,7 +373,7 @@ class ClinicController extends Controller
             
             // Operating Hours
             'operating_hours' => $operatingHours,
-            'current_status' => $this->getCurrentStatus($clinicRegistration->operating_hours ?? []),
+            'current_status' => $this->getCurrentStatusFromTable($clinicRegistration),
             'is_24_hours' => (bool) $clinicRegistration->is_open_24_7,
             
             // Services
@@ -494,8 +492,6 @@ class ClinicController extends Controller
                     'category_display' => $service->category_display,
                     'price' => $service->formatted_price,
                     'duration' => $service->formatted_duration,
-                    'requires_appointment' => $service->requires_appointment,
-                    'emergency_service' => $service->is_emergency_service,
                 ];
             })->toArray(),
             
@@ -628,6 +624,58 @@ class ClinicController extends Controller
         }
         
         return $formatted;
+    }
+
+    /**
+     * Get current operating status from operating_hours table.
+     */
+    private function getCurrentStatusFromTable($clinicRegistration): array
+    {
+        $now = now();
+        $dayOfWeek = strtolower($now->format('l'));
+        $currentTime = $now->format('H:i:s');
+        
+        // Get today's operating hours from the table
+        $todayHours = $clinicRegistration->operatingHours()
+            ->where('day_of_week', $dayOfWeek)
+            ->first();
+        
+        // If no hours found or clinic is closed today
+        if (!$todayHours || $todayHours->is_closed) {
+            return [
+                'is_open' => false,
+                'status' => 'Closed',
+                'status_color' => 'text-red-600 dark:text-red-400',
+                'message' => 'Closed today'
+            ];
+        }
+        
+        $openTime = $todayHours->opening_time;
+        $closeTime = $todayHours->closing_time;
+        
+        // Check if current time is within operating hours
+        $isOpen = $currentTime >= $openTime && $currentTime <= $closeTime;
+        
+        // Check if within break time
+        if ($isOpen && $todayHours->break_start_time && $todayHours->break_end_time) {
+            if ($currentTime >= $todayHours->break_start_time && $currentTime <= $todayHours->break_end_time) {
+                return [
+                    'is_open' => false,
+                    'status' => 'On Break',
+                    'status_color' => 'text-yellow-600 dark:text-yellow-400',
+                    'message' => "Break time until " . date('g:i A', strtotime($todayHours->break_end_time))
+                ];
+            }
+        }
+        
+        return [
+            'is_open' => $isOpen,
+            'status' => $isOpen ? 'Open' : 'Closed',
+            'status_color' => $isOpen ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400',
+            'message' => $isOpen 
+                ? "Open until " . date('g:i A', strtotime($closeTime))
+                : "Opens at " . date('g:i A', strtotime($openTime)),
+        ];
     }
 
     /**

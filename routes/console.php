@@ -8,6 +8,19 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
+// Schedule automatic transition of scheduled appointments to in_progress
+Schedule::command('appointments:transition-scheduled')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->runInBackground()
+    ->onSuccess(function () {
+        \Log::info('Scheduled appointments transitioned successfully');
+    })
+    ->onFailure(function () {
+        \Log::error('Failed to transition scheduled appointments');
+    });
+
 // Schedule automatic appointment status updates
 Schedule::command('appointments:update-overdue --hours=2')
     ->hourly()

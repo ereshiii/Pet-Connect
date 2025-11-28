@@ -206,13 +206,33 @@ const getDayDisplay = (day: string): string => {
             </div>
 
             <!-- Page Header -->
-            <div class="flex items-center justify-between">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 class="text-2xl font-semibold text-foreground">Operating Hours</h1>
                     <p class="text-muted-foreground">
                         Manage your clinic's opening and closing hours for each day of the week
                     </p>
                 </div>
+                <button 
+                    @click="updateOperatingHours"
+                    :disabled="operatingHoursForm.processing"
+                    class="hidden sm:flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    <Save class="h-5 w-5" />
+                    {{ operatingHoursForm.processing ? 'Saving...' : 'Save Changes' }}
+                </button>
+            </div>
+
+            <!-- Floating Save Button for Mobile -->
+            <div class="sm:hidden fixed bottom-6 right-6 z-50">
+                <button 
+                    @click="updateOperatingHours"
+                    :disabled="operatingHoursForm.processing"
+                    class="flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-full shadow-lg hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105"
+                >
+                    <Save class="h-5 w-5" />
+                    {{ operatingHoursForm.processing ? 'Saving...' : 'Save' }}
+                </button>
             </div>
 
             <!-- Operating Hours Form -->
@@ -232,60 +252,63 @@ const getDayDisplay = (day: string): string => {
                         v-for="(dayHour, index) in operatingHoursForm.hours" 
                         :key="dayHour.day_of_week"
                         class="p-4 rounded-lg border transition-all duration-200"
-                        :class="dayHour.is_closed ? 'bg-muted/50' : 'hover:border-primary hover:shadow-md cursor-pointer'"
+                        :class="dayHour.is_closed ? 'bg-muted/50' : 'hover:border-primary'"
                     >
                         <!-- Day Header -->
-                        <div class="flex items-center justify-between mb-4">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
                             <div class="flex items-center gap-3">
-                                <div class="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                                <div class="h-10 w-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
                                     <Clock class="h-5 w-5 text-muted-foreground" />
                                 </div>
-                                <div>
+                                <div class="min-w-0">
                                     <h3 class="font-semibold">{{ getDayDisplay(dayHour.day_of_week) }}</h3>
                                     <p class="text-sm text-muted-foreground" v-if="!dayHour.is_closed">Click to edit hours</p>
                                     <p class="text-sm text-red-500 dark:text-red-400" v-else>Closed</p>
                                 </div>
                             </div>
-                            <div class="flex items-center gap-2">
+                            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2">
                                 <!-- Copy Options -->
-                                <button
-                                    v-if="!dayHour.is_closed"
-                                    type="button"
-                                    @click.stop="copyToWeekdays(index)"
-                                    class="text-xs px-3 py-1.5 border rounded-md hover:bg-muted text-muted-foreground transition-colors"
-                                >
-                                    Copy to Weekdays
-                                </button>
-                                <button
-                                    v-if="!dayHour.is_closed"
-                                    type="button"
-                                    @click.stop="copyToAllDays(index)"
-                                    class="text-xs px-3 py-1.5 border rounded-md hover:bg-muted text-muted-foreground transition-colors"
-                                >
-                                    Copy to All Days
-                                </button>
+                                <div class="flex gap-2 w-full sm:w-auto">
+                                    <button
+                                        v-if="!dayHour.is_closed"
+                                        type="button"
+                                        @click.stop="copyToWeekdays(index)"
+                                        class="text-xs px-3 py-1.5 border rounded-md hover:bg-muted text-muted-foreground transition-colors flex-1 sm:flex-none whitespace-nowrap"
+                                    >
+                                        Copy to Weekdays
+                                    </button>
+                                    <button
+                                        v-if="!dayHour.is_closed"
+                                        type="button"
+                                        @click.stop="copyToAllDays(index)"
+                                        class="text-xs px-3 py-1.5 border rounded-md hover:bg-muted text-muted-foreground transition-colors flex-1 sm:flex-none whitespace-nowrap"
+                                    >
+                                        Copy to All
+                                    </button>
+                                </div>
                                 
                                 <!-- Open/Closed Toggle Switch -->
-                                <div class="flex items-center gap-2">
-                                    <span class="text-sm font-medium" :class="!dayHour.is_closed ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'">
+                                <div class="flex items-center gap-2 justify-between sm:justify-start w-full sm:w-auto" @click.stop.prevent @touchstart.stop.prevent>
+                                    <span class="text-sm font-medium pointer-events-none" :class="!dayHour.is_closed ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'">
                                         Open
                                     </span>
                                     <button
                                         type="button"
-                                        @click="operatingHoursForm.hours[index].is_closed = !operatingHoursForm.hours[index].is_closed"
+                                        @click.stop.prevent="operatingHoursForm.hours[index].is_closed = !operatingHoursForm.hours[index].is_closed"
+                                        @touchend.stop.prevent="operatingHoursForm.hours[index].is_closed = !operatingHoursForm.hours[index].is_closed"
                                         :class="[
-                                            'relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2',
+                                            'relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 flex-shrink-0 touch-none',
                                             dayHour.is_closed ? 'bg-red-600' : 'bg-green-600'
                                         ]"
                                     >
                                         <span
                                             :class="[
-                                                'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
+                                                'inline-block h-4 w-4 transform rounded-full bg-white transition-transform pointer-events-none touch-none',
                                                 dayHour.is_closed ? 'translate-x-6' : 'translate-x-1'
                                             ]"
                                         />
                                     </button>
-                                    <span class="text-sm font-medium" :class="dayHour.is_closed ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'">
+                                    <span class="text-sm font-medium pointer-events-none" :class="dayHour.is_closed ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'">
                                         Closed
                                     </span>
                                 </div>
@@ -293,7 +316,7 @@ const getDayDisplay = (day: string): string => {
                         </div>
                         
                         <!-- Time Inputs -->
-                        <div v-if="!dayHour.is_closed" class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div v-if="!dayHour.is_closed" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                             <div>
                                 <label class="block text-sm font-medium mb-1">
                                     Opening Time <span class="text-red-500">*</span>
@@ -344,18 +367,6 @@ const getDayDisplay = (day: string): string => {
                             <p class="text-sm">Clinic is closed on this day</p>
                         </div>
                     </div>
-                </div>
-                
-                <!-- Submit Button -->
-                <div class="p-6 border-t flex justify-end">
-                    <button 
-                        type="submit"
-                        :disabled="operatingHoursForm.processing"
-                        class="btn btn-primary flex items-center gap-2"
-                    >
-                        <Save class="h-5 w-5" />
-                        {{ operatingHoursForm.processing ? 'Saving Changes...' : 'Save Operating Hours' }}
-                    </button>
                 </div>
             </form>
 

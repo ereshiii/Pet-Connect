@@ -26,20 +26,31 @@ class AppointmentController extends Controller
     {
         $user = Auth::user();
         $query = Appointment::with([
-            'pet:id,name,type,breed',
+            'pet.breed',
+            'pet.type',
             'owner:id,name,email,phone',
             'clinicRegistration:id,clinic_name,phone,full_address',
             'veterinarian:id,name',
             'service:id,name'
         ]);
 
-        // Filter by user's appointments if they're not a clinic admin
-        // if (!$user->hasRole('clinic_admin')) {
+        // Determine user role and filter accordingly
+        $userRole = 'user'; // Default for pet owners
+        
+        if ($user->isClinic() && $user->clinicRegistration) {
+            // Clinic users see their clinic's appointments
+            $query->where('clinic_id', $user->clinicRegistration->id);
+            $userRole = 'clinic';
+        } else {
+            // Pet owners see their own appointments
             $query->where('owner_id', $user->id);
-        // }
+        }
 
-        // Apply filters
-        if ($request->filled('status')) {
+        // Filter for active appointments (exclude completed, cancelled, no_show)
+        $query->whereIn('status', ['scheduled', 'pending', 'confirmed', 'in_progress']);
+
+        // Apply additional status filter if provided
+        if ($request->filled('status') && in_array($request->status, ['scheduled', 'pending', 'confirmed', 'in_progress'])) {
             $query->where('status', $request->status);
         }
 
@@ -55,36 +66,76 @@ class AppointmentController extends Controller
             $query->where('clinic_id', $request->clinic_id);
         }
 
-        // Default to upcoming appointments
-        if (!$request->filled('show_all')) {
-            $query->upcoming();
+        $appointments = $query->orderBy('scheduled_at', 'asc')->get();
+
+        // Transform appointments for consistent structure
+        $transformedAppointments = $appointments->map(function ($appointment) {
+            if (!$appointment) {
+                return null;
+            }
+            
+            $pet = $appointment->pet;
+            $clinic = $appointment->clinicRegistration;
+            $owner = $appointment->owner;
+            $service = $appointment->service;
+            
+            return [
+                'id' => $appointment->id,
+                'scheduled_at' => $appointment->scheduled_at->timezone('Asia/Manila')->toIso8601String(),
+                'appointment_date' => $appointment->scheduled_at->timezone('Asia/Manila')->format('Y-m-d'),
+                'appointment_time' => $appointment->scheduled_at->timezone('Asia/Manila')->format('H:i:s'),
+                'formatted_date' => $appointment->scheduled_at->timezone('Asia/Manila')->format('M j, Y'),
+                'formatted_time' => $appointment->scheduled_at->timezone('Asia/Manila')->format('g:i A'),
+                'status' => $appointment->status,
+                'type' => $appointment->type ?? 'regular',
+                'notes' => $appointment->notes,
+                'reason' => $appointment->reason,
+                // Flattened fields for AppointmentsList component
+                'pet_name' => $pet ? $pet->name : 'Unknown Pet',
+                'owner_name' => $owner ? $owner->name : 'Unknown Owner',
+                'service_type' => $service ? $service->name : 'General Consultation',
+                // Nested objects for AppointmentCalendar component
+                'pet' => $pet ? [
+                    'id' => $pet->id,
+                    'name' => $pet->name,
+                    'type' => $pet->type ? $pet->type->name : 'Unknown',
+                    'breed' => $pet->breed_id && $pet->relationLoaded('breed') ? 
+                        $pet->getRelation('breed')->name : 
+                        ($pet->getAttributeValue('breed') ?? 'Unknown'),
+                    'age' => $pet->birth_date ? $pet->calculated_age : 'Unknown',
+                    'gender' => $pet->gender,
+                ] : null,
+                'clinic' => $clinic ? [
+                    'id' => $clinic->id,
+                    'name' => $clinic->clinic_name,
+                    'address' => $clinic->full_address,
+                    'phone' => $clinic->phone,
+                ] : null,
+                'owner' => $owner ? [
+                    'id' => $owner->id,
+                    'name' => $owner->name,
+                    'email' => $owner->email,
+                    'phone' => $owner->phone,
+                ] : null,
+                'service' => $service ? [
+                    'id' => $service->id,
+                    'name' => $service->name,
+                    'description' => $service->description,
+                ] : null,
+                'created_at' => $appointment->created_at,
+                'updated_at' => $appointment->updated_at,
+            ];
+        })->filter()->values();
+
+        \Log::info('AppointmentsList - Transformed Appointments Count: ' . $transformedAppointments->count());
+        if ($transformedAppointments->count() > 0) {
+            \Log::info('AppointmentsList - First appointment:', $transformedAppointments->first());
         }
 
-        $appointments = $query->orderBy('scheduled_at', 'asc')->paginate(20);
-
-        // Get statistics
-        $stats = [
-            'today' => Appointment::where('owner_id', $user->id)->today()->count(),
-            'thisWeek' => Appointment::where('owner_id', $user->id)
-                ->whereBetween('scheduled_at', [now()->startOfWeek(), now()->endOfWeek()])
-                ->count(),
-            'confirmed' => Appointment::where('owner_id', $user->id)
-                ->where('status', 'confirmed')
-                ->upcoming()
-                ->count(),
-            'scheduled' => Appointment::where('owner_id', $user->id)
-                ->where('status', 'scheduled')
-                ->upcoming()
-                ->count(),
-            'totalRevenue' => Appointment::where('owner_id', $user->id)
-                ->where('status', 'completed')
-                ->sum('actual_cost') ?: 0
-        ];
-
-        return Inertia::render('Scheduling/AppointmentCalendar', [
-            'appointments' => $appointments,
-            'stats' => $stats,
-            'filters' => $request->only(['status', 'date_from', 'date_to', 'clinic_id', 'show_all']),
+        return Inertia::render('Scheduling/AppointmentsList', [
+            'appointments' => $transformedAppointments,
+            'userRole' => $userRole,
+            'filters' => $request->only(['status', 'date_from', 'date_to', 'clinic_id']),
             'clinics' => ClinicRegistration::select('id', 'clinic_name as name')->where('status', 'approved')->get()
         ]);
     }
@@ -218,108 +269,119 @@ class AppointmentController extends Controller
     {
         $user = Auth::user();
         $query = Appointment::with([
-            'pet:id,name,type,breed',
+            'pet.breed',
+            'pet.type',
             'owner:id,name,email,phone',
             'clinicRegistration:id,clinic_name,phone,full_address',
             'veterinarian:id,name',
-            'service:id,name'
+            'service:id,name,description'
         ]);
 
-        // Filter by user's appointments if they're not a clinic admin
-        // if (!$user->hasRole('clinic_admin')) {
+        // Determine user role and filter accordingly
+        $userRole = 'user'; // Default for pet owners
+        
+        if ($user->isClinic() && $user->clinicRegistration) {
+            // Clinic users see their clinic's appointments
+            $query->where('clinic_id', $user->clinicRegistration->id);
+            $userRole = 'clinic';
+        } else {
+            // Pet owners see their own appointments
             $query->where('owner_id', $user->id);
-        // }
-
-        // Apply status filter - default to active appointments only
-        $statusFilter = $request->get('status', ['pending', 'confirmed', 'in_progress']);
-        
-        // Ensure status is an array
-        if (!is_array($statusFilter)) {
-            $statusFilter = explode(',', $statusFilter);
-        }
-        
-        // Apply the status filter
-        if (!empty($statusFilter) && !in_array('all', $statusFilter)) {
-            $query->whereIn('status', $statusFilter);
         }
 
-        // Get appointments for the current month by default
-        $startDate = $request->get('start_date', now()->startOfMonth());
-        $endDate = $request->get('end_date', now()->endOfMonth());
+        // Filter for active appointments (exclude completed, cancelled, no_show)
+        $query->whereIn('status', ['scheduled', 'pending', 'confirmed', 'in_progress']);
 
-        $appointments = $query->whereBetween('scheduled_at', [$startDate, $endDate])
-            ->orderBy('scheduled_at', 'asc')
-            ->get()
-            ->map(function ($appointment) {
-                return [
-                    'id' => $appointment->id,
-                    'appointment_number' => $appointment->appointment_number,
-                    'scheduled_at' => $appointment->scheduled_at->format('Y-m-d H:i:s'),
-                    'duration_minutes' => $appointment->duration_minutes,
-                    'type' => $appointment->type,
-                    'priority' => $appointment->priority,
-                    'status' => $appointment->status,
-                    'status_display' => $appointment->status_display,
-                    'is_priority' => $appointment->is_priority ?? false,
-                    'priority_reason' => $appointment->priority_reason,
-                    'reason' => $appointment->reason,
-                    'notes' => $appointment->notes,
-                    'special_instructions' => $appointment->special_instructions,
-                    'estimated_cost' => $appointment->estimated_cost,
-                    'actual_cost' => $appointment->actual_cost,
-                    'pet' => [
-                        'id' => $appointment->pet->id ?? null,
-                        'name' => $appointment->pet->name ?? 'Unknown Pet',
-                        'type' => $appointment->pet->type ?? 'Unknown',
-                        'breed' => $appointment->pet->breed ?? 'Unknown'
-                    ],
-                    'owner' => [
-                        'id' => $appointment->owner->id ?? null,
-                        'name' => $appointment->owner->name ?? 'Unknown Client',
-                        'email' => $appointment->owner->email ?? '',
-                        'phone' => $appointment->owner->phone ?? ''
-                    ],
-                    'clinic' => [
-                        'id' => $appointment->clinicRegistration->id ?? null,
-                        'name' => $appointment->clinicRegistration->clinic_name ?? 'Unknown Clinic',
-                        'address' => $appointment->clinicRegistration->full_address ?? '',
-                        'phone' => $appointment->clinicRegistration->phone ?? ''
-                    ],
-                    'veterinarian' => $appointment->veterinarian ? [
-                        'id' => $appointment->veterinarian->id,
-                        'name' => $appointment->veterinarian->name
-                    ] : null,
-                    'service' => $appointment->service ? [
-                        'id' => $appointment->service->id,
-                        'name' => $appointment->service->name,
-                        // Removed: base_price field
-                    ] : null,
-                ];
-            });
+        // Apply additional status filter if provided
+        if ($request->filled('status') && in_array($request->status, ['scheduled', 'pending', 'confirmed', 'in_progress'])) {
+            $query->where('status', $request->status);
+        }
 
-        // Get statistics
-        $stats = [
-            'today' => Appointment::where('owner_id', $user->id)->today()->count(),
-            'thisWeek' => Appointment::where('owner_id', $user->id)
-                ->whereBetween('scheduled_at', [now()->startOfWeek(), now()->endOfWeek()])
-                ->count(),
-            'confirmed' => Appointment::where('owner_id', $user->id)
-                ->where('status', 'confirmed')
-                ->upcoming()
-                ->count(),
-            'scheduled' => Appointment::where('owner_id', $user->id)
-                ->where('status', 'scheduled')
-                ->upcoming()
-                ->count(),
-            'totalRevenue' => Appointment::where('owner_id', $user->id)
-                ->where('status', 'completed')
-                ->sum('actual_cost') ?: 0
-        ];
+        // DO NOT filter by date - calendar should show all appointments
+        // The Vue component will handle date filtering on the frontend
+        // This prevents timezone issues where appointments don't show up
+
+        // Debug: Log the SQL query
+        \Log::info('Calendar Query SQL: ' . $query->toSql());
+        \Log::info('Calendar Query Bindings: ', $query->getBindings());
+
+        $appointments = $query->orderBy('scheduled_at', 'asc')->get();
+        
+        \Log::info('Calendar Appointments Count: ' . $appointments->count());
+
+        // Transform appointments for consistent structure
+        $transformedAppointments = $appointments->map(function ($appointment) {
+            if (!$appointment) {
+                return null;
+            }
+            
+            $pet = $appointment->pet;
+            $clinic = $appointment->clinicRegistration;
+            $owner = $appointment->owner;
+            $service = $appointment->service;
+            
+            return [
+                'id' => $appointment->id,
+                'scheduled_at' => $appointment->scheduled_at->timezone('Asia/Manila')->toIso8601String(),
+                'appointment_date' => $appointment->scheduled_at->timezone('Asia/Manila')->format('Y-m-d'),
+                'appointment_time' => $appointment->scheduled_at->timezone('Asia/Manila')->format('H:i:s'),
+                'formatted_date' => $appointment->scheduled_at->timezone('Asia/Manila')->format('M j, Y'),
+                'formatted_time' => $appointment->scheduled_at->timezone('Asia/Manila')->format('g:i A'),
+                'status' => $appointment->status,
+                'type' => $appointment->type ?? 'regular',
+                'notes' => $appointment->notes,
+                'reason' => $appointment->reason,
+                // Flattened fields for AppointmentsList component
+                'pet_name' => $pet ? $pet->name : 'Unknown Pet',
+                'owner_name' => $owner ? $owner->name : 'Unknown Owner',
+                'service_type' => $service ? $service->name : 'General Consultation',
+                // Nested objects for AppointmentCalendar component
+                'pet' => $pet ? [
+                    'id' => $pet->id,
+                    'name' => $pet->name,
+                    'type' => $pet->type ? $pet->type->name : 'Unknown',
+                    'breed' => $pet->breed_id && $pet->relationLoaded('breed') ? 
+                        $pet->getRelation('breed')->name : 
+                        ($pet->getAttributeValue('breed') ?? 'Unknown'),
+                    'age' => $pet->birth_date ? $pet->calculated_age : 'Unknown',
+                    'gender' => $pet->gender,
+                ] : null,
+                'clinic' => $clinic ? [
+                    'id' => $clinic->id,
+                    'name' => $clinic->clinic_name,
+                    'address' => $clinic->full_address,
+                    'phone' => $clinic->phone,
+                ] : null,
+                'owner' => $owner ? [
+                    'id' => $owner->id,
+                    'name' => $owner->name,
+                    'email' => $owner->email,
+                    'phone' => $owner->phone,
+                ] : null,
+                'service' => $service ? [
+                    'id' => $service->id,
+                    'name' => $service->name,
+                    'description' => $service->description,
+                ] : null,
+                'veterinarian' => $appointment->veterinarian ? [
+                    'id' => $appointment->veterinarian->id,
+                    'name' => $appointment->veterinarian->name,
+                ] : null,
+                'created_at' => $appointment->created_at,
+                'updated_at' => $appointment->updated_at,
+            ];
+        })->filter()->values();
+
+        \Log::info('AppointmentCalendar - Transformed Appointments Count: ' . $transformedAppointments->count());
+        if ($transformedAppointments->count() > 0) {
+            \Log::info('AppointmentCalendar - First appointment:', $transformedAppointments->first());
+        }
 
         return Inertia::render('Scheduling/AppointmentCalendar', [
-            'appointments' => $appointments,
-            'stats' => $stats,
-            'statusFilter' => $statusFilter,
+            'appointments' => $transformedAppointments,
+            'userRole' => $userRole,
+            'filters' => $request->only(['status', 'start_date', 'end_date']),
+            'clinics' => ClinicRegistration::select('id', 'clinic_name as name')->where('status', 'approved')->get()
         ]);
     }
 
@@ -340,8 +402,15 @@ class AppointmentController extends Controller
             
             // First, try to find the clinic registration
             $clinicRegistration = ClinicRegistration::with(['clinicServices' => function($query) {
-                $query->where('is_active', true);
+                $query->select('id', 'clinic_id', 'name', 'description', 'category', 'duration_minutes');
             }])->find($clinicId);
+            
+            \Log::info('Booking page - Clinic Registration loaded', [
+                'clinic_id' => $clinicId,
+                'registration_found' => $clinicRegistration ? 'yes' : 'no',
+                'services_count' => $clinicRegistration ? $clinicRegistration->clinicServices->count() : 0,
+                'services' => $clinicRegistration ? $clinicRegistration->clinicServices->toArray() : []
+            ]);
             
             if ($clinicRegistration) {
                 $selectedClinic = [
@@ -355,7 +424,6 @@ class AppointmentController extends Controller
                             'name' => $service->name,
                             'description' => $service->description,
                             'category' => $service->category,
-                            // Removed: base_price field,
                             'duration_minutes' => $service->duration_minutes,
                             'clinic_id' => $service->clinic_id,
                         ];
@@ -391,12 +459,10 @@ class AppointmentController extends Controller
             }
         }
         
-        return Inertia::render('Scheduling/Booking', [
+        return Inertia::render('Scheduling/AppointmentForm', [
+            'mode' => 'create',
             'pets' => Pet::where('owner_id', $user->id)->select('id', 'name', 'type', 'breed')->get(),
-            'clinics' => ClinicRegistration::with(['clinicServices' => function($query) {
-                    $query->where('is_active', true)
-                          ->select('id', 'clinic_id', 'name', 'description', 'category', 'duration_minutes');
-                }])
+            'clinics' => ClinicRegistration::with(['clinicServices'])
                 ->where('status', 'approved')
                 ->get()
                 ->map(function($registration) {
@@ -411,11 +477,10 @@ class AppointmentController extends Controller
                                 'name' => $service->name,
                                 'description' => $service->description,
                                 'category' => $service->category,
-                                // Removed: base_price field,
                                 'duration_minutes' => $service->duration_minutes,
                                 'clinic_id' => $service->clinic_id,
                             ];
-                        }),
+                        })->toArray(),
                     ];
                 }),
             'clinicId' => $request->get('clinic_id'),
@@ -424,8 +489,7 @@ class AppointmentController extends Controller
             'selectedDate' => $request->get('date'),
             'operating_hours' => $operatingHours,
             'booked_slots' => $bookedSlots,
-            'services' => ClinicService::where('is_active', true)
-                ->select('id', 'name', 'clinic_id', 'duration_minutes')
+            'services' => ClinicService::select('id', 'name', 'clinic_id', 'duration_minutes')
                 ->get(),
             'user' => [
                 'name' => $user->name,
@@ -452,8 +516,10 @@ class AppointmentController extends Controller
 
         // Get service cost if service is selected
         $estimatedCost = null;
-        if (isset($validatedData['service_id']) && $validatedData['service_id']) {
-            $service = ClinicService::find($validatedData['service_id']);
+        $serviceId = null;
+        if (isset($validatedData['service_ids']) && is_array($validatedData['service_ids']) && count($validatedData['service_ids']) > 0) {
+            $serviceId = $validatedData['service_ids'][0]; // Get first (and only) service
+            $service = ClinicService::find($serviceId);
             if ($service) {
                 $estimatedCost = $service->base_price;
             }
@@ -463,7 +529,7 @@ class AppointmentController extends Controller
             'pet_id' => $validatedData['pet_id'],
             'owner_id' => Auth::id(),
             'clinic_id' => $validatedData['clinic_id'], // This references clinic_registrations.id
-            'service_id' => $validatedData['service_id'] ?? null,
+            'service_id' => $serviceId,
             'clinic_staff_id' => $validatedData['clinic_staff_id'] ?? null,
             'scheduled_at' => $validatedData['scheduled_at'],
             'duration_minutes' => $validatedData['duration_minutes'] ?? 30,
@@ -531,9 +597,15 @@ class AppointmentController extends Controller
         // Clinic users can view appointments at their clinic
         if ($user->isClinic() && $user->isClinicRegistrationApproved()) {
             $clinicRegistration = $user->clinicRegistration;
+            \Log::info('Checking clinic access', [
+                'clinic_registration_id' => $clinicRegistration?->id,
+                'appointment_clinic_id' => $appointment->clinic_id,
+                'matches' => $clinicRegistration && $appointment->clinic_id === $clinicRegistration->id
+            ]);
             // Fix: appointment.clinic_id references clinic_registrations.id, not clinics.id
             if ($clinicRegistration && $appointment->clinic_id === $clinicRegistration->id) {
                 $canView = true;
+                \Log::info('Access granted: Clinic match');
             }
         }
         
@@ -552,13 +624,14 @@ class AppointmentController extends Controller
         ]);
 
         $appointment->load([
-            'pet:id,name,type,breed,date_of_birth,weight',
-            'owner:id,name,email,phone',
-            'owner.profile:user_id,emergency_contact_name,emergency_contact_phone',
+            'pet.breed',
+            'pet.type',
+            'owner:id,email,phone',
+            'owner.profile:user_id,first_name,last_name,emergency_contact_name,emergency_contact_phone',
             'clinicRegistration:id,clinic_name,phone,email',
             'veterinarian:id,name',
-            'service:id,name,description',
-            'creator:id,name'
+            'service:id,name,description,duration_minutes',
+            'creator:id'
         ]);
 
         // Get pet's visit history
@@ -582,17 +655,66 @@ class AppointmentController extends Controller
         // Load medical record if exists
         $medicalRecord = $appointment->medicalRecord;
 
+        // Determine user role for conditional props
+        $userRole = 'user'; // default
+        if ($user->isClinic()) {
+            $userRole = 'clinic';
+        } elseif ($user->isAdmin()) {
+            $userRole = 'admin';
+        }
+
+        // Load additional clinic-specific data if user is clinic
+        $availableVeterinarians = [];
+        $canChangeVet = false;
+        $canEditMedicalRecords = false;
+        $medicalRecordEditableUntil = null;
+        $clinicData = null;
+
+        if ($user->isClinic() && $user->isClinicRegistrationApproved()) {
+            $clinicRegistration = $user->clinicRegistration;
+            
+            // Get available veterinarians
+            $availableVeterinarians = \App\Models\ClinicStaff::where('clinic_id', $clinicRegistration->id)
+                ->where('role', 'veterinarian')
+                ->select('id', 'name', 'specializations', 'license_number')
+                ->get()
+                ->map(function ($vet) {
+                    return [
+                        'id' => $vet->id,
+                        'name' => $vet->name,
+                        'specializations' => $vet->specializations,
+                        'license_number' => $vet->license_number,
+                    ];
+                });
+            
+            $canChangeVet = $availableVeterinarians->count() > 1;
+            
+            // Can edit medical records if in_progress OR within 24 hours of completion
+            if ($appointment->status === 'in_progress') {
+                $canEditMedicalRecords = true;
+            } elseif ($appointment->status === 'completed' && $appointment->updated_at) {
+                $editDeadline = $appointment->updated_at->addHours(24);
+                $canEditMedicalRecords = now()->lt($editDeadline);
+                $medicalRecordEditableUntil = $editDeadline->toIso8601String();
+            }
+
+            $clinicData = [
+                'id' => $clinicRegistration->id,
+                'name' => $clinicRegistration->clinic_name,
+            ];
+        }
+
         return Inertia::render('Scheduling/AppointmentDetails', [
             'appointment' => [
                 'id' => $appointment->id,
                 'confirmationNumber' => $appointment->appointment_number,
                 'status' => $appointment->status,
                 'statusDisplay' => $appointment->status_display,
-                'date' => $appointment->scheduled_at->format('F j, Y'),
-                'time' => $appointment->scheduled_at->format('g:i A'),
-                'scheduledAt' => $appointment->scheduled_at->toIso8601String(),
-                'duration' => $appointment->duration_minutes . ' minutes',
-                'type' => ucfirst($appointment->type),
+                'date' => $appointment->scheduled_at->timezone('Asia/Manila')->format('F j, Y'),
+                'time' => $appointment->scheduled_at->timezone('Asia/Manila')->format('g:i A'),
+                'scheduledAt' => $appointment->scheduled_at->timezone('Asia/Manila')->toIso8601String(),
+                'duration' => ($appointment->service && $appointment->service->duration_minutes ? $appointment->service->duration_minutes : $appointment->duration_minutes) . ' minutes',
+                'type' => $appointment->service ? $appointment->service->name : ucfirst($appointment->type),
                 'priority' => $appointment->priority,
                 'reason' => $appointment->reason,
                 'notes' => $appointment->notes,
@@ -605,13 +727,16 @@ class AppointmentController extends Controller
                 'canBeDisputed' => $appointment->canBeDisputed(),
                 'disputeWindowEndsAt' => $appointment->dispute_window_ends_at?->format('M j, Y g:i A'),
                 'disputeHoursRemaining' => $appointment->getDisputeWindowHoursRemaining(),
+                'canChangeVet' => $canChangeVet,
                 'pet' => [
                     'id' => $appointment->pet->id,
                     'name' => $appointment->pet->name,
-                    'type' => ucfirst($appointment->pet->type),
-                    'breed' => $appointment->pet->breed,
-                    'age' => $appointment->pet->date_of_birth ? 
-                        Carbon::parse($appointment->pet->date_of_birth)->diffInYears(now()) . ' years' : 'Unknown',
+                    'type' => $appointment->pet->type ? $appointment->pet->type->name : 'Unknown',
+                    'breed' => $appointment->pet->breed_id && $appointment->pet->relationLoaded('breed') ? 
+                        $appointment->pet->getRelation('breed')->name : 
+                        ($appointment->pet->getAttributeValue('breed') ?? 'Unknown'),
+                    'age' => $appointment->pet->birth_date ? 
+                        $appointment->pet->calculated_age : 'Unknown',
                     'weight' => $appointment->pet->weight
                 ],
                 'clinic' => [
@@ -623,12 +748,14 @@ class AppointmentController extends Controller
                 ],
                 'veterinarian' => $appointment->veterinarian ? [
                     'id' => $appointment->veterinarian->id,
-                    'name' => $appointment->veterinarian->name
+                    'name' => $appointment->veterinarian->name,
+                    'specializations' => $appointment->veterinarian->specializations,
+                    'license_number' => $appointment->veterinarian->license_number,
                 ] : null,
                 'service' => $appointment->service ? [
                     'id' => $appointment->service->id,
                     'name' => $appointment->service->name,
-                    'cost' => $appointment->service->base_price,
+                    'cost' => $appointment->service->base_price ?? 0,
                     'description' => $appointment->service->description
                 ] : null,
                 'owner' => [
@@ -640,22 +767,59 @@ class AppointmentController extends Controller
                         'phone' => $appointment->owner->profile->emergency_contact_phone ?? null
                     ]
                 ],
-                'canBeDisputed' => $appointment->canBeDisputed(),
-                'disputeWindowEndsAt' => $appointment->dispute_window_ends_at?->format('M d, Y g:i A'),
-                'disputeHoursRemaining' => $appointment->getDisputeWindowHoursRemaining(),
+                'medicalRecord' => $medicalRecord ? [
+                    'id' => $medicalRecord->id,
+                    'record_type' => $medicalRecord->record_type,
+                    'title' => $medicalRecord->title,
+                    'description' => $medicalRecord->description,
+                    'diagnosis' => $medicalRecord->diagnosis,
+                    'treatment' => $medicalRecord->treatment,
+                    'medications' => $medicalRecord->medications,
+                    'clinical_notes' => $medicalRecord->clinical_notes,
+                    'physical_exam' => $medicalRecord->physical_exam,
+                    'vital_signs' => $medicalRecord->vital_signs,
+                    'vaccine_name' => $medicalRecord->vaccine_name,
+                    'vaccine_batch' => $medicalRecord->vaccine_batch,
+                    'administration_site' => $medicalRecord->administration_site,
+                    'next_due_date' => $medicalRecord->next_due_date,
+                    'adverse_reactions' => $medicalRecord->adverse_reactions,
+                    'procedures_performed' => $medicalRecord->procedures_performed,
+                    'treatment_response' => $medicalRecord->treatment_response,
+                    'surgery_type' => $medicalRecord->surgery_type,
+                    'procedure_details' => $medicalRecord->procedure_details,
+                    'anesthesia_used' => $medicalRecord->anesthesia_used,
+                    'complications' => $medicalRecord->complications,
+                    'post_op_instructions' => $medicalRecord->post_op_instructions,
+                    'presenting_complaint' => $medicalRecord->presenting_complaint,
+                    'triage_level' => $medicalRecord->triage_level,
+                    'emergency_treatment' => $medicalRecord->emergency_treatment,
+                    'stabilization_measures' => $medicalRecord->stabilization_measures,
+                    'disposition' => $medicalRecord->disposition,
+                    'follow_up_date' => $medicalRecord->follow_up_date,
+                    'veterinarian' => $medicalRecord->veterinarian ? $medicalRecord->veterinarian->name : 'Unknown',
+                    'date' => $medicalRecord->date->format('M j, Y'),
+                ] : null,
             ],
             'medicalRecord' => $medicalRecord ? [
                 'id' => $medicalRecord->id,
                 'title' => $medicalRecord->title,
                 'description' => $medicalRecord->description,
-                'treatment' => $medicalRecord->instructions,
-                'medication' => $medicalRecord->medication,
+                'treatment' => $medicalRecord->treatment,
+                'medication' => $medicalRecord->medications,
                 'veterinarian' => $medicalRecord->veterinarian ? $medicalRecord->veterinarian->name : 'Unknown',
                 'date' => $medicalRecord->date->format('M j, Y'),
                 'follow_up_date' => $medicalRecord->follow_up_date ? $medicalRecord->follow_up_date->format('M j, Y') : null,
-                'notes' => $medicalRecord->instructions,
+                'notes' => $medicalRecord->clinical_notes,
             ] : null,
-            'visitHistory' => $visitHistory
+            'visitHistory' => $visitHistory,
+            'availableVeterinarians' => $availableVeterinarians,
+            'canChangeVet' => $canChangeVet,
+            'canEditMedicalRecords' => $canEditMedicalRecords,
+            'medicalRecordEditableUntil' => $medicalRecordEditableUntil,
+            'clinic' => $clinicData,
+            'userRole' => $userRole,
+            'hasRating' => $appointment->status === 'completed' && \App\Models\ClinicReview::where('appointment_id', $appointment->id)->exists(),
+            'clinicRating' => $appointment->status === 'completed' ? $appointment->review()->first()?->only(['id', 'rating', 'comment', 'created_at']) : null,
         ]);
     }
 
@@ -692,12 +856,35 @@ class AppointmentController extends Controller
             abort(403, 'Unauthorized access to appointment.');
         }
 
-        return Inertia::render('Scheduling/RescheduleAppointment', [
-            'appointment' => $appointment->load(['pet', 'clinic', 'service', 'veterinarian']),
+        return Inertia::render('Scheduling/AppointmentForm', [
+            'mode' => 'reschedule',
+            'appointment' => $appointment->load(['pet', 'clinicRegistration.clinicServices', 'service', 'veterinarian']),
             'pets' => Pet::where('owner_id', Auth::id())->select('id', 'name', 'type', 'breed')->get(),
-            'clinics' => Clinic::with('clinicServices:id,clinic_id,name,base_price')->get(),
-            'services' => ClinicService::select('id', 'name', 'clinic_id', 'base_price')->get(),
-            // 'veterinarians' => User::select('id', 'name')->where('role', 'veterinarian')->get()
+            'clinics' => ClinicRegistration::with(['clinicServices' => function($query) {
+                    $query->select('id', 'clinic_id', 'name', 'description', 'category', 'duration_minutes');
+                }])
+                ->where('status', 'approved')
+                ->get()
+                ->map(function($registration) {
+                    return [
+                        'id' => $registration->id,
+                        'name' => $registration->clinic_name,
+                        'address' => $registration->full_address,
+                        'phone' => $registration->phone,
+                        'clinic_services' => $registration->clinicServices->map(function($service) {
+                            return [
+                                'id' => $service->id,
+                                'name' => $service->name,
+                                'description' => $service->description,
+                                'category' => $service->category,
+                                'duration_minutes' => $service->duration_minutes,
+                                'clinic_id' => $service->clinic_id,
+                            ];
+                        })->toArray(),
+                    ];
+                }),
+            'services' => ClinicService::select('id', 'name', 'clinic_id', 'description', 'category', 'duration_minutes')
+                ->get(),
         ]);
     }
 
@@ -713,10 +900,29 @@ class AppointmentController extends Controller
             'scheduled_at' => $appointment->scheduled_at,
         ];
 
-        // Update estimated cost if service changed
-        if (isset($validatedData['service_id']) && $validatedData['service_id'] !== $appointment->service_id) {
-            $service = ClinicService::find($validatedData['service_id']);
-            $validatedData['estimated_cost'] = $service->base_price ?? $appointment->estimated_cost;
+        // Handle service_ids array - extract first service
+        if (isset($validatedData['service_ids']) && is_array($validatedData['service_ids']) && count($validatedData['service_ids']) > 0) {
+            $serviceId = $validatedData['service_ids'][0];
+            $validatedData['service_id'] = $serviceId;
+            
+            // Update estimated cost if service changed
+            if ($serviceId !== $appointment->service_id) {
+                $service = ClinicService::find($serviceId);
+                $validatedData['estimated_cost'] = $service->base_price ?? $appointment->estimated_cost;
+            }
+            
+            unset($validatedData['service_ids']); // Remove array field
+        }
+        
+        // Store reschedule_reason in notes if provided
+        if (isset($validatedData['reschedule_reason']) && !empty($validatedData['reschedule_reason'])) {
+            $rescheduleNote = "Reschedule Reason: " . $validatedData['reschedule_reason'];
+            if (!empty($validatedData['notes'])) {
+                $validatedData['notes'] = $rescheduleNote . "\n\n" . $validatedData['notes'];
+            } else {
+                $validatedData['notes'] = $rescheduleNote;
+            }
+            unset($validatedData['reschedule_reason']); // Remove after processing
         }
 
         $appointment->update($validatedData);
@@ -858,83 +1064,213 @@ class AppointmentController extends Controller
     {
         $user = Auth::user();
         
-        // Redirect clinic users to their clinic dashboard
-        if ($user->isClinic()) {
-            return redirect()->route('clinicDashboard');
+        // Determine user role
+        $userRole = 'user';
+        $appointments = collect();
+        $userPets = collect();
+        
+        if ($user->isClinic() && $user->clinicRegistration) {
+            // Clinic view
+            $userRole = 'clinic';
+            $clinicId = $user->clinicRegistration->id;
+            
+            // Get filter parameters for clinic
+            $category = $request->get('category', 'all');
+            $dateRange = $request->get('date_range', 'all');
+            $search = $request->get('search', '');
+            
+            // Build query for clinic appointments
+            $query = Appointment::with(['pet.owner', 'pet.type', 'pet.breed', 'service', 'veterinarian'])
+                ->where('clinic_id', $clinicId)
+                ->whereIn('status', ['completed', 'cancelled', 'no_show']);
+            
+            // Apply category filter
+            if ($category !== 'all') {
+                $query->where('status', $category);
+            }
+            
+            // Apply date range filter
+            switch ($dateRange) {
+                case 'today':
+                    $query->whereDate('scheduled_at', now());
+                    break;
+                case 'this_week':
+                    $query->whereBetween('scheduled_at', [now()->startOfWeek(), now()->endOfWeek()]);
+                    break;
+                case 'this_month':
+                    $query->whereMonth('scheduled_at', now()->month)->whereYear('scheduled_at', now()->year);
+                    break;
+                case 'last_month':
+                    $query->whereMonth('scheduled_at', now()->subMonth()->month)->whereYear('scheduled_at', now()->subMonth()->year);
+                    break;
+                case 'this_year':
+                    $query->whereYear('scheduled_at', now()->year);
+                    break;
+                case 'last_year':
+                    $query->whereYear('scheduled_at', now()->subYear()->year);
+                    break;
+            }
+            
+            // Apply search filter
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->whereHas('pet', function ($subQ) use ($search) {
+                        $subQ->where('name', 'like', "%{$search}%");
+                    })->orWhereHas('pet.owner', function ($subQ) use ($search) {
+                        $subQ->where('name', 'like', "%{$search}%");
+                    })->orWhere('appointment_number', 'like', "%{$search}%");
+                });
+            }
+            
+            $appointments = $query->orderBy('scheduled_at', 'desc')->paginate(10);
+            
+            // Transform clinic appointments
+            $clinicRegistration = $user->clinicRegistration;
+            $appointments->getCollection()->transform(function ($appointment) use ($clinicRegistration) {
+                $pet = $appointment->pet;
+                $owner = $pet ? $pet->owner : null;
+                
+                return [
+                    'id' => $appointment->id,
+                    'appointment_number' => $appointment->appointment_number ?? 'APT-' . str_pad($appointment->id, 6, '0', STR_PAD_LEFT),
+                    'scheduled_at' => $appointment->scheduled_at->toIso8601String(),
+                    'status' => $appointment->status,
+                    'type' => $appointment->type ?? 'consultation',
+                    'reason' => $appointment->reason,
+                    'notes' => $appointment->notes,
+                    'estimated_cost' => $appointment->estimated_cost,
+                    'actual_cost' => $appointment->actual_cost,
+                    'pet' => $pet ? [
+                        'id' => $pet->id,
+                        'name' => $pet->name,
+                        'type' => $pet->type ? $pet->type->name : 'Unknown',
+                        'breed' => $pet->breed ? $pet->breed->name : 'Unknown',
+                    ] : null,
+                    'clinic' => [
+                        'id' => $clinicRegistration->id,
+                        'name' => $clinicRegistration->clinic_name,
+                    ],
+                    'owner' => $owner ? [
+                        'id' => $owner->id,
+                        'name' => $owner->name,
+                        'email' => $owner->email,
+                        'phone' => $owner->phone,
+                    ] : null,
+                    'service' => $appointment->service ? [
+                        'id' => $appointment->service->id,
+                        'name' => $appointment->service->name,
+                    ] : null,
+                    'veterinarian' => $appointment->veterinarian ? [
+                        'id' => $appointment->veterinarian->id,
+                        'name' => $appointment->veterinarian->name,
+                    ] : null,
+                ];
+            });
+            
+            $filters = [
+                'category' => $category,
+                'date_range' => $dateRange,
+                'search' => $search,
+            ];
+            
+        } else {
+            // Pet owner view
+            // Get filter parameters
+            $petFilter = $request->get('pet_id');
+            $dateFilter = $request->get('date_filter', 'last_6_months');
+            $page = $request->get('page', 1);
+            $perPage = $request->get('per_page', 10);
+            
+            // Build the query
+            $query = Appointment::with([
+                'pet:id,name,type,breed',
+                'clinicRegistration:id,clinic_name,phone',
+                'veterinarian:id,name',
+                'service:id,name',
+                'owner:id,name,email,phone'
+            ])->where('owner_id', $user->id)
+              ->whereIn('status', ['completed', 'cancelled', 'no_show']); // Only show history statuses
+            
+            // Apply pet filter
+            if ($petFilter) {
+                $query->where('pet_id', $petFilter);
+            }
+            
+            // Apply date filter
+            switch ($dateFilter) {
+                case 'last_month':
+                    $query->where('scheduled_at', '>=', now()->subMonth());
+                    break;
+                case 'last_3_months':
+                    $query->where('scheduled_at', '>=', now()->subMonths(3));
+                    break;
+                case 'last_6_months':
+                    $query->where('scheduled_at', '>=', now()->subMonths(6));
+                    break;
+                case 'last_year':
+                    $query->where('scheduled_at', '>=', now()->subYear());
+                    break;
+                case 'all_time':
+                    // No date filter
+                    break;
+            }
+            
+            // Get paginated appointments ordered by most recent first
+            $appointments = $query->orderBy('scheduled_at', 'desc')
+                ->paginate($perPage, ['*'], 'page', $page);
+            
+            // Transform pet owner appointments
+            $appointments->getCollection()->transform(function ($appointment) {
+                return [
+                    'id' => $appointment->id,
+                    'appointment_number' => $appointment->appointment_number ?? 'APT-' . str_pad($appointment->id, 6, '0', STR_PAD_LEFT),
+                    'scheduled_at' => $appointment->scheduled_at->toIso8601String(),
+                    'duration_minutes' => $appointment->duration_minutes,
+                    'status' => $appointment->status,
+                    'type' => $appointment->type ?? 'consultation',
+                    'reason' => $appointment->reason,
+                    'notes' => $appointment->notes,
+                    'estimated_cost' => $appointment->estimated_cost,
+                    'actual_cost' => $appointment->actual_cost,
+                    'pet' => $appointment->pet ? [
+                        'id' => $appointment->pet->id,
+                        'name' => $appointment->pet->name,
+                        'type' => $appointment->pet->type,
+                        'breed' => $appointment->pet->breed,
+                    ] : null,
+                    'clinic' => $appointment->clinicRegistration ? [
+                        'id' => $appointment->clinicRegistration->id,
+                        'name' => $appointment->clinicRegistration->clinic_name,
+                        'phone' => $appointment->clinicRegistration->phone,
+                    ] : null,
+                    'veterinarian' => $appointment->veterinarian ? [
+                        'id' => $appointment->veterinarian->id,
+                        'name' => $appointment->veterinarian->name,
+                    ] : null,
+                    'service' => $appointment->service ? [
+                        'id' => $appointment->service->id,
+                        'name' => $appointment->service->name,
+                    ] : null,
+                ];
+            });
+            
+            // Get user's pets for the filter dropdown
+            $userPets = Pet::where('owner_id', $user->id)
+                ->select('id', 'name', 'type', 'breed')
+                ->orderBy('name')
+                ->get();
+            
+            $filters = [
+                'pet_id' => $petFilter,
+                'date_filter' => $dateFilter,
+            ];
         }
-        
-        // Get filter parameters
-        $petFilter = $request->get('pet_id');
-        $dateFilter = $request->get('date_filter', 'last_6_months'); // last_month, last_3_months, last_6_months, last_year, all_time
-        $page = $request->get('page', 1);
-        $perPage = $request->get('per_page', 10);
-        
-        // Build the query
-        $query = Appointment::with([
-            'pet:id,name,type,breed',
-            'clinicRegistration:id,clinic_name,phone',
-            'veterinarian:id,name',
-            'service:id,name',
-            'owner:id,name,email,phone'
-        ])->where('owner_id', $user->id);
-        
-        // Apply pet filter
-        if ($petFilter) {
-            $query->where('pet_id', $petFilter);
-        }
-        
-        // Apply date filter
-        switch ($dateFilter) {
-            case 'last_month':
-                $query->where('scheduled_at', '>=', now()->subMonth());
-                break;
-            case 'last_3_months':
-                $query->where('scheduled_at', '>=', now()->subMonths(3));
-                break;
-            case 'last_6_months':
-                $query->where('scheduled_at', '>=', now()->subMonths(6));
-                break;
-            case 'last_year':
-                $query->where('scheduled_at', '>=', now()->subYear());
-                break;
-            case 'all_time':
-                // No date filter
-                break;
-        }
-        
-        // Get paginated appointments ordered by most recent first
-        $appointments = $query->orderBy('scheduled_at', 'desc')
-            ->paginate($perPage, ['*'], 'page', $page);
-        
-        // Get user's pets for the filter dropdown
-        $userPets = Pet::where('owner_id', $user->id)
-            ->select('id', 'name', 'type', 'breed')
-            ->orderBy('name')
-            ->get();
-        
-        // Calculate statistics
-        $allAppointments = Appointment::where('owner_id', $user->id)->get();
-        $thisYearAppointments = Appointment::where('owner_id', $user->id)
-            ->whereYear('scheduled_at', now()->year)
-            ->get();
-        
-        $stats = [
-            'total_visits' => $allAppointments->count(),
-            'this_year' => $thisYearAppointments->count(),
-            'clinics_visited' => $allAppointments->pluck('clinic_id')->unique()->count(),
-            'total_spent' => $allAppointments->where('status', 'completed')->sum('actual_cost') ?: 
-                          $allAppointments->where('status', 'completed')->sum('estimated_cost') ?: 0,
-        ];
         
         return Inertia::render('History', [
             'appointments' => $appointments,
             'userPets' => $userPets,
-            'stats' => $stats,
-            'filters' => [
-                'pet_id' => $petFilter,
-                'date_filter' => $dateFilter,
-            ],
-            'userType' => $user->isClinic() ? 'clinic' : 'user', // Add user type
+            'filters' => $filters,
+            'userType' => $userRole,
         ]);
     }
 
@@ -979,8 +1315,8 @@ class AppointmentController extends Controller
      */
     private function updateAppointmentStatusIfNeeded(Appointment $appointment)
     {
-        // Only auto-update if status is confirmed and appointment time has arrived
-        if ($appointment->status === 'confirmed' && $appointment->scheduled_at->isPast()) {
+        // Auto-update scheduled appointments to in_progress when appointment time has arrived
+        if ($appointment->status === 'scheduled' && $appointment->scheduled_at->isPast()) {
             $appointment->update(['status' => 'in_progress']);
         }
     }
@@ -1106,5 +1442,302 @@ class AppointmentController extends Controller
         return redirect()->route('appointmentsShow', $appointment->id)
             ->with('success', 'Appointment rescheduled successfully. Waiting for clinic confirmation.');
     }
-}
 
+    /**
+     * Confirm a pending appointment (clinic marks as ready to proceed)
+     * Pending → Scheduled after clinic confirmation
+     */
+    public function confirmAppointment(Request $request, Appointment $appointment)
+    {
+        $user = Auth::user();
+        
+        if (!$user->isClinic()) {
+            abort(403, 'Access denied. Clinic account required.');
+        }
+
+        $clinicRegistration = $user->clinicRegistration;
+        
+        // Verify appointment belongs to this clinic
+        if ($appointment->clinic_id !== $clinicRegistration->id) {
+            abort(403, 'Access denied to this appointment.');
+        }
+
+        // Only allow confirming pending appointments
+        if ($appointment->status !== 'pending') {
+            return back()->with('error', 'Only pending appointments can be confirmed.');
+        }
+
+        // Check if appointment date has passed (auto-cancel if past and not confirmed)
+        if ($appointment->scheduled_at->isPast()) {
+            $appointment->update([
+                'status' => 'cancelled',
+                'notes' => ($appointment->notes ? $appointment->notes . '\n' : '') . 'Auto-cancelled: Appointment date has passed without confirmation.'
+            ]);
+            return back()->with('error', 'Cannot confirm appointment. The scheduled date has already passed.');
+        }
+
+        // Confirm the appointment
+        $appointment->update(['status' => 'scheduled']);
+
+        return back()->with('success', 'Appointment confirmed successfully.');
+    }
+
+    /**
+     * Update appointment status (clinic-initiated).
+     */
+    public function updateStatus(Request $request, Appointment $appointment)
+    {
+        $user = Auth::user();
+        
+        if (!$user->isClinic()) {
+            abort(403, 'Access denied. Clinic account required.');
+        }
+
+        $clinicRegistration = $user->clinicRegistration;
+        
+        // Verify appointment belongs to this clinic
+        if ($appointment->clinic_id !== $clinicRegistration->id) {
+            abort(403, 'Access denied to this appointment.');
+        }
+
+        $request->validate([
+            'status' => 'required|in:pending,confirmed,scheduled,in_progress,completed,cancelled,no_show',
+            'notes' => 'nullable|string|max:1000',
+            'actualCost' => 'nullable|numeric|min:0',
+        ]);
+
+        $appointment->update([
+            'status' => $request->status,
+            'notes' => $request->notes,
+            'actual_cost' => $request->actualCost,
+        ]);
+
+        return back()->with('success', 'Appointment status updated successfully.');
+    }
+
+    /**
+     * Assign a veterinarian to an appointment
+     */
+    public function assignVeterinarian(Request $request, Appointment $appointment)
+    {
+        $user = Auth::user();
+        
+        if (!$user->isClinic()) {
+            abort(403, 'Access denied. Clinic account required.');
+        }
+
+        $clinicRegistration = $user->clinicRegistration;
+        
+        // Verify appointment belongs to this clinic
+        if ($appointment->clinic_id !== $clinicRegistration->id) {
+            abort(403, 'Access denied to this appointment.');
+        }
+
+        // If removing veterinarian (null value)
+        if ($request->veterinarian_id === null) {
+            $appointment->update([
+                'clinic_staff_id' => null,
+            ]);
+            return back()->with('success', 'Veterinarian assignment removed.');
+        }
+
+        $request->validate([
+            'veterinarian_id' => 'required|exists:clinic_staff,id',
+        ]);
+
+        // Verify the veterinarian belongs to this clinic
+        $veterinarian = \App\Models\ClinicStaff::where('id', $request->veterinarian_id)
+            ->where('clinic_id', $clinicRegistration->id)
+            ->where('role', 'veterinarian')
+            ->firstOrFail();
+
+        // Update appointment with veterinarian and change status to scheduled if it was pending
+        $updateData = ['clinic_staff_id' => $veterinarian->id];
+        
+        // Auto-confirm appointment when vet is assigned
+        if ($appointment->status === 'pending') {
+            $updateData['status'] = 'scheduled';
+        }
+
+        $appointment->update($updateData);
+
+        return back()->with('success', 'Veterinarian assigned successfully and appointment confirmed.');
+    }
+
+    /**
+     * Complete an appointment and create medical record
+     */
+    public function completeAppointment(Request $request, Appointment $appointment)
+    {
+        $user = Auth::user();
+        
+        if (!$user->isClinic()) {
+            abort(403, 'Access denied. Clinic account required.');
+        }
+
+        $clinicRegistration = $user->clinicRegistration;
+        
+        // Verify appointment belongs to this clinic
+        if ($appointment->clinic_id !== $clinicRegistration->id) {
+            abort(403, 'Access denied to this appointment.');
+        }
+
+        // Log the incoming request for debugging
+        \Log::info('Complete appointment request received', [
+            'appointment_id' => $appointment->id,
+            'data' => $request->all()
+        ]);
+
+        try {
+            $validatedData = $request->validate([
+                'status' => 'required|in:completed',
+                'notes' => 'nullable|string',
+                'actualCost' => 'nullable|numeric|min:0',
+                'medical_record' => 'required|array',
+                'medical_record.record_type' => 'required|in:checkup,vaccination,treatment,surgery,emergency,other',
+                'medical_record.diagnosis' => 'nullable|string',
+                'medical_record.treatment' => 'nullable|string',
+                'medical_record.medications' => 'nullable|string',
+                'medical_record.clinical_notes' => 'nullable|string',
+                'medical_record.physical_exam' => 'nullable|string',
+                'medical_record.vital_signs' => 'nullable|string',
+                'medical_record.vaccine_name' => 'nullable|string',
+                'medical_record.vaccine_batch' => 'nullable|string',
+                'medical_record.administration_site' => 'nullable|string',
+                'medical_record.next_due_date' => 'nullable|date',
+                'medical_record.adverse_reactions' => 'nullable|string',
+                'medical_record.procedures_performed' => 'nullable|string',
+                'medical_record.treatment_response' => 'nullable|string',
+                'medical_record.surgery_type' => 'nullable|string',
+                'medical_record.procedure_details' => 'nullable|string',
+                'medical_record.anesthesia_used' => 'nullable|string',
+                'medical_record.complications' => 'nullable|string',
+                'medical_record.post_op_instructions' => 'nullable|string',
+                'medical_record.presenting_complaint' => 'nullable|string',
+                'medical_record.triage_level' => 'nullable|string',
+                'medical_record.emergency_treatment' => 'nullable|string',
+                'medical_record.stabilization_measures' => 'nullable|string',
+                'medical_record.disposition' => 'nullable|string',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error('Validation failed for appointment completion', [
+                'errors' => $e->errors(),
+                'request_data' => $request->all()
+            ]);
+            throw $e;
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Update appointment status
+            $appointment->update([
+                'status' => 'completed',
+                'notes' => $request->notes,
+                'actual_cost' => $request->actualCost,
+                'checked_out_at' => now(),
+                'dispute_window_ends_at' => now()->addHours(48), // 48-hour dispute window
+            ]);
+
+            // Create medical record
+            $medicalRecordData = $request->medical_record;
+            $medicalRecordData['pet_id'] = $appointment->pet_id;
+            $medicalRecordData['clinic_id'] = $clinicRegistration->id;
+            
+            // Set veterinarian_id to null since the FK constraint expects users.id
+            // but appointment.clinic_staff_id may not match a user ID
+            $medicalRecordData['veterinarian_id'] = null;
+            
+            $medicalRecordData['appointment_id'] = $appointment->id;
+            $medicalRecordData['date'] = $appointment->scheduled_at;
+            $medicalRecordData['title'] = $this->generateMedicalRecordTitle($medicalRecordData['record_type']);
+            $medicalRecordData['description'] = $medicalRecordData['diagnosis'] ?? $medicalRecordData['clinical_notes'] ?? 'Medical record from appointment';
+            $medicalRecordData['cost'] = $request->actualCost;
+
+            \App\Models\PetMedicalRecord::create($medicalRecordData);
+
+            DB::commit();
+
+            \Log::info('Appointment completed successfully', ['appointment_id' => $appointment->id]);
+
+            return redirect()->route('clinicHistory')
+                ->with('success', 'Appointment completed and medical record saved successfully.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Error completing appointment: ' . $e->getMessage());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            \Log::error('Exception class: ' . get_class($e));
+            \Log::error('File: ' . $e->getFile() . ' Line: ' . $e->getLine());
+            \Log::error('Request data: ', $request->all());
+            
+            // Return a more detailed error for debugging
+            return back()->withErrors([
+                'error' => 'Failed to complete appointment: ' . $e->getMessage(),
+                'details' => config('app.debug') ? $e->getTraceAsString() : null
+            ]);
+        }
+    }
+
+    /**
+     * Generate a title for the medical record based on type
+     */
+    private function generateMedicalRecordTitle(string $type): string
+    {
+        $titles = [
+            'checkup' => 'Routine Checkup',
+            'vaccination' => 'Vaccination Record',
+            'treatment' => 'Treatment Record',
+            'surgery' => 'Surgical Procedure',
+            'emergency' => 'Emergency Visit',
+            'other' => 'Medical Record',
+        ];
+
+        return $titles[$type] ?? 'Medical Record';
+    }
+
+    /**
+     * Mark an appointment as no-show (clinic only).
+     */
+    public function markAsNoShow(Request $request, Appointment $appointment)
+    {
+        $user = Auth::user();
+        
+        if (!$user->isClinic()) {
+            abort(403, 'Access denied. Clinic account required.');
+        }
+
+        $clinicRegistration = $user->clinicRegistration;
+        
+        // Verify appointment belongs to this clinic
+        if ($appointment->clinic_id !== $clinicRegistration->id) {
+            abort(403, 'Access denied to this appointment.');
+        }
+
+        // Check if appointment can be marked as no-show
+        if (in_array($appointment->status, ['cancelled', 'completed', 'no_show'])) {
+            return back()->withErrors([
+                'error' => 'This appointment cannot be marked as no-show.'
+            ]);
+        }
+
+        $request->validate([
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        // Update appointment status
+        $appointment->update([
+            'status' => 'no_show',
+            'notes' => ($appointment->notes ? $appointment->notes . "\n\n" : '') . 
+                      "Marked as no-show by clinic: " . ($request->reason ?? 'Patient did not show up for appointment'),
+        ]);
+
+        // Load relationships for notification
+        $appointment->load(['clinic', 'owner', 'pet']);
+
+        // Optional: Send notification to pet owner about no-show
+        // app(NotificationService::class)->appointmentNoShow($appointment);
+
+        return back()->with('success', 'Appointment marked as no-show successfully.');
+    }
+}

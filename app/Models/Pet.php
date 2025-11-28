@@ -15,35 +15,27 @@ class Pet extends Model
     protected $fillable = [
         'owner_id',
         'name',
-        'species',
         'breed_id',  // Foreign key to pet_breeds table (preferred)
         'breed',     // String breed name (fallback when breed_id not set)
         'type_id',
         'gender',
         'birth_date', // Preferred: calculate age from this
-        'age',        // Deprecated: use calculated_age attribute instead
         'weight',
         'size',
         'color',
         'markings',
-        'microchip_number', // Primary microchip field
-        'microchip_id',     // Deprecated: use microchip_number instead
+        'microchip_number',
         'is_neutered',
         'special_needs',
         'notes',
-        'allergies',          // Deprecated: use PetHealthCondition model instead
-        'current_medications', // Deprecated: use PetHealthCondition model instead
-        'medical_conditions',  // Deprecated: use PetHealthCondition model instead
         'profile_image',
         'images',
-        'is_active',
     ];
 
     protected $casts = [
         'birth_date' => 'date',
         'weight' => 'decimal:2',
         'is_neutered' => 'boolean',
-        'is_active' => 'boolean',
         'images' => 'array',
     ];
 
@@ -136,8 +128,8 @@ class Pet extends Model
             return null;
         }
 
-        $age = $this->birth_date->diffInYears(now());
-        $months = $this->birth_date->diffInMonths(now()) % 12;
+        $age = (int) $this->birth_date->diffInYears(now());
+        $months = (int) ($this->birth_date->diffInMonths(now()) % 12);
 
         if ($age == 0) {
             return $months . ' month' . ($months != 1 ? 's' : '') . ' old';
@@ -162,13 +154,7 @@ class Pet extends Model
         return round($this->birth_date->diffInDays(now()) / 365.25, 1);
     }
 
-    /**
-     * Get the pet's display name with species.
-     */
-    public function getDisplayNameAttribute(): string
-    {
-        return $this->name . ' (' . ucfirst($this->species) . ')';
-    }
+
 
     /**
      * Get the pet's size display name.
@@ -258,16 +244,10 @@ class Pet extends Model
      */
     public function scopeActive($query)
     {
-        return $query->where('is_active', true);
+        return $query;
     }
 
-    /**
-     * Scope to get pets by species.
-     */
-    public function scopeOfSpecies($query, string $species)
-    {
-        return $query->where('species', $species);
-    }
+
 
     /**
      * Scope to get pets needing vaccination.

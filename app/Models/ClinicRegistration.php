@@ -267,9 +267,6 @@ class ClinicRegistration extends Model
                 'description' => $serviceData['description'] ?? '',
                 'category' => $serviceData['category'] ?? 'other',
                 'duration_minutes' => $serviceData['duration_minutes'] ?? 30,
-                'is_active' => true, // Start all services as active
-                'requires_appointment' => $serviceData['requires_appointment'] ?? true,
-                'is_emergency_service' => $serviceData['is_emergency_service'] ?? false,
             ]);
         }
     }

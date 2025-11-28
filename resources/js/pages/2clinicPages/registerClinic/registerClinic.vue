@@ -66,8 +66,6 @@ const form = useForm({
         category: string;
         description: string;
         duration_minutes: number;
-        requires_appointment: boolean;
-        is_emergency_service: boolean;
     }>,
     
     // Step 5: Veterinarians
@@ -101,8 +99,17 @@ onMounted(() => {
         form.latitude = reg.latitude || null;
         form.longitude = reg.longitude || null;
         form.operating_hours = reg.operating_hours || form.operating_hours;
-        form.is_emergency_clinic = reg.is_emergency_clinic || false;
-        form.services = reg.services || [];
+        
+        // Load services but remove deprecated fields
+        if (reg.services && Array.isArray(reg.services)) {
+            form.services = reg.services.map(service => ({
+                name: service.name,
+                category: service.category,
+                description: service.description || '',
+                duration_minutes: service.duration_minutes
+            }));
+        }
+        
         form.veterinarians = reg.veterinarians || [{name: '', email: '', phone: '', license_number: '', specializations: []}];
     }
     
@@ -266,9 +273,7 @@ const addService = () => {
         name: '',
         category: 'consultation',
         description: '',
-        duration_minutes: 30,
-        requires_appointment: true,
-        is_emergency_service: false
+        duration_minutes: 30
     });
 };
 
@@ -283,9 +288,7 @@ const addCommonService = (service: any) => {
             name: service.name,
             category: service.category,
             description: '',
-            duration_minutes: service.duration,
-            requires_appointment: true,
-            is_emergency_service: service.category === 'emergency'
+            duration_minutes: service.duration
         });
     }
 };
@@ -918,23 +921,6 @@ const cancel = () => {
                             </div>
                         </div>
                         
-                        <!-- Emergency Clinic Option -->
-                        <div class="bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
-                            <label class="flex items-start cursor-pointer group">
-                                <input 
-                                    v-model="form.is_emergency_clinic" 
-                                    type="checkbox" 
-                                    class="mt-1 h-5 w-5 text-red-600 focus:ring-red-500 focus:ring-4 focus:ring-red-500/20 border-gray-300 dark:border-gray-600 rounded transition-all cursor-pointer"
-                                />
-                                <div class="ml-4 flex-1">
-                                    <span class="text-base font-semibold text-gray-900 dark:text-gray-100 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">We accept emergency cases</span>
-                                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                        🚨 Your clinic will be listed in the Emergency Clinic directory and prioritized in search results during urgent pet care situations
-                                    </p>
-                                </div>
-                            </label>
-                        </div>
-
                         <!-- Daily Hours -->
                         <div class="space-y-5">
                             <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
@@ -1274,27 +1260,6 @@ const cancel = () => {
                                             placeholder="Describe what this service includes..."
                                         ></textarea>
                                     </div>
-
-                                    <!-- Service Options -->
-                                    <div class="mt-4 flex flex-wrap gap-4">
-                                        <label class="flex items-center">
-                                            <input 
-                                                v-model="service.requires_appointment"
-                                                type="checkbox"
-                                                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                                            />
-                                            <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Requires appointment</span>
-                                        </label>
-
-                                        <label class="flex items-center">
-                                            <input 
-                                                v-model="service.is_emergency_service"
-                                                type="checkbox"
-                                                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                                            />
-                                            <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Emergency service (24/7)</span>
-                                        </label>
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1598,15 +1563,6 @@ const cancel = () => {
                                             <p class="text-gray-900 dark:text-gray-100">{{ form.street_address }}, {{ form.barangay }}, {{ form.city }}, {{ form.province }}</p>
                                         </div>
                                     </div>
-                                    <div class="flex items-start gap-2">
-                                        <svg class="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                        </svg>
-                                        <div class="flex-1">
-                                            <p class="font-semibold text-gray-700 dark:text-gray-300">Emergency Clinic:</p>
-                                            <p class="text-gray-900 dark:text-gray-100">{{ form.is_emergency_clinic ? 'Yes ✅' : 'No' }}</p>
-                                        </div>
-                                    </div>
                                 </div>
                                 <div class="space-y-3">
                                     <div class="flex items-start gap-2">
@@ -1616,24 +1572,6 @@ const cancel = () => {
                                         <div class="flex-1">
                                             <p class="font-semibold text-gray-700 dark:text-gray-300">Services:</p>
                                             <p class="text-gray-900 dark:text-gray-100">{{ (form.services && form.services.length > 0) ? form.services.length + ' configured' : 'Not configured yet' }}</p>
-                                        </div>
-                                    </div>
-                                    <div class="flex items-start gap-2">
-                                        <svg class="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                        </svg>
-                                        <div class="flex-1">
-                                            <p class="font-semibold text-gray-700 dark:text-gray-300">Emergency Services:</p>
-                                            <p class="text-gray-900 dark:text-gray-100">{{ (form.services || []).filter(s => s.is_emergency_service).length }}</p>
-                                        </div>
-                                    </div>
-                                    <div class="flex items-start gap-2">
-                                        <svg class="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                        </svg>
-                                        <div class="flex-1">
-                                            <p class="font-semibold text-gray-700 dark:text-gray-300">Walk-in Services:</p>
-                                            <p class="text-gray-900 dark:text-gray-100">{{ (form.services || []).filter(s => !s.requires_appointment).length }}</p>
                                         </div>
                                     </div>
                                     <div class="flex items-start gap-2">

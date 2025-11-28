@@ -62,9 +62,9 @@ class DashboardStatsService
         $thisMonth = $now->startOfMonth();
         $nextMonth = $now->copy()->addMonth()->startOfMonth();
 
-        $appointments = $user->appointments()->with(['pet', 'clinic'])->get();
+        $appointments = $user->appointments()->with(['pet', 'clinic', 'service'])->get();
         $upcomingAppointments = $user->appointments()
-            ->with(['pet', 'clinic'])
+            ->with(['pet', 'clinic', 'service'])
             ->where('scheduled_at', '>', $now)
             ->where('status', '!=', 'cancelled')
             ->orderBy('scheduled_at')
@@ -231,19 +231,40 @@ class DashboardStatsService
      */
     private function formatAppointmentForFrontend(Appointment $appointment): array
     {
+        $clinic = $appointment->clinic;
+        $clinicName = 'Unknown Clinic';
+        
+        if ($clinic) {
+            // Handle both ClinicRegistration and Clinic models
+            $clinicName = $clinic->business_name ?? $clinic->clinic_name ?? $clinic->name ?? 'Unknown Clinic';
+        }
+        
+        // Get service details including duration
+        $serviceName = 'General Consultation';
+        $duration = '30 minutes'; // Default duration
+        
+        if ($appointment->service) {
+            // ClinicService model uses 'name' column, not 'service_name'
+            $serviceName = $appointment->service->name ?? $appointment->service->service_name ?? 'General Consultation';
+            $duration = $appointment->service->formatted_duration ?? ($appointment->service->duration_minutes ? $appointment->service->duration_minutes . ' minutes' : '30 minutes');
+        } elseif ($appointment->type) {
+            $serviceName = $appointment->type;
+        }
+        
         return [
             'id' => $appointment->id,
             'appointment_number' => $appointment->appointment_number,
             'status' => $appointment->status,
             'scheduled_at' => $appointment->scheduled_at,
-            'type' => $appointment->type ?? 'General Consultation',
+            'type' => $serviceName,
+            'duration' => $duration,
             'pet' => $appointment->pet ? [
                 'name' => $appointment->pet->name,
                 'species' => $appointment->pet->species,
             ] : null,
-            'clinic' => $appointment->clinic ? [
-                'name' => $appointment->clinic->business_name ?? $appointment->clinic->name,
-            ] : null,
+            'clinic' => [
+                'name' => $clinicName,
+            ],
             'estimated_cost' => $appointment->estimated_cost,
         ];
     }
@@ -275,7 +296,7 @@ class DashboardStatsService
     public function getRecentAppointments(User $user, int $limit = 5): array
     {
         return $user->appointments()
-            ->with(['pet', 'clinic'])
+            ->with(['pet', 'clinic', 'service'])
             ->orderBy('scheduled_at', 'desc')
             ->limit($limit)
             ->get()
@@ -291,7 +312,7 @@ class DashboardStatsService
     public function getUpcomingAppointments(User $user, int $limit = 5): array
     {
         return $user->appointments()
-            ->with(['pet', 'clinic'])
+            ->with(['pet', 'clinic', 'service'])
             ->where('scheduled_at', '>', Carbon::now())
             ->where('status', '!=', 'cancelled')
             ->orderBy('scheduled_at')

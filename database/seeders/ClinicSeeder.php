@@ -1360,7 +1360,7 @@ class ClinicSeeder extends Seeder
                     'postal_code' => '7500',
                     'latitude' => 5.0319,
                     'longitude' => 119.7744,
-                    'services' => ['consultation', 'vaccination', 'surgery', 'border care', 'southernmost'],
+                    'services' => ['consultation', 'vaccination', 'surgery'],
                     'veterinarians' => [
                         [
                             'name' => 'Dr. Almahdi Sahidulla',
@@ -1376,6 +1376,1299 @@ class ClinicSeeder extends Seeder
                         'friday' => ['open' => '14:00', 'close' => '18:00'],
                         'saturday' => ['open' => '08:00', 'close' => '16:00'],
                         'sunday' => ['open' => '09:00', 'close' => '15:00']
+                    ]
+                ]
+            ],
+            // LINGAYEN BATCH 1: 10 clinics
+            [
+                'email' => 'info@lingayenpetclinic.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Roberto',
+                    'last_name' => 'Sison',
+                    'phone' => '09171234601',
+                    'date_of_birth' => '1975-02-14',
+                    'gender' => 'male',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Capital town veterinarian with 20+ years experience.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Lingayen Pet Clinic',
+                    'phone' => '075-542-1001',
+                    'country' => 'Philippines',
+                    'region' => 'Ilocos Region',
+                    'province' => 'Pangasinan',
+                    'city' => 'Lingayen',
+                    'barangay' => 'Poblacion',
+                    'street_address' => '123 Avenida Rizal',
+                    'postal_code' => '2401',
+                    'latitude' => 16.0186,
+                    'longitude' => 120.2303,
+                    'services' => ['consultation', 'vaccination', 'surgery', 'grooming', 'emergency'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Roberto Sison',
+                            'license_number' => 'VET-2024-101',
+                            'specialization' => 'General Practice'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '08:00', 'close' => '18:00'],
+                        'tuesday' => ['open' => '08:00', 'close' => '18:00'],
+                        'wednesday' => ['open' => '08:00', 'close' => '18:00'],
+                        'thursday' => ['open' => '08:00', 'close' => '18:00'],
+                        'friday' => ['open' => '08:00', 'close' => '18:00'],
+                        'saturday' => ['open' => '08:00', 'close' => '17:00'],
+                        'sunday' => ['open' => '09:00', 'close' => '16:00']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'contact@bayvetcenter.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Marissa',
+                    'last_name' => 'Valdez',
+                    'phone' => '09281234602',
+                    'date_of_birth' => '1980-06-20',
+                    'gender' => 'female',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Coastal veterinarian specializing in beach area pet care.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Lingayen Bay Veterinary Center',
+                    'phone' => '075-542-1002',
+                    'country' => 'Philippines',
+                    'region' => 'Ilocos Region',
+                    'province' => 'Pangasinan',
+                    'city' => 'Lingayen',
+                    'barangay' => 'Baay',
+                    'street_address' => '456 Beach Road',
+                    'postal_code' => '2401',
+                    'latitude' => 16.0234,
+                    'longitude' => 120.2356,
+                    'services' => ['consultation', 'vaccination', 'grooming', 'boarding'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Marissa Valdez',
+                            'license_number' => 'VET-2024-102',
+                            'specialization' => 'Coastal Animal Care'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '07:00', 'close' => '19:00'],
+                        'tuesday' => ['open' => '07:00', 'close' => '19:00'],
+                        'wednesday' => ['open' => '07:00', 'close' => '19:00'],
+                        'thursday' => ['open' => '07:00', 'close' => '19:00'],
+                        'friday' => ['open' => '07:00', 'close' => '19:00'],
+                        'saturday' => ['open' => '08:00', 'close' => '18:00'],
+                        'sunday' => ['open' => '09:00', 'close' => '17:00']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'admin@capitolpetcare.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Eduardo',
+                    'last_name' => 'Romero',
+                    'phone' => '09391234603',
+                    'date_of_birth' => '1978-11-05',
+                    'gender' => 'male',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Capitol area veterinarian with government service experience.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Capitol Pet Care Center',
+                    'phone' => '075-542-1003',
+                    'country' => 'Philippines',
+                    'region' => 'Ilocos Region',
+                    'province' => 'Pangasinan',
+                    'city' => 'Lingayen',
+                    'barangay' => 'Tumbar',
+                    'street_address' => '789 Capitol Drive',
+                    'postal_code' => '2401',
+                    'latitude' => 16.0210,
+                    'longitude' => 120.2275,
+                    'services' => ['consultation', 'vaccination', 'surgery', 'laboratory', 'emergency'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Eduardo Romero',
+                            'license_number' => 'VET-2024-103',
+                            'specialization' => 'Emergency Medicine'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '06:00', 'close' => '20:00'],
+                        'tuesday' => ['open' => '06:00', 'close' => '20:00'],
+                        'wednesday' => ['open' => '06:00', 'close' => '20:00'],
+                        'thursday' => ['open' => '06:00', 'close' => '20:00'],
+                        'friday' => ['open' => '06:00', 'close' => '20:00'],
+                        'saturday' => ['open' => '07:00', 'close' => '19:00'],
+                        'sunday' => ['open' => '08:00', 'close' => '18:00']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'info@domalayvetclinic.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Carmen',
+                    'last_name' => 'Aquino',
+                    'phone' => '09451234604',
+                    'date_of_birth' => '1982-04-18',
+                    'gender' => 'female',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Experienced in treating local pets and farm animals.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Domalay Veterinary Clinic',
+                    'phone' => '075-542-1004',
+                    'country' => 'Philippines',
+                    'region' => 'Ilocos Region',
+                    'province' => 'Pangasinan',
+                    'city' => 'Lingayen',
+                    'barangay' => 'Domalley',
+                    'street_address' => '234 Barangay Road',
+                    'postal_code' => '2401',
+                    'latitude' => 16.0152,
+                    'longitude' => 120.2198,
+                    'services' => ['consultation', 'vaccination', 'grooming'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Carmen Aquino',
+                            'license_number' => 'VET-2024-104',
+                            'specialization' => 'Small Animal Medicine'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '08:00', 'close' => '17:00'],
+                        'tuesday' => ['open' => '08:00', 'close' => '17:00'],
+                        'wednesday' => ['open' => '08:00', 'close' => '17:00'],
+                        'thursday' => ['open' => '08:00', 'close' => '17:00'],
+                        'friday' => ['open' => '08:00', 'close' => '17:00'],
+                        'saturday' => ['open' => '08:00', 'close' => '16:00'],
+                        'sunday' => ['open' => 'closed', 'close' => 'closed']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'contact@pawspetclinic.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Antonio',
+                    'last_name' => 'Cruz',
+                    'phone' => '09561234605',
+                    'date_of_birth' => '1976-09-25',
+                    'gender' => 'male',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Passionate about pet wellness and preventive care.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Paws & Claws Pet Clinic Lingayen',
+                    'phone' => '075-542-1005',
+                    'country' => 'Philippines',
+                    'region' => 'Ilocos Region',
+                    'province' => 'Pangasinan',
+                    'city' => 'Lingayen',
+                    'barangay' => 'Maniboc',
+                    'street_address' => '567 Market Street',
+                    'postal_code' => '2401',
+                    'latitude' => 16.0165,
+                    'longitude' => 120.2290,
+                    'services' => ['consultation', 'vaccination', 'dental', 'grooming', 'wellness'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Antonio Cruz',
+                            'license_number' => 'VET-2024-105',
+                            'specialization' => 'Preventive Medicine'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '09:00', 'close' => '18:00'],
+                        'tuesday' => ['open' => '09:00', 'close' => '18:00'],
+                        'wednesday' => ['open' => '09:00', 'close' => '18:00'],
+                        'thursday' => ['open' => '09:00', 'close' => '18:00'],
+                        'friday' => ['open' => '09:00', 'close' => '18:00'],
+                        'saturday' => ['open' => '09:00', 'close' => '17:00'],
+                        'sunday' => ['open' => '10:00', 'close' => '15:00']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'admin@quilitovetcenter.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Josefa',
+                    'last_name' => 'Reyes',
+                    'phone' => '09671234606',
+                    'date_of_birth' => '1984-01-12',
+                    'gender' => 'female',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Community veterinarian serving Lingayen residents.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Quilito Veterinary Center',
+                    'phone' => '075-542-1006',
+                    'country' => 'Philippines',
+                    'region' => 'Ilocos Region',
+                    'province' => 'Pangasinan',
+                    'city' => 'Lingayen',
+                    'barangay' => 'Quibaol',
+                    'street_address' => '890 National Highway',
+                    'postal_code' => '2401',
+                    'latitude' => 16.0198,
+                    'longitude' => 120.2320,
+                    'services' => ['consultation', 'vaccination', 'surgery'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Josefa Reyes',
+                            'license_number' => 'VET-2024-106',
+                            'specialization' => 'General Practice'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '08:00', 'close' => '18:00'],
+                        'tuesday' => ['open' => '08:00', 'close' => '18:00'],
+                        'wednesday' => ['open' => '08:00', 'close' => '18:00'],
+                        'thursday' => ['open' => '08:00', 'close' => '18:00'],
+                        'friday' => ['open' => '08:00', 'close' => '18:00'],
+                        'saturday' => ['open' => '08:00', 'close' => '16:00'],
+                        'sunday' => ['open' => '09:00', 'close' => '14:00']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'info@healthypawslingayen.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Vicente',
+                    'last_name' => 'Garcia',
+                    'phone' => '09781234607',
+                    'date_of_birth' => '1979-07-30',
+                    'gender' => 'male',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Dedicated to keeping pets healthy and happy.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Healthy Paws Veterinary Clinic',
+                    'phone' => '075-542-1007',
+                    'country' => 'Philippines',
+                    'region' => 'Ilocos Region',
+                    'province' => 'Pangasinan',
+                    'city' => 'Lingayen',
+                    'barangay' => 'Sabangan',
+                    'street_address' => '345 Provincial Road',
+                    'postal_code' => '2401',
+                    'latitude' => 16.0145,
+                    'longitude' => 120.2265,
+                    'services' => ['consultation', 'vaccination', 'wellness', 'nutrition'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Vicente Garcia',
+                            'license_number' => 'VET-2024-107',
+                            'specialization' => 'Animal Nutrition'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '08:00', 'close' => '17:00'],
+                        'tuesday' => ['open' => '08:00', 'close' => '17:00'],
+                        'wednesday' => ['open' => '08:00', 'close' => '17:00'],
+                        'thursday' => ['open' => '08:00', 'close' => '17:00'],
+                        'friday' => ['open' => '08:00', 'close' => '17:00'],
+                        'saturday' => ['open' => '08:00', 'close' => '15:00'],
+                        'sunday' => ['open' => 'closed', 'close' => 'closed']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'contact@bayanimalpethospital.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Leonora',
+                    'last_name' => 'Santos',
+                    'phone' => '09891234608',
+                    'date_of_birth' => '1981-03-22',
+                    'gender' => 'female',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Comprehensive animal hospital services for all pets.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Bay Animal Hospital',
+                    'phone' => '075-542-1008',
+                    'country' => 'Philippines',
+                    'region' => 'Ilocos Region',
+                    'province' => 'Pangasinan',
+                    'city' => 'Lingayen',
+                    'barangay' => 'Aliwekwek',
+                    'street_address' => '678 Coastal Highway',
+                    'postal_code' => '2401',
+                    'latitude' => 16.0220,
+                    'longitude' => 120.2340,
+                    'services' => ['consultation', 'vaccination', 'surgery', 'emergency', 'imaging'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Leonora Santos',
+                            'license_number' => 'VET-2024-108',
+                            'specialization' => 'Surgical Medicine'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '07:00', 'close' => '20:00'],
+                        'tuesday' => ['open' => '07:00', 'close' => '20:00'],
+                        'wednesday' => ['open' => '07:00', 'close' => '20:00'],
+                        'thursday' => ['open' => '07:00', 'close' => '20:00'],
+                        'friday' => ['open' => '07:00', 'close' => '20:00'],
+                        'saturday' => ['open' => '08:00', 'close' => '19:00'],
+                        'sunday' => ['open' => '09:00', 'close' => '18:00']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'admin@pangasinanpetclinic.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Fernando',
+                    'last_name' => 'Mendoza',
+                    'phone' => '09901234609',
+                    'date_of_birth' => '1977-12-08',
+                    'gender' => 'male',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Provincial veterinarian with farm animal expertise.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Pangasinan Pet & Animal Clinic',
+                    'phone' => '075-542-1009',
+                    'country' => 'Philippines',
+                    'region' => 'Ilocos Region',
+                    'province' => 'Pangasinan',
+                    'city' => 'Lingayen',
+                    'barangay' => 'Malawa',
+                    'street_address' => '901 Farm-to-Market Road',
+                    'postal_code' => '2401',
+                    'latitude' => 16.0178,
+                    'longitude' => 120.2210,
+                    'services' => ['consultation', 'vaccination', 'surgery', 'livestock'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Fernando Mendoza',
+                            'license_number' => 'VET-2024-109',
+                            'specialization' => 'Large Animal Medicine'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '06:00', 'close' => '18:00'],
+                        'tuesday' => ['open' => '06:00', 'close' => '18:00'],
+                        'wednesday' => ['open' => '06:00', 'close' => '18:00'],
+                        'thursday' => ['open' => '06:00', 'close' => '18:00'],
+                        'friday' => ['open' => '06:00', 'close' => '18:00'],
+                        'saturday' => ['open' => '07:00', 'close' => '17:00'],
+                        'sunday' => ['open' => 'closed', 'close' => 'closed']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'info@petcarepluslingayen.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Remedios',
+                    'last_name' => 'Castillo',
+                    'phone' => '09111234610',
+                    'date_of_birth' => '1983-08-15',
+                    'gender' => 'female',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Modern veterinary care with compassionate service.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Pet Care Plus Lingayen',
+                    'phone' => '075-542-1010',
+                    'country' => 'Philippines',
+                    'region' => 'Ilocos Region',
+                    'province' => 'Pangasinan',
+                    'city' => 'Lingayen',
+                    'barangay' => 'Dulag',
+                    'street_address' => '123 Commerce Avenue',
+                    'postal_code' => '2401',
+                    'latitude' => 16.0190,
+                    'longitude' => 120.2285,
+                    'services' => ['consultation', 'vaccination', 'grooming', 'boarding', 'pharmacy'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Remedios Castillo',
+                            'license_number' => 'VET-2024-110',
+                            'specialization' => 'Modern Veterinary Practice'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '09:00', 'close' => '19:00'],
+                        'tuesday' => ['open' => '09:00', 'close' => '19:00'],
+                        'wednesday' => ['open' => '09:00', 'close' => '19:00'],
+                        'thursday' => ['open' => '09:00', 'close' => '19:00'],
+                        'friday' => ['open' => '09:00', 'close' => '19:00'],
+                        'saturday' => ['open' => '09:00', 'close' => '18:00'],
+                        'sunday' => ['open' => '10:00', 'close' => '17:00']
+                    ]
+                ]
+            ],
+            // LINGAYEN BATCH 2: 10 more clinics in nearby towns
+            [
+                'email' => 'contact@binmaleyvetclinic.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Gloria',
+                    'last_name' => 'Perez',
+                    'phone' => '09171234611',
+                    'date_of_birth' => '1980-05-10',
+                    'gender' => 'female',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Fish market town veterinarian with aquatic expertise.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Binmaley Veterinary Clinic',
+                    'phone' => '075-543-2001',
+                    'country' => 'Philippines',
+                    'region' => 'Ilocos Region',
+                    'province' => 'Pangasinan',
+                    'city' => 'Binmaley',
+                    'barangay' => 'Poblacion',
+                    'street_address' => '456 Market Road',
+                    'postal_code' => '2417',
+                    'latitude' => 16.0319,
+                    'longitude' => 120.2683,
+                    'services' => ['consultation', 'vaccination', 'aquatic'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Gloria Perez',
+                            'license_number' => 'VET-2024-111',
+                            'specialization' => 'Aquatic Medicine'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '07:00', 'close' => '18:00'],
+                        'tuesday' => ['open' => '07:00', 'close' => '18:00'],
+                        'wednesday' => ['open' => '07:00', 'close' => '18:00'],
+                        'thursday' => ['open' => '07:00', 'close' => '18:00'],
+                        'friday' => ['open' => '07:00', 'close' => '18:00'],
+                        'saturday' => ['open' => '07:00', 'close' => '17:00'],
+                        'sunday' => ['open' => '08:00', 'close' => '15:00']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'admin@calasiaopetcenter.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Rodrigo',
+                    'last_name' => 'Alvarez',
+                    'phone' => '09281234612',
+                    'date_of_birth' => '1975-09-18',
+                    'gender' => 'male',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Urban veterinarian serving Calasiao residents.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Calasiao Pet Care Center',
+                    'phone' => '075-544-3001',
+                    'country' => 'Philippines',
+                    'region' => 'Ilocos Region',
+                    'province' => 'Pangasinan',
+                    'city' => 'Calasiao',
+                    'barangay' => 'Poblacion West',
+                    'street_address' => '789 MacArthur Highway',
+                    'postal_code' => '2418',
+                    'latitude' => 16.0153,
+                    'longitude' => 120.3558,
+                    'services' => ['consultation', 'vaccination', 'surgery', 'grooming'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Rodrigo Alvarez',
+                            'license_number' => 'VET-2024-112',
+                            'specialization' => 'Urban Animal Care'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '08:00', 'close' => '19:00'],
+                        'tuesday' => ['open' => '08:00', 'close' => '19:00'],
+                        'wednesday' => ['open' => '08:00', 'close' => '19:00'],
+                        'thursday' => ['open' => '08:00', 'close' => '19:00'],
+                        'friday' => ['open' => '08:00', 'close' => '19:00'],
+                        'saturday' => ['open' => '08:00', 'close' => '18:00'],
+                        'sunday' => ['open' => '09:00', 'close' => '17:00']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'info@santabarbaravet.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Patricia',
+                    'last_name' => 'Ramos',
+                    'phone' => '09391234613',
+                    'date_of_birth' => '1982-03-25',
+                    'gender' => 'female',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Rural veterinarian with livestock expertise.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Santa Barbara Veterinary Services',
+                    'phone' => '075-545-4001',
+                    'country' => 'Philippines',
+                    'region' => 'Ilocos Region',
+                    'province' => 'Pangasinan',
+                    'city' => 'Santa Barbara',
+                    'barangay' => 'Centro',
+                    'street_address' => '234 Provincial Road',
+                    'postal_code' => '2419',
+                    'latitude' => 16.0031,
+                    'longitude' => 120.4103,
+                    'services' => ['consultation', 'vaccination', 'livestock'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Patricia Ramos',
+                            'license_number' => 'VET-2024-113',
+                            'specialization' => 'Livestock Medicine'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '07:00', 'close' => '17:00'],
+                        'tuesday' => ['open' => '07:00', 'close' => '17:00'],
+                        'wednesday' => ['open' => '07:00', 'close' => '17:00'],
+                        'thursday' => ['open' => '07:00', 'close' => '17:00'],
+                        'friday' => ['open' => '07:00', 'close' => '17:00'],
+                        'saturday' => ['open' => '07:00', 'close' => '16:00'],
+                        'sunday' => ['open' => 'closed', 'close' => 'closed']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'contact@basistapetclinic.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Manuel',
+                    'last_name' => 'Torres',
+                    'phone' => '09451234614',
+                    'date_of_birth' => '1978-11-30',
+                    'gender' => 'male',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Coastal town veterinarian focused on pet health.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Basista Pet Clinic',
+                    'phone' => '075-546-5001',
+                    'country' => 'Philippines',
+                    'region' => 'Ilocos Region',
+                    'province' => 'Pangasinan',
+                    'city' => 'Basista',
+                    'barangay' => 'Zone 1',
+                    'street_address' => '567 National Road',
+                    'postal_code' => '2422',
+                    'latitude' => 15.9922,
+                    'longitude' => 120.3931,
+                    'services' => ['consultation', 'vaccination', 'surgery', 'emergency'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Manuel Torres',
+                            'license_number' => 'VET-2024-114',
+                            'specialization' => 'Emergency Care'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '08:00', 'close' => '18:00'],
+                        'tuesday' => ['open' => '08:00', 'close' => '18:00'],
+                        'wednesday' => ['open' => '08:00', 'close' => '18:00'],
+                        'thursday' => ['open' => '08:00', 'close' => '18:00'],
+                        'friday' => ['open' => '08:00', 'close' => '18:00'],
+                        'saturday' => ['open' => '08:00', 'close' => '17:00'],
+                        'sunday' => ['open' => '09:00', 'close' => '16:00']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'admin@bayambanganimalhospital.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Angelita',
+                    'last_name' => 'Francisco',
+                    'phone' => '09561234615',
+                    'date_of_birth' => '1981-07-14',
+                    'gender' => 'female',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Comprehensive animal hospital for all pet needs.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Bayambang Animal Hospital',
+                    'phone' => '075-547-6001',
+                    'country' => 'Philippines',
+                    'region' => 'Ilocos Region',
+                    'province' => 'Pangasinan',
+                    'city' => 'Bayambang',
+                    'barangay' => 'Poblacion',
+                    'street_address' => '890 Town Center',
+                    'postal_code' => '2423',
+                    'latitude' => 15.8122,
+                    'longitude' => 120.4542,
+                    'services' => ['consultation', 'vaccination', 'surgery', 'laboratory', 'boarding'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Angelita Francisco',
+                            'license_number' => 'VET-2024-115',
+                            'specialization' => 'Comprehensive Care'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '07:00', 'close' => '20:00'],
+                        'tuesday' => ['open' => '07:00', 'close' => '20:00'],
+                        'wednesday' => ['open' => '07:00', 'close' => '20:00'],
+                        'thursday' => ['open' => '07:00', 'close' => '20:00'],
+                        'friday' => ['open' => '07:00', 'close' => '20:00'],
+                        'saturday' => ['open' => '08:00', 'close' => '19:00'],
+                        'sunday' => ['open' => '09:00', 'close' => '18:00']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'info@labrador vetcenter.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Benigno',
+                    'last_name' => 'Gutierrez',
+                    'phone' => '09671234616',
+                    'date_of_birth' => '1976-04-08',
+                    'gender' => 'male',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Veterinarian specializing in working dogs and farm animals.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Labrador Veterinary Center',
+                    'phone' => '075-548-7001',
+                    'country' => 'Philippines',
+                    'region' => 'Ilocos Region',
+                    'province' => 'Pangasinan',
+                    'city' => 'Labrador',
+                    'barangay' => 'Poblacion',
+                    'street_address' => '123 Coastal Road',
+                    'postal_code' => '2402',
+                    'latitude' => 16.0392,
+                    'longitude' => 120.1353,
+                    'services' => ['consultation', 'vaccination', 'surgery'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Benigno Gutierrez',
+                            'license_number' => 'VET-2024-116',
+                            'specialization' => 'Working Dog Medicine'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '07:00', 'close' => '17:00'],
+                        'tuesday' => ['open' => '07:00', 'close' => '17:00'],
+                        'wednesday' => ['open' => '07:00', 'close' => '17:00'],
+                        'thursday' => ['open' => '07:00', 'close' => '17:00'],
+                        'friday' => ['open' => '07:00', 'close' => '17:00'],
+                        'saturday' => ['open' => '08:00', 'close' => '16:00'],
+                        'sunday' => ['open' => 'closed', 'close' => 'closed']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'contact@banivetclinic.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Catalina',
+                    'last_name' => 'Villamor',
+                    'phone' => '09781234617',
+                    'date_of_birth' => '1983-12-20',
+                    'gender' => 'female',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Beach town veterinarian with coastal pet care focus.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Bani Veterinary Clinic',
+                    'phone' => '075-549-8001',
+                    'country' => 'Philippines',
+                    'region' => 'Ilocos Region',
+                    'province' => 'Pangasinan',
+                    'city' => 'Bani',
+                    'barangay' => 'Poblacion',
+                    'street_address' => '456 Beach Road',
+                    'postal_code' => '2407',
+                    'latitude' => 16.1836,
+                    'longitude' => 119.8678,
+                    'services' => ['consultation', 'vaccination', 'grooming'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Catalina Villamor',
+                            'license_number' => 'VET-2024-117',
+                            'specialization' => 'Coastal Pet Care'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '08:00', 'close' => '17:00'],
+                        'tuesday' => ['open' => '08:00', 'close' => '17:00'],
+                        'wednesday' => ['open' => '08:00', 'close' => '17:00'],
+                        'thursday' => ['open' => '08:00', 'close' => '17:00'],
+                        'friday' => ['open' => '08:00', 'close' => '17:00'],
+                        'saturday' => ['open' => '08:00', 'close' => '16:00'],
+                        'sunday' => ['open' => '09:00', 'close' => '15:00']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'admin@mangaldanpetcare.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Domingo',
+                    'last_name' => 'Navarro',
+                    'phone' => '09891234618',
+                    'date_of_birth' => '1979-06-02',
+                    'gender' => 'male',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Agricultural town veterinarian with farm experience.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Mangaldan Pet Care',
+                    'phone' => '075-550-9001',
+                    'country' => 'Philippines',
+                    'region' => 'Ilocos Region',
+                    'province' => 'Pangasinan',
+                    'city' => 'Mangaldan',
+                    'barangay' => 'Poblacion',
+                    'street_address' => '789 Agricultural Road',
+                    'postal_code' => '2432',
+                    'latitude' => 16.0711,
+                    'longitude' => 120.4025,
+                    'services' => ['consultation', 'vaccination', 'livestock', 'surgery'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Domingo Navarro',
+                            'license_number' => 'VET-2024-118',
+                            'specialization' => 'Agricultural Medicine'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '06:00', 'close' => '18:00'],
+                        'tuesday' => ['open' => '06:00', 'close' => '18:00'],
+                        'wednesday' => ['open' => '06:00', 'close' => '18:00'],
+                        'thursday' => ['open' => '06:00', 'close' => '18:00'],
+                        'friday' => ['open' => '06:00', 'close' => '18:00'],
+                        'saturday' => ['open' => '07:00', 'close' => '17:00'],
+                        'sunday' => ['open' => 'closed', 'close' => 'closed']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'info@sanfabiananimalhospital.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Estella',
+                    'last_name' => 'Mercado',
+                    'phone' => '09901234619',
+                    'date_of_birth' => '1980-02-28',
+                    'gender' => 'female',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Northern Pangasinan veterinarian with modern facilities.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'San Fabian Animal Hospital',
+                    'phone' => '075-551-1002',
+                    'country' => 'Philippines',
+                    'region' => 'Ilocos Region',
+                    'province' => 'Pangasinan',
+                    'city' => 'San Fabian',
+                    'barangay' => 'Poblacion',
+                    'street_address' => '234 National Highway',
+                    'postal_code' => '2433',
+                    'latitude' => 16.1356,
+                    'longitude' => 120.4503,
+                    'services' => ['consultation', 'vaccination', 'surgery', 'imaging', 'emergency'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Estella Mercado',
+                            'license_number' => 'VET-2024-119',
+                            'specialization' => 'Modern Veterinary Medicine'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '07:00', 'close' => '20:00'],
+                        'tuesday' => ['open' => '07:00', 'close' => '20:00'],
+                        'wednesday' => ['open' => '07:00', 'close' => '20:00'],
+                        'thursday' => ['open' => '07:00', 'close' => '20:00'],
+                        'friday' => ['open' => '07:00', 'close' => '20:00'],
+                        'saturday' => ['open' => '08:00', 'close' => '19:00'],
+                        'sunday' => ['open' => '09:00', 'close' => '18:00']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'contact@urbiztondovetclinic.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Felipe',
+                    'last_name' => 'Espiritu',
+                    'phone' => '09111234620',
+                    'date_of_birth' => '1977-10-12',
+                    'gender' => 'male',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Rural veterinarian serving local communities.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Urbiztondo Veterinary Clinic',
+                    'phone' => '075-552-2003',
+                    'country' => 'Philippines',
+                    'region' => 'Ilocos Region',
+                    'province' => 'Pangasinan',
+                    'city' => 'Urbiztondo',
+                    'barangay' => 'Poblacion',
+                    'street_address' => '567 Town Road',
+                    'postal_code' => '2450',
+                    'latitude' => 16.1456,
+                    'longitude' => 120.3167,
+                    'services' => ['consultation', 'vaccination', 'surgery'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Felipe Espiritu',
+                            'license_number' => 'VET-2024-120',
+                            'specialization' => 'Rural Practice'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '08:00', 'close' => '17:00'],
+                        'tuesday' => ['open' => '08:00', 'close' => '17:00'],
+                        'wednesday' => ['open' => '08:00', 'close' => '17:00'],
+                        'thursday' => ['open' => '08:00', 'close' => '17:00'],
+                        'friday' => ['open' => '08:00', 'close' => '17:00'],
+                        'saturday' => ['open' => '08:00', 'close' => '16:00'],
+                        'sunday' => ['open' => 'closed', 'close' => 'closed']
+                    ]
+                ]
+            ],
+            // LINGAYEN BATCH 3: Final 10 clinics
+            [
+                'email' => 'admin@mapandanpetcenter.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Gregoria',
+                    'last_name' => 'Santiago',
+                    'phone' => '09171234621',
+                    'date_of_birth' => '1981-01-16',
+                    'gender' => 'female',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Central Pangasinan veterinarian with holistic approach.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Mapandan Pet Center',
+                    'phone' => '075-553-3004',
+                    'country' => 'Philippines',
+                    'region' => 'Ilocos Region',
+                    'province' => 'Pangasinan',
+                    'city' => 'Mapandan',
+                    'barangay' => 'Poblacion',
+                    'street_address' => '890 Central Avenue',
+                    'postal_code' => '2429',
+                    'latitude' => 16.0275,
+                    'longitude' => 120.4708,
+                    'services' => ['consultation', 'vaccination', 'wellness', 'nutrition'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Gregoria Santiago',
+                            'license_number' => 'VET-2024-121',
+                            'specialization' => 'Holistic Medicine'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '08:00', 'close' => '18:00'],
+                        'tuesday' => ['open' => '08:00', 'close' => '18:00'],
+                        'wednesday' => ['open' => '08:00', 'close' => '18:00'],
+                        'thursday' => ['open' => '08:00', 'close' => '18:00'],
+                        'friday' => ['open' => '08:00', 'close' => '18:00'],
+                        'saturday' => ['open' => '08:00', 'close' => '17:00'],
+                        'sunday' => ['open' => '09:00', 'close' => '16:00']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'info@santosbayvetclinic.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Herminio',
+                    'last_name' => 'Castillo',
+                    'phone' => '09281234622',
+                    'date_of_birth' => '1976-08-22',
+                    'gender' => 'male',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Experienced bay area veterinarian.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'San Carlos Veterinary Clinic',
+                    'phone' => '075-554-4005',
+                    'country' => 'Philippines',
+                    'region' => 'Ilocos Region',
+                    'province' => 'Pangasinan',
+                    'city' => 'San Carlos',
+                    'barangay' => 'Poblacion',
+                    'street_address' => '123 City Center',
+                    'postal_code' => '2420',
+                    'latitude' => 15.9311,
+                    'longitude' => 120.3469,
+                    'services' => ['consultation', 'vaccination', 'surgery', 'emergency'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Herminio Castillo',
+                            'license_number' => 'VET-2024-122',
+                            'specialization' => 'Emergency Medicine'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '07:00', 'close' => '20:00'],
+                        'tuesday' => ['open' => '07:00', 'close' => '20:00'],
+                        'wednesday' => ['open' => '07:00', 'close' => '20:00'],
+                        'thursday' => ['open' => '07:00', 'close' => '20:00'],
+                        'friday' => ['open' => '07:00', 'close' => '20:00'],
+                        'saturday' => ['open' => '08:00', 'close' => '19:00'],
+                        'sunday' => ['open' => '09:00', 'close' => '18:00']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'contact@malasiquianimalhospital.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Imelda',
+                    'last_name' => 'Bernardo',
+                    'phone' => '09391234623',
+                    'date_of_birth' => '1982-05-30',
+                    'gender' => 'female',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Full-service animal hospital for comprehensive care.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Malasiqui Animal Hospital',
+                    'phone' => '075-555-5006',
+                    'country' => 'Philippines',
+                    'region' => 'Ilocos Region',
+                    'province' => 'Pangasinan',
+                    'city' => 'Malasiqui',
+                    'barangay' => 'Poblacion',
+                    'street_address' => '456 Hospital Road',
+                    'postal_code' => '2421',
+                    'latitude' => 15.9206,
+                    'longitude' => 120.4058,
+                    'services' => ['consultation', 'vaccination', 'surgery', 'imaging', 'laboratory'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Imelda Bernardo',
+                            'license_number' => 'VET-2024-123',
+                            'specialization' => 'Diagnostic Medicine'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '06:00', 'close' => '21:00'],
+                        'tuesday' => ['open' => '06:00', 'close' => '21:00'],
+                        'wednesday' => ['open' => '06:00', 'close' => '21:00'],
+                        'thursday' => ['open' => '06:00', 'close' => '21:00'],
+                        'friday' => ['open' => '06:00', 'close' => '21:00'],
+                        'saturday' => ['open' => '07:00', 'close' => '20:00'],
+                        'sunday' => ['open' => '08:00', 'close' => '19:00']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'admin@villasispetcare.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Juanito',
+                    'last_name' => 'Ocampo',
+                    'phone' => '09451234624',
+                    'date_of_birth' => '1978-12-07',
+                    'gender' => 'male',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Town veterinarian with mobile clinic services.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Villasis Pet Care',
+                    'phone' => '075-556-6007',
+                    'country' => 'Philippines',
+                    'region' => 'Ilocos Region',
+                    'province' => 'Pangasinan',
+                    'city' => 'Villasis',
+                    'barangay' => 'Poblacion',
+                    'street_address' => '789 Main Street',
+                    'postal_code' => '2427',
+                    'latitude' => 15.9008,
+                    'longitude' => 120.5856,
+                    'services' => ['consultation', 'vaccination', 'grooming'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Juanito Ocampo',
+                            'license_number' => 'VET-2024-124',
+                            'specialization' => 'Mobile Veterinary Services'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '08:00', 'close' => '18:00'],
+                        'tuesday' => ['open' => '08:00', 'close' => '18:00'],
+                        'wednesday' => ['open' => '08:00', 'close' => '18:00'],
+                        'thursday' => ['open' => '08:00', 'close' => '18:00'],
+                        'friday' => ['open' => '08:00', 'close' => '18:00'],
+                        'saturday' => ['open' => '08:00', 'close' => '17:00'],
+                        'sunday' => ['open' => '09:00', 'close' => '16:00']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'info@urdanetavetcenter.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Lourdes',
+                    'last_name' => 'Villanueva',
+                    'phone' => '09561234625',
+                    'date_of_birth' => '1980-03-19',
+                    'gender' => 'female',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'City veterinarian with modern diagnostic equipment.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Urdaneta Veterinary Center',
+                    'phone' => '075-557-7008',
+                    'country' => 'Philippines',
+                    'region' => 'Ilocos Region',
+                    'province' => 'Pangasinan',
+                    'city' => 'Urdaneta',
+                    'barangay' => 'Poblacion',
+                    'street_address' => '234 McArthur Highway',
+                    'postal_code' => '2428',
+                    'latitude' => 15.9761,
+                    'longitude' => 120.5711,
+                    'services' => ['consultation', 'vaccination', 'surgery', 'laboratory', 'imaging'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Lourdes Villanueva',
+                            'license_number' => 'VET-2024-125',
+                            'specialization' => 'Diagnostic Imaging'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '07:00', 'close' => '20:00'],
+                        'tuesday' => ['open' => '07:00', 'close' => '20:00'],
+                        'wednesday' => ['open' => '07:00', 'close' => '20:00'],
+                        'thursday' => ['open' => '07:00', 'close' => '20:00'],
+                        'friday' => ['open' => '07:00', 'close' => '20:00'],
+                        'saturday' => ['open' => '08:00', 'close' => '19:00'],
+                        'sunday' => ['open' => '09:00', 'close' => '18:00']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'contact@pozorrubiospetclinic.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Napoleon',
+                    'last_name' => 'Aguilar',
+                    'phone' => '09671234626',
+                    'date_of_birth' => '1975-11-24',
+                    'gender' => 'male',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Agricultural veterinarian serving rice farming community.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Pozorrubio Pet Clinic',
+                    'phone' => '075-558-8009',
+                    'country' => 'Philippines',
+                    'region' => 'Ilocos Region',
+                    'province' => 'Pangasinan',
+                    'city' => 'Pozorrubio',
+                    'barangay' => 'Poblacion',
+                    'street_address' => '567 Rice Mill Road',
+                    'postal_code' => '2435',
+                    'latitude' => 16.1128,
+                    'longitude' => 120.5472,
+                    'services' => ['consultation', 'vaccination', 'livestock'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Napoleon Aguilar',
+                            'license_number' => 'VET-2024-126',
+                            'specialization' => 'Agricultural Medicine'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '07:00', 'close' => '17:00'],
+                        'tuesday' => ['open' => '07:00', 'close' => '17:00'],
+                        'wednesday' => ['open' => '07:00', 'close' => '17:00'],
+                        'thursday' => ['open' => '07:00', 'close' => '17:00'],
+                        'friday' => ['open' => '07:00', 'close' => '17:00'],
+                        'saturday' => ['open' => '07:00', 'close' => '16:00'],
+                        'sunday' => ['open' => 'closed', 'close' => 'closed']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'admin@sinaitvetclinic.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Pacita',
+                    'last_name' => 'Fernandez',
+                    'phone' => '09781234627',
+                    'date_of_birth' => '1983-07-11',
+                    'gender' => 'female',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Coastal veterinarian with beach pet expertise.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Sual Veterinary Clinic',
+                    'phone' => '075-559-9010',
+                    'country' => 'Philippines',
+                    'region' => 'Ilocos Region',
+                    'province' => 'Pangasinan',
+                    'city' => 'Sual',
+                    'barangay' => 'Poblacion',
+                    'street_address' => '890 Coastal Road',
+                    'postal_code' => '2403',
+                    'latitude' => 16.0667,
+                    'longitude' => 120.0958,
+                    'services' => ['consultation', 'vaccination', 'grooming', 'boarding'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Pacita Fernandez',
+                            'license_number' => 'VET-2024-127',
+                            'specialization' => 'Beach Pet Care'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '08:00', 'close' => '18:00'],
+                        'tuesday' => ['open' => '08:00', 'close' => '18:00'],
+                        'wednesday' => ['open' => '08:00', 'close' => '18:00'],
+                        'thursday' => ['open' => '08:00', 'close' => '18:00'],
+                        'friday' => ['open' => '08:00', 'close' => '18:00'],
+                        'saturday' => ['open' => '08:00', 'close' => '17:00'],
+                        'sunday' => ['open' => '09:00', 'close' => '16:00']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'info@bugueyanimalhospital.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Ramon',
+                    'last_name' => 'Cruz',
+                    'phone' => '09891234628',
+                    'date_of_birth' => '1977-04-05',
+                    'gender' => 'male',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Hospital-based veterinarian with surgical expertise.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Bugallon Animal Hospital',
+                    'phone' => '075-560-1011',
+                    'country' => 'Philippines',
+                    'region' => 'Ilocos Region',
+                    'province' => 'Pangasinan',
+                    'city' => 'Bugallon',
+                    'barangay' => 'Poblacion',
+                    'street_address' => '123 Town Plaza',
+                    'postal_code' => '2416',
+                    'latitude' => 15.9589,
+                    'longitude' => 120.1764,
+                    'services' => ['consultation', 'vaccination', 'surgery', 'emergency'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Ramon Cruz',
+                            'license_number' => 'VET-2024-128',
+                            'specialization' => 'Surgical Medicine'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '06:00', 'close' => '20:00'],
+                        'tuesday' => ['open' => '06:00', 'close' => '20:00'],
+                        'wednesday' => ['open' => '06:00', 'close' => '20:00'],
+                        'thursday' => ['open' => '06:00', 'close' => '20:00'],
+                        'friday' => ['open' => '06:00', 'close' => '20:00'],
+                        'saturday' => ['open' => '07:00', 'close' => '19:00'],
+                        'sunday' => ['open' => '08:00', 'close' => '18:00']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'contact@aguilarpetcenter.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Soledad',
+                    'last_name' => 'Morales',
+                    'phone' => '09901234629',
+                    'date_of_birth' => '1981-09-14',
+                    'gender' => 'female',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Community-focused veterinarian with preventive care specialty.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Aguilar Pet Center',
+                    'phone' => '075-561-2012',
+                    'country' => 'Philippines',
+                    'region' => 'Ilocos Region',
+                    'province' => 'Pangasinan',
+                    'city' => 'Aguilar',
+                    'barangay' => 'Poblacion',
+                    'street_address' => '456 Community Road',
+                    'postal_code' => '2415',
+                    'latitude' => 15.8839,
+                    'longitude' => 120.1972,
+                    'services' => ['consultation', 'vaccination', 'wellness', 'grooming'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Soledad Morales',
+                            'license_number' => 'VET-2024-129',
+                            'specialization' => 'Preventive Care'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '08:00', 'close' => '18:00'],
+                        'tuesday' => ['open' => '08:00', 'close' => '18:00'],
+                        'wednesday' => ['open' => '08:00', 'close' => '18:00'],
+                        'thursday' => ['open' => '08:00', 'close' => '18:00'],
+                        'friday' => ['open' => '08:00', 'close' => '18:00'],
+                        'saturday' => ['open' => '08:00', 'close' => '17:00'],
+                        'sunday' => ['open' => '09:00', 'close' => '16:00']
+                    ]
+                ]
+            ],
+            [
+                'email' => 'admin@manaoagvetclinic.ph',
+                'password' => 'clinic123',
+                'profile' => [
+                    'first_name' => 'Dr. Teresita',
+                    'last_name' => 'Santos',
+                    'phone' => '09111234630',
+                    'date_of_birth' => '1979-02-20',
+                    'gender' => 'female',
+                    'occupation' => 'Veterinarian',
+                    'bio' => 'Pilgrimage town veterinarian serving local and visiting pets.',
+                ],
+                'clinic' => [
+                    'clinic_name' => 'Manaoag Veterinary Clinic',
+                    'phone' => '075-562-3013',
+                    'country' => 'Philippines',
+                    'region' => 'Ilocos Region',
+                    'province' => 'Pangasinan',
+                    'city' => 'Manaoag',
+                    'barangay' => 'Poblacion',
+                    'street_address' => '789 Basilica Road',
+                    'postal_code' => '2430',
+                    'latitude' => 16.0431,
+                    'longitude' => 120.4858,
+                    'services' => ['consultation', 'vaccination', 'surgery', 'emergency'],
+                    'veterinarians' => [
+                        [
+                            'name' => 'Dr. Teresita Santos',
+                            'license_number' => 'VET-2024-130',
+                            'specialization' => 'General Practice'
+                        ]
+                    ],
+                    'operating_hours' => [
+                        'monday' => ['open' => '07:00', 'close' => '19:00'],
+                        'tuesday' => ['open' => '07:00', 'close' => '19:00'],
+                        'wednesday' => ['open' => '07:00', 'close' => '19:00'],
+                        'thursday' => ['open' => '07:00', 'close' => '19:00'],
+                        'friday' => ['open' => '07:00', 'close' => '19:00'],
+                        'saturday' => ['open' => '08:00', 'close' => '18:00'],
+                        'sunday' => ['open' => '08:00', 'close' => '18:00']
                     ]
                 ]
             ]
@@ -1469,8 +2762,6 @@ class ClinicSeeder extends Seeder
                         'description' => "Professional {$serviceName} service",
                         'category' => $serviceName,
                         'duration_minutes' => $this->getServiceDuration($serviceName),
-                        'requires_appointment' => true,
-                        'is_active' => true,
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]

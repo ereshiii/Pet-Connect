@@ -59,12 +59,7 @@ class ClinicServicesController extends Controller
             $query->where('category', $category);
         }
 
-        // Apply status filter
-        if ($status === 'active') {
-            $query->where('is_active', true);
-        } elseif ($status === 'inactive') {
-            $query->where('is_active', false);
-        }
+        // Status filter removed - all services are active by default
 
         // Apply search filter
         if ($search) {
@@ -91,9 +86,6 @@ class ClinicServicesController extends Controller
                 'category_display' => $service->category_display,
                 'duration_minutes' => $service->duration_minutes,
                 'formatted_duration' => $service->formatted_duration,
-                'is_active' => $service->is_active,
-                'requires_appointment' => $service->requires_appointment,
-                'is_emergency_service' => $service->is_emergency_service,
                 'usage' => $usage,
                 'created_at' => $service->created_at,
                 'updated_at' => $service->updated_at,
@@ -167,9 +159,6 @@ class ClinicServicesController extends Controller
             'description' => 'nullable|string|max:1000',
             'category' => 'required|string|in:consultation,vaccination,surgery,dental,grooming,boarding,emergency,diagnostic,other',
             'duration_minutes' => 'nullable|integer|min:1|max:1440', // 1 minute to 24 hours
-            'is_active' => 'boolean',
-            'requires_appointment' => 'boolean',
-            'is_emergency_service' => 'boolean',
         ]);
 
         $service = ClinicService::create([
@@ -178,9 +167,6 @@ class ClinicServicesController extends Controller
             'description' => $request->description,
             'category' => $request->category,
             'duration_minutes' => $request->duration_minutes ?? 30,
-            'is_active' => $request->is_active ?? true,
-            'requires_appointment' => $request->requires_appointment ?? true,
-            'is_emergency_service' => $request->is_emergency_service ?? false,
         ]);
 
         return back()->with('success', 'Service created successfully.');
@@ -208,9 +194,6 @@ class ClinicServicesController extends Controller
             'description' => 'nullable|string|max:1000',
             'category' => 'required|string|in:consultation,vaccination,surgery,dental,grooming,boarding,emergency,diagnostic,other',
             'duration_minutes' => 'nullable|integer|min:1|max:1440',
-            'is_active' => 'boolean',
-            'requires_appointment' => 'boolean',
-            'is_emergency_service' => 'boolean',
         ]);
 
         $service->update([
@@ -218,9 +201,6 @@ class ClinicServicesController extends Controller
             'description' => $request->description,
             'category' => $request->category,
             'duration_minutes' => $request->duration_minutes,
-            'is_active' => $request->is_active,
-            'requires_appointment' => $request->requires_appointment,
-            'is_emergency_service' => $request->is_emergency_service,
         ]);
 
         return back()->with('success', 'Service updated successfully.');
@@ -258,32 +238,6 @@ class ClinicServicesController extends Controller
     }
 
     /**
-     * Toggle service status (active/inactive).
-     */
-    public function toggleStatus($id)
-    {
-        $user = Auth::user();
-        
-        if (!$user->isClinic()) {
-            abort(403, 'Access denied. Clinic account required.');
-        }
-
-        $clinicRegistration = $user->clinicRegistration;
-        
-        $service = ClinicService::where('id', $id)
-            ->where('clinic_id', $clinicRegistration->id)
-            ->firstOrFail();
-
-        $service->update([
-            'is_active' => !$service->is_active
-        ]);
-
-        $status = $service->is_active ? 'activated' : 'deactivated';
-        
-        return back()->with('success', "Service {$status} successfully.");
-    }
-
-    /**
      * Duplicate a service.
      */
     public function duplicate($id)
@@ -302,7 +256,6 @@ class ClinicServicesController extends Controller
 
         $duplicatedService = $originalService->replicate();
         $duplicatedService->name = $originalService->name . ' (Copy)';
-        $duplicatedService->is_active = false; // Start as inactive
         $duplicatedService->save();
 
         return back()->with('success', 'Service duplicated successfully.');
@@ -343,8 +296,6 @@ class ClinicServicesController extends Controller
     private function getServicesStats($clinicId): array
     {
         $totalServices = ClinicService::where('clinic_id', $clinicId)->count();
-        $activeServices = ClinicService::where('clinic_id', $clinicId)->where('is_active', true)->count();
-        $inactiveServices = $totalServices - $activeServices;
 
         // Get category distribution
         $categoryStats = ClinicService::where('clinic_id', $clinicId)
@@ -379,8 +330,6 @@ class ClinicServicesController extends Controller
 
         return [
             'total_services' => $totalServices,
-            'active_services' => $activeServices,
-            'inactive_services' => $inactiveServices,
             'category_stats' => $categoryStats,
             'popular_services' => $popularServices,
             'total_revenue' => $totalRevenue,
@@ -494,23 +443,6 @@ class ClinicServicesController extends Controller
     }
 
     /**
-     * Check if service requires appointment.
-     */
-    private function requiresAppointment(string $category): bool
-    {
-        return in_array($category, ['surgery', 'dental', 'grooming', 'boarding']);
-    }
-
-    /**
-     * Check if service is emergency service.
-     */
-    private function isEmergencyService(string $serviceName): bool
-    {
-        $serviceName = strtolower($serviceName);
-        return str_contains($serviceName, 'emergency') || str_contains($serviceName, 'urgent');
-    }
-
-    /**
      * Create default services for new clinics.
      */
     private function createDefaultServices(int $clinicId)
@@ -539,9 +471,6 @@ class ClinicServicesController extends Controller
         foreach ($defaultServices as $serviceData) {
             ClinicService::create(array_merge($serviceData, [
                 'clinic_id' => $clinicId,
-                'is_active' => true,
-                'requires_appointment' => true,
-                'is_emergency_service' => false,
             ]));
         }
     }

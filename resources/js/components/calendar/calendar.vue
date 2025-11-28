@@ -175,12 +175,17 @@ const calendarDays = computed(() => {
 
 const eventsMap = computed(() => {
     const map = new Map<string, CalendarEvent[]>();
-    props.events.forEach(event => {
+    console.log('Calendar Component - Building eventsMap with events:', props.events.length);
+    props.events.forEach((event, index) => {
+        if (index === 0) {
+            console.log('Calendar Component - First event date value:', event.date, 'type:', typeof event.date);
+        }
         if (!map.has(event.date)) {
             map.set(event.date, []);
         }
         map.get(event.date)!.push(event);
     });
+    console.log('Calendar Component - eventsMap keys:', Array.from(map.keys()));
     return map;
 });
 

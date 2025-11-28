@@ -9,14 +9,12 @@ import { ref, computed } from 'vue';
 interface PetData {
     id: number;
     name: string;
-    species: string;
-    breed: string | null;
-    breed_id: number | null;
     type: string | null;
     type_id: number | null;
+    breed: string | null;
+    breed_id: number | null;
     gender: string;
     gender_display: string;
-    age: string | null;
     age_in_years: number | null;
     birth_date: string | null;
     weight: number | null;
@@ -55,7 +53,7 @@ interface Props {
     pets: PetData[];
     stats: StatsData;
     filters: {
-        species?: string;
+        type?: string;
         search?: string;
     };
 }
@@ -71,7 +69,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 // Reactive filters
 const currentFilters = ref({
-    species: props.filters.species || 'all',
+    type: props.filters.type || 'all',
     status: 'all',
     search: props.filters.search || '',
 });
@@ -80,8 +78,8 @@ const currentFilters = ref({
 const filteredPets = computed(() => {
     let result = props.pets;
 
-    if (currentFilters.value.species !== 'all') {
-        result = result.filter(pet => pet.species === currentFilters.value.species);
+    if (currentFilters.value.type !== 'all') {
+        result = result.filter(pet => pet.type === currentFilters.value.type);
     }
 
     if (currentFilters.value.status !== 'all') {
@@ -96,7 +94,7 @@ const filteredPets = computed(() => {
         const search = currentFilters.value.search.toLowerCase();
         result = result.filter(pet => 
             pet.name.toLowerCase().includes(search) ||
-            pet.species.toLowerCase().includes(search) ||
+            (pet.type && pet.type.toLowerCase().includes(search)) ||
             (pet.breed && pet.breed.toLowerCase().includes(search))
         );
     }
@@ -142,7 +140,10 @@ const getHealthStatusBadge = (pet: PetData) => {
 };
 
 const formatAge = (pet: PetData) => {
-    return pet.age || (pet.birth_date ? `${pet.age_in_years} years` : 'Unknown age');
+    if (pet.birth_date) {
+        return `${pet.age_in_years} years`;
+    }
+    return 'Unknown age';
 };
 
 const formatWeight = (pet: PetData) => {
@@ -179,7 +180,7 @@ const applyFilters = () => {
 
 const clearFilters = () => {
     currentFilters.value = {
-        species: 'all',
+        type: 'all',
         status: 'all',
         search: '',
     };
@@ -202,16 +203,16 @@ const clearFilters = () => {
                         </div>
                         <div class="flex gap-2">
                             <select 
-                                v-model="currentFilters.species"
+                                v-model="currentFilters.type"
                                 @change="applyFilters"
                                 class="px-3 py-2 border border-gray-300 rounded-md text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
                             >
                                 <option value="all">All Pets</option>
-                                <option value="dog">Dogs</option>
-                                <option value="cat">Cats</option>
-                                <option value="bird">Birds</option>
-                                <option value="rabbit">Rabbits</option>
-                                <option value="other">Others</option>
+                                <option value="Dog">Dogs</option>
+                                <option value="Cat">Cats</option>
+                                <option value="Bird">Birds</option>
+                                <option value="Rabbit">Rabbits</option>
+                                <option value="Other">Others</option>
                             </select>
                             <select 
                                 v-model="currentFilters.status"
@@ -278,7 +279,7 @@ const clearFilters = () => {
                                     {{ formatAge(petItem) }} • {{ formatWeight(petItem) }}
                                 </p>
                                 <p class="text-xs text-gray-500 dark:text-gray-500 capitalize">
-                                    {{ petItem.species }}{{ petItem.size_display ? ` • ${petItem.size_display}` : '' }}
+                                    {{ petItem.type || 'Unknown' }}{{ petItem.size_display ? ` • ${petItem.size_display}` : '' }}
                                 </p>
                             </div>
                             

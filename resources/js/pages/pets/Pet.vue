@@ -6,11 +6,17 @@ import { Head, router } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 
 // Props from backend
+interface PetBreed {
+    id: number;
+    name: string;
+    species: string;
+}
+
 interface PetData {
     id: number;
     name: string;
     species: string;
-    breed: string | null;
+    breed: PetBreed | null;
     breed_id: number | null;
     type: string | null;
     type_id: number | null;
@@ -43,10 +49,17 @@ interface PetData {
     next_appointment: any | null;
 }
 
+interface PetType {
+    id: number;
+    name: string;
+}
+
 interface Props {
     pets: PetData[];
+    petTypes: PetType[];
+    stats: StatsData;
     filters: {
-        species?: string;
+        type?: string;
         search?: string;
     };
 }
@@ -62,7 +75,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 // Reactive filters
 const currentFilters = ref({
-    species: props.filters.species || 'all',
+    type: props.filters.type || 'all',
     status: 'all',
     search: props.filters.search || '',
 });
@@ -71,8 +84,8 @@ const currentFilters = ref({
 const filteredPets = computed(() => {
     let result = props.pets;
 
-    if (currentFilters.value.species !== 'all') {
-        result = result.filter(pet => pet.species === currentFilters.value.species);
+    if (currentFilters.value.type !== 'all') {
+        result = result.filter(pet => pet.type === currentFilters.value.type);
     }
 
     if (currentFilters.value.status !== 'all') {
@@ -87,8 +100,8 @@ const filteredPets = computed(() => {
         const search = currentFilters.value.search.toLowerCase();
         result = result.filter(pet => 
             pet.name.toLowerCase().includes(search) ||
-            pet.species.toLowerCase().includes(search) ||
-            (pet.breed && pet.breed.toLowerCase().includes(search))
+            (pet.type && pet.type.toLowerCase().includes(search)) ||
+            (pet.breed?.name && pet.breed.name.toLowerCase().includes(search))
         );
     }
 
@@ -162,7 +175,10 @@ const bookVisitForPet = (petItem: PetData) => {
 // Filter functions
 const applyFilters = () => {
     router.visit(petsIndex().url, {
-        data: currentFilters.value,
+        data: {
+            type: currentFilters.value.type !== 'all' ? currentFilters.value.type : undefined,
+            search: currentFilters.value.search || undefined,
+        },
         preserveState: true,
         preserveScroll: true,
     });
@@ -170,7 +186,7 @@ const applyFilters = () => {
 
 const clearFilters = () => {
     currentFilters.value = {
-        species: 'all',
+        type: 'all',
         status: 'all',
         search: '',
     };
@@ -193,16 +209,14 @@ const clearFilters = () => {
                         </div>
                         <div class="flex flex-col sm:flex-row gap-2">
                             <select 
-                                v-model="currentFilters.species"
+                                v-model="currentFilters.type"
                                 @change="applyFilters"
                                 class="px-3 py-2 border rounded-md text-sm bg-background"
                             >
-                                <option value="all">All Pets</option>
-                                <option value="dog">Dogs</option>
-                                <option value="cat">Cats</option>
-                                <option value="bird">Birds</option>
-                                <option value="rabbit">Rabbits</option>
-                                <option value="other">Others</option>
+                                <option value="all">All Types</option>
+                                <option v-for="petType in petTypes" :key="petType.id" :value="petType.name">
+                                    {{ petType.name }}
+                                </option>
                             </select>
                             <input
                                 v-model="currentFilters.search"
@@ -234,13 +248,13 @@ const clearFilters = () => {
                             <div class="mb-3">
                                 <h3 class="font-semibold text-lg mb-1">{{ petItem.name }}</h3>
                                 <p class="text-sm text-muted-foreground">
-                                    {{ petItem.breed || 'Mixed Breed' }} • {{ petItem.gender_display }}
+                                    {{ petItem.breed?.name || 'Mixed Breed' }} • {{ petItem.gender_display }}
                                 </p>
                                 <p class="text-sm text-muted-foreground">
                                     {{ formatAge(petItem) }} • {{ formatWeight(petItem) }}
                                 </p>
                                 <p class="text-xs text-muted-foreground capitalize">
-                                    {{ petItem.species }}{{ petItem.size_display ? ` • ${petItem.size_display}` : '' }}
+                                    {{ petItem.type || 'Unknown Type' }}{{ petItem.size_display ? ` • ${petItem.size_display}` : '' }}
                                 </p>
                             </div>
                             

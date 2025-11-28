@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
+import MedicalRecordFormFields from '@/components/MedicalRecordFormFields.vue';
+import MedicalRecordView from '@/components/MedicalRecordView.vue';
 import { schedule, appointmentDetails, rescheduleAppointment, appointmentCalendar } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
-import { Head, router, useForm } from '@inertiajs/vue3';
+import { Head, router, useForm, usePage } from '@inertiajs/vue3';
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import {
     Calendar,
@@ -22,8 +24,57 @@ import {
     Info,
     Download,
     Shield,
-    RotateCw
+    RotateCw,
+    ClipboardList,
+    ArrowLeft,
+    MoreVertical,
+    Edit,
+    UserX,
+    ChartBar,
+    Star,
+    Send,
+    X
 } from 'lucide-vue-next';
+
+// Medical Record Templates for different types
+const medicalRecordTemplates = {
+    checkup: {
+        label: 'General Checkup',
+        icon: '🏥',
+        color: 'blue',
+        fields: ['diagnosis', 'physical_exam', 'vital_signs', 'treatment', 'medications', 'clinical_notes', 'follow_up_date']
+    },
+    vaccination: {
+        label: 'Vaccination',
+        icon: '💉',
+        color: 'green',
+        fields: ['vaccine_name', 'vaccine_batch', 'administration_site', 'next_due_date', 'adverse_reactions', 'clinical_notes']
+    },
+    treatment: {
+        label: 'Treatment',
+        icon: '⚕️',
+        color: 'purple',
+        fields: ['diagnosis', 'treatment', 'procedures_performed', 'medications', 'treatment_response', 'clinical_notes', 'follow_up_date']
+    },
+    surgery: {
+        label: 'Surgery',
+        icon: '🔪',
+        color: 'red',
+        fields: ['diagnosis', 'surgery_type', 'procedure_details', 'anesthesia_used', 'complications', 'post_op_instructions', 'medications', 'follow_up_date']
+    },
+    emergency: {
+        label: 'Emergency',
+        icon: '🚨',
+        color: 'orange',
+        fields: ['presenting_complaint', 'triage_level', 'diagnosis', 'emergency_treatment', 'stabilization_measures', 'medications', 'disposition', 'follow_up_date']
+    },
+    other: {
+        label: 'Other',
+        icon: '📋',
+        color: 'gray',
+        fields: ['diagnosis', 'treatment', 'medications', 'clinical_notes', 'follow_up_date']
+    }
+};
 
 // Props from the backend
 interface Props {
@@ -34,6 +85,7 @@ interface Props {
         statusDisplay: string;
         date: string;
         time: string;
+        scheduledAt: string;
         duration: string;
         type: string;
         priority: string;
@@ -48,6 +100,7 @@ interface Props {
         canBeDisputed?: boolean;
         disputeWindowEndsAt?: string;
         disputeHoursRemaining?: number | null;
+        canChangeVet?: boolean;
         pet: {
             id: number;
             name: string;
@@ -66,6 +119,8 @@ interface Props {
         veterinarian?: {
             id: number;
             name: string;
+            specializations?: string;
+            license_number?: string;
         };
         service?: {
             id: number;
@@ -81,6 +136,38 @@ interface Props {
                 name?: string;
                 phone?: string;
             };
+        };
+        medicalRecord?: {
+            id: number;
+            record_type: string;
+            title: string;
+            description: string;
+            diagnosis?: string;
+            treatment?: string;
+            medications?: string;
+            clinical_notes?: string;
+            physical_exam?: string;
+            vital_signs?: string;
+            vaccine_name?: string;
+            vaccine_batch?: string;
+            administration_site?: string;
+            next_due_date?: string;
+            adverse_reactions?: string;
+            procedures_performed?: string;
+            treatment_response?: string;
+            surgery_type?: string;
+            procedure_details?: string;
+            anesthesia_used?: string;
+            complications?: string;
+            post_op_instructions?: string;
+            presenting_complaint?: string;
+            triage_level?: string;
+            emergency_treatment?: string;
+            stabilization_measures?: string;
+            disposition?: string;
+            follow_up_date?: string;
+            veterinarian: string;
+            date: string;
         };
     };
     medicalRecord?: {
@@ -108,59 +195,420 @@ interface Props {
         size: string;
         url?: string;
     }>;
+    availableVeterinarians?: Array<{
+        id: number;
+        name: string;
+        specializations?: string;
+        license_number?: string;
+    }>;
+    canChangeVet?: boolean;
+    canEditMedicalRecords?: boolean;
+    medicalRecordEditableUntil?: string;
+    clinic?: {
+        id: number;
+        name: string;
+    };
+    userRole?: string;
+    hasRating?: boolean;
+    clinicRating?: {
+        id: number;
+        rating: number;
+        comment?: string;
+        created_at: string;
+    };
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+    availableVeterinarians: () => [],
+    canChangeVet: false,
+    canEditMedicalRecords: false,
+    userRole: 'user',
+});
+
+const page = usePage();
+const auth = computed(() => page.props.auth);
+
+// Role-based computed properties
+const isClinic = computed(() => props.userRole === 'clinic' || auth.value.user?.account_type === 'clinic');
+const isPetOwner = computed(() => props.userRole === 'user' || auth.value.user?.account_type === 'user');
+const isAdmin = computed(() => auth.value.user?.is_admin === true);
+
+// Clinic-specific computed properties
+const isCompleted = computed(() => {
+    return ['completed', 'cancelled', 'no_show'].includes(props.appointment.status);
+});
+
+const isPending = computed(() => {
+    return props.appointment.status === 'pending';
+});
+
+const isScheduled = computed(() => {
+    return props.appointment.status === 'scheduled';
+});
+
+const isInProgress = computed(() => {
+    return props.appointment.status === 'in_progress';
+});
+
+const canMarkComplete = computed(() => {
+    return isClinic.value && isInProgress.value && !isCompleted.value;
+});
+
+const canEditMedicalRecordsComputed = computed(() => {
+    if (!isClinic.value) return false;
+    return props.canEditMedicalRecords || isInProgress.value;
+});
+
+const activeTemplate = computed(() => {
+    return medicalRecordTemplates[medicalForm.record_type as keyof typeof medicalRecordTemplates] || medicalRecordTemplates.checkup;
+});
+
+const isFormValid = computed(() => {
+    const type = medicalForm.record_type;
+    
+    switch (type) {
+        case 'checkup':
+            return !!medicalForm.diagnosis && !!medicalForm.treatment;
+        case 'vaccination':
+            return !!medicalForm.vaccine_name;
+        case 'treatment':
+            return !!medicalForm.diagnosis && !!medicalForm.treatment;
+        case 'surgery':
+            return !!medicalForm.surgery_type && !!medicalForm.post_op_instructions;
+        case 'emergency':
+            return !!medicalForm.presenting_complaint && !!medicalForm.emergency_treatment;
+        case 'other':
+            return !!medicalForm.diagnosis && !!medicalForm.treatment;
+        default:
+            return !!medicalForm.diagnosis && !!medicalForm.treatment;
+    }
+});
 
 // Debug logging to verify data reception
 console.log('AppointmentDetails loaded with appointment:', props.appointment);
 console.log('Appointment ID:', props.appointment?.id);
 console.log('Appointment Status:', props.appointment?.status);
+console.log('User Role:', props.userRole);
+console.log('Is Clinic:', isClinic.value);
+console.log('Is Pet Owner:', isPetOwner.value);
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
-        title: 'Schedule',
-        href: schedule().url,
+        title: isClinic.value ? 'Clinic Dashboard' : 'Schedule',
+        href: isClinic.value ? '/clinic/dashboard' : schedule().url,
     },
+    ...(isClinic.value ? [{
+        title: 'Appointments',
+        href: '/clinic/appointments',
+    }] : []),
     {
         title: 'Appointment Details',
         href: appointmentDetails(props.appointment.id).url,
     },
 ];
 
-const activeTab = ref('medical');
+const activeTab = ref('details');
+const showMedicalRecordModal = ref(false);
+const showRecordTypeSelection = ref(false);
+const selectedRecordType = ref<string | null>(null);
+const showConfirmModal = ref(false);
+const showNoShowModal = ref(false);
+const noShowReason = ref('');
+const activeDropdown = ref(false);
 
-const tabs = [
-    { id: 'medical', name: 'Medical Record', icon: Stethoscope },
-    { id: 'details', name: 'Appointment Details', icon: FileText },
-    { id: 'history', name: 'Visit History', icon: History },
-    { id: 'documents', name: 'Documents', icon: File }
-];
+const tabs = computed(() => {
+    const baseTabs = [
+        { id: 'details', name: 'Appointment Details', icon: ClipboardList },
+        { id: 'medical', name: 'Medical Record', icon: Stethoscope },
+    ];
+    
+    if (isPetOwner.value && props.documents) {
+        baseTabs.push({ id: 'documents', name: 'Documents', icon: File });
+    }
+    
+    return baseTabs;
+});
+
+// Form for updating appointment status (clinic only)
+const statusForm = useForm({
+    status: props.appointment.status,
+    notes: props.appointment.notes || '',
+    actualCost: props.appointment.actualCost || '',
+});
+
+// Form for medical record (clinic only)
+const medicalForm = useForm({
+    record_type: props.appointment.medicalRecord?.record_type || 'checkup',
+    diagnosis: props.appointment.medicalRecord?.diagnosis || '',
+    treatment: props.appointment.medicalRecord?.treatment || '',
+    medications: props.appointment.medicalRecord?.medications || '',
+    clinical_notes: props.appointment.medicalRecord?.clinical_notes || '',
+    follow_up_date: props.appointment.medicalRecord?.follow_up_date || '',
+    physical_exam: props.appointment.medicalRecord?.physical_exam || '',
+    vital_signs: props.appointment.medicalRecord?.vital_signs || '',
+    vaccine_name: props.appointment.medicalRecord?.vaccine_name || '',
+    vaccine_batch: props.appointment.medicalRecord?.vaccine_batch || '',
+    administration_site: props.appointment.medicalRecord?.administration_site || '',
+    next_due_date: props.appointment.medicalRecord?.next_due_date || '',
+    adverse_reactions: props.appointment.medicalRecord?.adverse_reactions || '',
+    procedures_performed: props.appointment.medicalRecord?.procedures_performed || '',
+    treatment_response: props.appointment.medicalRecord?.treatment_response || '',
+    surgery_type: props.appointment.medicalRecord?.surgery_type || '',
+    procedure_details: props.appointment.medicalRecord?.procedure_details || '',
+    anesthesia_used: props.appointment.medicalRecord?.anesthesia_used || '',
+    complications: props.appointment.medicalRecord?.complications || '',
+    post_op_instructions: props.appointment.medicalRecord?.post_op_instructions || '',
+    presenting_complaint: props.appointment.medicalRecord?.presenting_complaint || '',
+    triage_level: props.appointment.medicalRecord?.triage_level || '',
+    emergency_treatment: props.appointment.medicalRecord?.emergency_treatment || '',
+    stabilization_measures: props.appointment.medicalRecord?.stabilization_measures || '',
+    disposition: props.appointment.medicalRecord?.disposition || '',
+});
+
+// Form for assigning veterinarian (clinic only)
+const vetForm = useForm({
+    veterinarian_id: props.appointment.veterinarian?.id || null,
+});
 
 const goBack = () => {
-    // Try to go back to schedule page, fallback to browser back
-    try {
-        router.visit(schedule().url);
-    } catch (error) {
-        window.history.back();
+    if (isClinic.value) {
+        router.visit('/clinic/appointments');
+    } else {
+        try {
+            router.visit(schedule().url);
+        } catch (error) {
+            window.history.back();
+        }
     }
 };
 
 const goToReschedule = () => {
-    // Navigate to reschedule page using Inertia
+    showRescheduleConfirmModal.value = true;
+};
+
+const confirmReschedule = () => {
+    showRescheduleConfirmModal.value = false;
     router.visit(rescheduleAppointment(props.appointment.id).url);
 };
 
+const cancelReschedule = () => {
+    showRescheduleConfirmModal.value = false;
+};
+
 const cancelAppointment = () => {
-    // Handle cancel logic with confirmation
-    if (confirm('Are you sure you want to cancel this appointment?')) {
-        router.delete(`/appointments/${props.appointment.id}`, {
+    showCancelModal.value = true;
+};
+
+const confirmCancel = () => {
+    cancelForm.delete(`/appointments/${props.appointment.id}`, {
+        onSuccess: () => {
+            showCancelModal.value = false;
+            cancelForm.reset();
+            router.visit(schedule().url);
+        },
+        onError: (errors) => {
+            console.error('Error canceling appointment:', errors);
+        }
+    });
+};
+
+const closeCancelModal = () => {
+    showCancelModal.value = false;
+    cancelForm.reset();
+};
+
+// Clinic-specific action methods
+const confirmAppointment = () => {
+    showConfirmModal.value = true;
+};
+
+const submitConfirmAppointment = () => {
+    router.post(`/clinic/appointments/${props.appointment.id}/confirm`, {}, {
+        onSuccess: () => {
+            showConfirmModal.value = false;
+            console.log('Appointment confirmed successfully');
+        },
+        onError: (errors) => {
+            console.error('Error confirming appointment:', errors);
+        }
+    });
+};
+
+// Mark appointment as no-show (clinic only)
+const openNoShowModal = () => {
+    showNoShowModal.value = true;
+};
+
+const submitNoShow = () => {
+    router.post(`/clinic/appointments/${props.appointment.id}/no-show`, {
+        reason: noShowReason.value || 'Patient did not show up for appointment',
+    }, {
+        onSuccess: () => {
+            showNoShowModal.value = false;
+            noShowReason.value = '';
+            console.log('Appointment marked as no-show successfully');
+        },
+        onError: (errors) => {
+            console.error('Error marking appointment as no-show:', errors);
+        }
+    });
+};
+
+const startAppointment = () => {
+    statusForm.status = 'in_progress';
+    statusForm.patch(`/clinic/appointments/${props.appointment.id}/status`, {
+        onSuccess: () => {
+            console.log('Appointment started - now in progress');
+        },
+        onError: (errors) => {
+            console.error('Error starting appointment:', errors);
+        }
+    });
+};
+
+const markAsComplete = () => {
+    showRecordTypeSelection.value = true;
+};
+
+const selectRecordType = (type: string) => {
+    selectedRecordType.value = type;
+    medicalForm.record_type = type;
+    showRecordTypeSelection.value = false;
+    showMedicalRecordModal.value = true;
+    activeTab.value = 'medical';
+};
+
+const confirmComplete = () => {
+    if (!isFormValid.value) {
+        alert('Please complete all required fields for this record type before completing.');
+        return;
+    }
+
+    // Clean up the medical record data - remove empty strings and null values for optional fields
+    const cleanedMedicalRecord: Record<string, any> = {
+        record_type: medicalForm.record_type,
+    };
+
+    // Only include non-empty values
+    const fieldsToInclude = [
+        'diagnosis', 'treatment', 'medications', 'clinical_notes', 'follow_up_date',
+        'physical_exam', 'vital_signs', 'vaccine_name', 'vaccine_batch', 
+        'administration_site', 'next_due_date', 'adverse_reactions',
+        'procedures_performed', 'treatment_response', 'surgery_type',
+        'procedure_details', 'anesthesia_used', 'complications', 
+        'post_op_instructions', 'presenting_complaint', 'triage_level',
+        'emergency_treatment', 'stabilization_measures', 'disposition'
+    ];
+
+    fieldsToInclude.forEach(field => {
+        const value = medicalForm[field as keyof typeof medicalForm];
+        if (value !== null && value !== undefined && value !== '') {
+            cleanedMedicalRecord[field] = value;
+        }
+    });
+
+    const completeData = {
+        status: 'completed',
+        notes: statusForm.notes || null,
+        actualCost: statusForm.actualCost || null,
+        medical_record: cleanedMedicalRecord
+    };
+    
+    console.log('Submitting appointment completion with data:', completeData);
+    
+    router.post(`/clinic/appointments/${props.appointment.id}/complete`, completeData, {
+        onSuccess: (response) => {
+            console.log('Appointment completed successfully:', response);
+            showMedicalRecordModal.value = false;
+            router.visit('/clinic/history', {
+                onSuccess: () => {
+                    console.log('Appointment completed with medical records saved');
+                }
+            });
+        },
+        onError: (errors) => {
+            console.error('Error completing appointment:', errors);
+            
+            // Display detailed error messages
+            let errorMessage = 'Failed to complete appointment:\n\n';
+            if (typeof errors === 'object') {
+                Object.keys(errors).forEach(key => {
+                    errorMessage += `${key}: ${errors[key]}\n`;
+                });
+            } else {
+                errorMessage += 'Please ensure all required fields are filled.';
+            }
+            
+            alert(errorMessage);
+        }
+    });
+};
+
+const updateAppointmentStatus = () => {
+    const newStatus = statusForm.status;
+    const historicalStatuses = ['completed', 'cancelled', 'no_show'];
+    
+    statusForm.patch(`/clinic/appointments/${props.appointment.id}/status`, {
+        onSuccess: () => {
+            if (historicalStatuses.includes(newStatus)) {
+                router.visit('/clinic/history', {
+                    onSuccess: () => {
+                        console.log(`Appointment marked as ${newStatus} and moved to history`);
+                    }
+                });
+            }
+        },
+        onError: (errors) => {
+            console.error('Error updating appointment:', errors);
+        }
+    });
+};
+
+const callOwner = () => {
+    const phone = props.appointment?.owner?.phone || '';
+    if (phone) window.open(`tel:${phone}`);
+};
+
+const assignVeterinarian = () => {
+    if (!vetForm.veterinarian_id) return;
+    
+    vetForm.patch(`/clinic/appointments/${props.appointment.id}/assign-vet`, {
+        onSuccess: () => {
+            console.log('Veterinarian assigned successfully');
+        },
+        onError: (errors) => {
+            console.error('Error assigning veterinarian:', errors);
+        }
+    });
+};
+
+const toggleDropdown = () => {
+    activeDropdown.value = !activeDropdown.value;
+};
+
+const closeDropdown = () => {
+    activeDropdown.value = false;
+};
+
+const changeVeterinarian = () => {
+    if (props.appointment.canChangeVet === false) {
+        alert('Cannot change veterinarian assignment when only one veterinarian is available.');
+        return;
+    }
+    vetForm.veterinarian_id = null;
+    closeDropdown();
+};
+
+const removeVeterinarian = () => {
+    if (confirm('Are you sure you want to remove the assigned veterinarian?')) {
+        vetForm.veterinarian_id = null;
+        vetForm.patch(`/clinic/appointments/${props.appointment.id}/assign-vet`, {
             onSuccess: () => {
-                router.visit(schedule().url);
+                console.log('Veterinarian removed successfully');
+                closeDropdown();
             },
             onError: (errors) => {
-                console.error('Error canceling appointment:', errors);
-                alert('Failed to cancel appointment. Please try again.');
+                console.error('Error removing veterinarian:', errors);
             }
         });
     }
@@ -170,6 +618,13 @@ const cancelAppointment = () => {
 const showDisputeModal = ref(false);
 const disputeForm = useForm({
     reason: '',
+});
+
+// Cancel and Reschedule modals
+const showCancelModal = ref(false);
+const showRescheduleConfirmModal = ref(false);
+const cancelForm = useForm({
+    cancellation_reason: '',
 });
 
 const openDisputeModal = () => {
@@ -189,6 +644,43 @@ const submitDispute = () => {
         },
         onError: (errors) => {
             console.error('Error submitting dispute:', errors);
+        }
+    });
+};
+
+// Rating handling
+const showRatingForm = ref(false);
+const ratingForm = useForm({
+    rating: 5,
+    comment: '',
+    appointment_id: props.appointment.id,
+});
+
+const openRatingForm = () => {
+    if (props.clinicRating) {
+        ratingForm.rating = props.clinicRating.rating;
+        ratingForm.comment = props.clinicRating.comment || '';
+    }
+    showRatingForm.value = true;
+};
+
+const closeRatingForm = () => {
+    showRatingForm.value = false;
+    ratingForm.reset();
+};
+
+const submitRating = () => {
+    const url = `/clinic/${props.appointment.clinic.id}/reviews`;
+    
+    ratingForm.post(url, {
+        preserveScroll: true,
+        onSuccess: () => {
+            closeRatingForm();
+            // Show success message using toast if available
+            console.log('Rating submitted successfully');
+        },
+        onError: (errors) => {
+            console.error('Error submitting rating:', errors);
         }
     });
 };
@@ -310,6 +802,18 @@ onMounted(() => {
             refreshAppointment();
         }
     });
+    
+    // Close dropdown when clicking outside (clinic only)
+    if (isClinic.value) {
+        document.addEventListener('click', (event) => {
+            if (activeDropdown.value) {
+                const target = event.target as HTMLElement;
+                if (!target.closest('.vet-dropdown-container')) {
+                    closeDropdown();
+                }
+            }
+        });
+    }
 });
 
 onUnmounted(() => {
@@ -319,14 +823,6 @@ onUnmounted(() => {
 // Returns status banner configuration based on appointment status
 const getStatusBanner = (status?: string) => {
     switch (status) {
-        case 'confirmed': 
-            return { 
-                bgClass: 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800',
-                icon: CheckCircle2, 
-                iconColor: 'text-green-500',
-                titleColor: 'text-green-900 dark:text-green-100',
-                descColor: 'text-green-700 dark:text-green-300'
-            };
         case 'pending': 
             return { 
                 bgClass: 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800',
@@ -337,11 +833,19 @@ const getStatusBanner = (status?: string) => {
             };
         case 'scheduled': 
             return { 
-                bgClass: 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800',
-                icon: Calendar, 
-                iconColor: 'text-blue-500',
-                titleColor: 'text-blue-900 dark:text-blue-100',
-                descColor: 'text-blue-700 dark:text-blue-300'
+                bgClass: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800',
+                titleColor: 'text-green-900 dark:text-green-100',
+                descColor: 'text-green-700 dark:text-green-300',
+                icon: Calendar,
+                iconColor: 'text-green-600 dark:text-green-400'
+            };
+        case 'in_progress': 
+            return { 
+                bgClass: 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800',
+                titleColor: 'text-purple-900 dark:text-purple-100',
+                descColor: 'text-purple-700 dark:text-purple-300',
+                icon: AlertCircle,
+                iconColor: 'text-purple-600 dark:text-purple-400'
             };
         case 'cancelled': 
             return { 
@@ -374,7 +878,6 @@ const getStatusBanner = (status?: string) => {
 const getStatusColor = (status?: string) => {
     switch (status) {
         case 'pending': return 'text-yellow-600 dark:text-yellow-400';
-        case 'confirmed': return 'text-green-600 dark:text-green-400';
         case 'scheduled': return 'text-blue-600 dark:text-blue-400';
         case 'in_progress': return 'text-orange-600 dark:text-orange-400';
         case 'completed': return 'text-green-600 dark:text-green-400';
@@ -390,26 +893,12 @@ const getStatusColor = (status?: string) => {
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
             <!-- Header -->
-            <div class="rounded-lg border bg-card p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <div>
-                        <h1 class="text-2xl font-semibold">Appointment Details</h1>
-                        <p class="text-sm text-muted-foreground mt-1">
-                            Confirmation #{{ appointment.confirmationNumber }}
-                        </p>
-                    </div>
-                    <div class="flex gap-2">
-                        <button @click="goToCalendar" 
-                                class="px-4 py-2 border rounded-md hover:bg-muted text-sm font-medium flex items-center gap-2">
-                            <Calendar class="h-4 w-4" />
-                            Calendar
-                        </button>
-                        <button @click="goToReschedule" 
-                                v-if="['scheduled', 'confirmed', 'scheduled'].includes(appointment.status)"
-                                class="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 text-sm font-medium">
-                            Reschedule
-                        </button>
-                    </div>
+            <div class="rounded-lg border bg-card p-4 sm:p-6">
+                <div class="mb-4">
+                    <h1 class="text-xl sm:text-2xl font-semibold">Appointment Details</h1>
+                    <p class="text-sm text-muted-foreground mt-1">
+                        Confirmation #{{ appointment.confirmationNumber }}
+                    </p>
                 </div>
 
                 <!-- Status Update Alert -->
@@ -429,208 +918,286 @@ const getStatusColor = (status?: string) => {
 
                 <!-- Status Banner -->
                 <div :class="getStatusBanner(appointment.status).bgClass" class="rounded-lg p-4 border">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center">
-                            <component :is="getStatusBanner(appointment.status).icon" 
-                                       :class="getStatusBanner(appointment.status).iconColor" 
-                                       class="h-5 w-5 mr-3" />
-                            <div>
-                                <p :class="getStatusBanner(appointment.status).titleColor" class="font-medium">
-                                    Appointment {{ appointment.statusDisplay }}
-                                </p>
-                                <p :class="getStatusBanner(appointment.status).descColor" class="text-sm">
-                                    <span v-if="appointment.status === 'cancelled'">
-                                        This appointment was cancelled
-                                    </span>
-                                    <span v-else-if="appointment.status === 'completed'">
-                                        This appointment was completed on {{ appointment.date }}
-                                    </span>
-                                    <span v-else-if="appointment.status === 'pending'">
-                                        Your appointment is awaiting clinic confirmation
-                                    </span>
-                                    <span v-else-if="appointment.status === 'confirmed'">
-                                        Your appointment is confirmed for {{ appointment.date }} at {{ appointment.time }}
-                                    </span>
-                                    <span v-else-if="appointment.status === 'scheduled'">
-                                        Your appointment is scheduled for {{ appointment.date }} at {{ appointment.time }}
-                                    </span>
-                                    <span v-else>
-                                        Your appointment is scheduled for {{ appointment.date }} at {{ appointment.time }}
-                                    </span>
-                                </p>
-                            </div>
+                    <div class="flex items-center">
+                        <component :is="getStatusBanner(appointment.status).icon" 
+                                   :class="getStatusBanner(appointment.status).iconColor" 
+                                   class="h-5 w-5 mr-3" />
+                        <div>
+                            <p :class="getStatusBanner(appointment.status).titleColor" class="font-medium">
+                                Appointment {{ appointment.statusDisplay }}
+                            </p>
+                            <p :class="getStatusBanner(appointment.status).descColor" class="text-sm">
+                                <span v-if="appointment.status === 'cancelled'">
+                                    This appointment was cancelled
+                                </span>
+                                <span v-else-if="appointment.status === 'completed'">
+                                    This appointment was completed on {{ appointment.date }}
+                                </span>
+                                <span v-else-if="appointment.status === 'pending'">
+                                    Your appointment is awaiting clinic confirmation
+                                </span>
+                                <span v-else-if="appointment.status === 'scheduled'">
+                                    Your appointment is scheduled for {{ appointment.date }} at {{ appointment.time }}
+                                </span>
+                                <span v-else>
+                                    Your appointment is scheduled for {{ appointment.date }} at {{ appointment.time }}
+                                </span>
+                            </p>
                         </div>
-                        <button 
-                            @click="manualRefresh" 
-                            :disabled="isRefreshing"
-                            class="px-3 py-1 text-sm border rounded-md hover:bg-muted flex items-center gap-2 disabled:opacity-50"
-                            title="Refresh status">
-                            <RotateCw :class="['h-4 w-4', isRefreshing && 'animate-spin']" />
-                            <span class="hidden sm:inline">Refresh</span>
-                        </button>
                     </div>
                 </div>
             </div>
 
             <!-- Tab Navigation -->
             <div class="rounded-lg border bg-card">
-                <div class="border-b">
-                    <nav class="flex space-x-8 px-6" aria-label="Tabs">
+                <div class="border-b overflow-x-auto">
+                    <nav class="flex space-x-4 sm:space-x-8 px-4 sm:px-6 min-w-max sm:min-w-0" aria-label="Tabs">
                         <button
                             v-for="tab in tabs"
                             :key="tab.id"
                             @click="activeTab = tab.id"
                             :class="[
-                                'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2',
+                                'whitespace-nowrap py-3 sm:py-4 px-2 sm:px-1 border-b-2 font-medium text-sm flex items-center gap-2',
                                 activeTab === tab.id
                                     ? 'border-primary text-primary'
                                     : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
                             ]"
                         >
                             <component :is="tab.icon" class="h-4 w-4" />
-                            {{ tab.name }}
+                            <span class="hidden sm:inline">{{ tab.name }}</span>
                         </button>
                     </nav>
                 </div>
 
                 <!-- Tab Content -->
-                <div class="p-6">
+                <div class="p-4 sm:p-6">
                     <!-- Appointment Details Tab -->
                     <div v-if="activeTab === 'details'" class="space-y-6">
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <!-- Appointment Information -->
-                            <div class="space-y-4">
-                                <h3 class="text-lg font-semibold mb-4">
-                                    Appointment Information
-                                </h3>
-                                
-                                <div class="space-y-3">
-                                    <div class="flex justify-between">
-                                        <span class="text-sm text-muted-foreground">Date & Time:</span>
-                                        <span class="text-sm font-medium">
-                                            {{ appointment.date }} at {{ appointment.time }}
-                                        </span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-sm text-muted-foreground">Duration:</span>
-                                        <span class="text-sm font-medium">
-                                            {{ appointment.duration }}
-                                        </span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-sm text-muted-foreground">Type:</span>
-                                        <span class="text-sm font-medium">
-                                            {{ appointment.type }}
-                                        </span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-sm text-muted-foreground">Status:</span>
-                                        <span :class="['text-sm font-medium', getStatusColor(appointment.status)]">
-                                            {{ appointment.statusDisplay }}
-                                        </span>
-                                    </div>
-                                    <div class="flex justify-between" v-if="appointment.estimatedCost">
-                                        <span class="text-sm text-muted-foreground">Estimated Cost:</span>
-                                        <span class="text-sm font-medium">
-                                            {{ appointment.estimatedCost }}
-                                        </span>
-                                    </div>
-                                    <div class="flex justify-between" v-if="appointment.actualCost">
-                                        <span class="text-sm text-muted-foreground">Actual Cost:</span>
-                                        <span class="text-sm font-medium">
-                                            {{ appointment.actualCost }}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <!-- Services -->
-                                <div class="pt-4 border-t">
-                                    <h4 class="text-sm font-medium mb-2">Services Included</h4>
-                                    <div class="flex flex-wrap gap-2">
-                                        <span v-if="appointment.service" 
-                                              class="px-2 py-1 bg-primary/10 text-primary text-xs font-medium rounded border border-primary/20">
-                                            {{ appointment.service.name }}
-                                        </span>
-                                        <span v-else
-                                              class="px-2 py-1 bg-primary/10 text-primary text-xs font-medium rounded border border-primary/20">
-                                            {{ appointment.type }}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Pet Information -->
-                            <div class="space-y-4">
-                                <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                                    <User class="h-5 w-5 text-primary" />
-                                    Pet Information
-                                </h3>
-                                
-                                <div class="bg-muted/50 rounded-lg p-4 border">
-                                    <h4 class="font-medium mb-3">{{ appointment.pet.name }}</h4>
-                                    <div class="space-y-2">
-                                        <div class="flex justify-between text-sm">
-                                            <span class="text-muted-foreground">Type:</span>
-                                            <span class="font-medium">{{ appointment.pet.type }}</span>
-                                        </div>
-                                        <div class="flex justify-between text-sm">
-                                            <span class="text-muted-foreground">Breed:</span>
-                                            <span class="font-medium">{{ appointment.pet.breed }}</span>
-                                        </div>
-                                        <div class="flex justify-between text-sm">
-                                            <span class="text-muted-foreground">Age:</span>
-                                            <span class="font-medium">{{ appointment.pet.age }}</span>
-                                        </div>
-                                        <div v-if="appointment.pet.weight" class="flex justify-between text-sm">
-                                            <span class="text-muted-foreground">Weight:</span>
-                                            <span class="font-medium">{{ appointment.pet.weight }} kg</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Clinic Information -->
-                            <div class="space-y-4">
-                                <h3 class="text-lg font-semibold mb-4">
-                                    Clinic Information
-                                </h3>
-                                
-                                <div class="bg-muted/50 rounded-lg p-4">
-                                    <h4 class="font-medium mb-2">
-                                        {{ appointment.clinic.name }}
-                                    </h4>
-                                    <p class="text-sm text-muted-foreground mb-2">
-                                        {{ appointment.clinic.address }}
-                                    </p>
-                                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                                        {{ appointment.clinic.phone }}
-                                    </p>
+                            <!-- Left Column -->
+                            <div class="space-y-6">
+                                <!-- Appointment Information -->
+                                <div class="space-y-4">
+                                    <h3 class="text-lg font-semibold mb-4">
+                                        Appointment Information
+                                    </h3>
                                     
-                                    <div class="flex gap-2">
-                                        <button @click="callClinic"
-                                                class="flex-1 bg-green-600 text-white py-2 px-3 rounded-md hover:bg-green-700 text-sm font-medium flex items-center justify-center gap-2">
-                                            <Phone class="h-4 w-4" />
-                                            Call Clinic
-                                        </button>
-                                        <button @click="getDirections"
-                                                class="flex-1 border py-2 px-3 rounded-md hover:bg-muted text-sm font-medium flex items-center justify-center gap-2">
-                                            <MapPin class="h-4 w-4" />
-                                            Get Directions
-                                        </button>
+                                    <div class="space-y-3">
+                                        <div class="flex justify-between">
+                                            <span class="text-sm text-muted-foreground">Date & Time:</span>
+                                            <span class="text-sm font-medium">
+                                                {{ appointment.date }} at {{ appointment.time }}
+                                            </span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-sm text-muted-foreground">Duration:</span>
+                                            <span class="text-sm font-medium">
+                                                {{ appointment.duration }}
+                                            </span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-sm text-muted-foreground">Type:</span>
+                                            <span class="text-sm font-medium">
+                                                {{ appointment.type }}
+                                            </span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-sm text-muted-foreground">Status:</span>
+                                            <span :class="['text-sm font-medium', getStatusColor(appointment.status)]">
+                                                {{ appointment.statusDisplay }}
+                                            </span>
+                                        </div>
+                                        <div class="flex justify-between" v-if="appointment.estimatedCost">
+                                            <span class="text-sm text-muted-foreground">Estimated Cost:</span>
+                                            <span class="text-sm font-medium">
+                                                {{ appointment.estimatedCost }}
+                                            </span>
+                                        </div>
+                                        <div class="flex justify-between" v-if="appointment.actualCost">
+                                            <span class="text-sm text-muted-foreground">Actual Cost:</span>
+                                            <span class="text-sm font-medium">
+                                                {{ appointment.actualCost }}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Services -->
+                                    <div class="pt-4 border-t">
+                                        <h4 class="text-sm font-medium mb-2">Services Included</h4>
+                                        <div class="flex flex-wrap gap-2">
+                                            <span v-if="appointment.service" 
+                                                  class="px-2 py-1 bg-primary/10 text-primary text-xs font-medium rounded border border-primary/20">
+                                                {{ appointment.service.name }}
+                                            </span>
+                                            <span v-else
+                                                  class="px-2 py-1 bg-primary/10 text-primary text-xs font-medium rounded border border-primary/20">
+                                                {{ appointment.type }}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <!-- Doctor Information -->
-                                <div class="bg-primary/10 rounded-lg p-4 border border-primary/20">
-                                    <h4 class="font-medium text-primary mb-2">
-                                        {{ appointment.veterinarian?.name || 'To Be Assigned' }}
-                                    </h4>
-                                    <p class="text-sm text-primary/80 mb-2">
-                                        Veterinarian
-                                    </p>
-                                    <p class="text-xs text-primary/70">
-                                        {{ appointment.veterinarian ? 'Specializes in small animal care and preventive medicine' : 'Veterinarian will be assigned closer to appointment date' }}
-                                    </p>
+                                <!-- Pet Information -->
+                                <div class="space-y-4">
+                                    <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                                        <User class="h-5 w-5 text-primary" />
+                                        Pet Information
+                                    </h3>
+                                    
+                                    <div class="bg-muted/50 rounded-lg p-4 border">
+                                        <h4 class="font-medium mb-3">{{ appointment.pet.name }}</h4>
+                                        <div class="space-y-2">
+                                            <div class="flex justify-between text-sm">
+                                                <span class="text-muted-foreground">Type:</span>
+                                                <span class="font-medium">{{ appointment.pet.type }}</span>
+                                            </div>
+                                            <div class="flex justify-between text-sm">
+                                                <span class="text-muted-foreground">Breed:</span>
+                                                <span class="font-medium">{{ appointment.pet.breed }}</span>
+                                            </div>
+                                            <div class="flex justify-between text-sm">
+                                                <span class="text-muted-foreground">Age:</span>
+                                                <span class="font-medium">{{ appointment.pet.age }}</span>
+                                            </div>
+                                            <div v-if="appointment.pet.weight" class="flex justify-between text-sm">
+                                                <span class="text-muted-foreground">Weight:</span>
+                                                <span class="font-medium">{{ appointment.pet.weight }} kg</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Right Column -->
+                            <div class="space-y-6">
+                                <!-- Clinic Information (Pet Owner View) / Owner Information (Clinic View) -->
+                                <div class="space-y-4" v-if="isPetOwner">
+                                    <h3 class="text-lg font-semibold mb-4">
+                                        Clinic Information
+                                    </h3>
+                                    
+                                    <div class="bg-muted/50 rounded-lg p-4 border">
+                                        <h4 class="font-medium mb-2">
+                                            {{ appointment.clinic.name }}
+                                        </h4>
+                                        <p class="text-sm text-muted-foreground mb-2">
+                                            {{ appointment.clinic.address }}
+                                        </p>
+                                        <p class="text-sm text-muted-foreground mb-4">
+                                            {{ appointment.clinic.phone }}
+                                        </p>
+                                        
+                                        <div class="flex gap-2">
+                                            <button @click="callClinic"
+                                                    class="flex-1 bg-green-600 text-white py-2 px-3 rounded-md hover:bg-green-700 text-sm font-medium flex items-center justify-center gap-2">
+                                                <Phone class="h-4 w-4" />
+                                                Call Clinic
+                                            </button>
+                                            <button @click="getDirections"
+                                                    class="flex-1 border py-2 px-3 rounded-md hover:bg-muted text-sm font-medium flex items-center justify-center gap-2">
+                                                <MapPin class="h-4 w-4" />
+                                                Get Directions
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Veterinarian Information (Pet Owner) -->
+                                    <div class="bg-primary/10 rounded-lg p-4 border border-primary/20">
+                                        <h4 class="font-medium text-primary mb-2">
+                                            {{ appointment.veterinarian?.name || 'To Be Assigned' }}
+                                        </h4>
+                                        <p class="text-sm text-primary/80 mb-2">
+                                            Veterinarian
+                                        </p>
+                                        <p class="text-xs text-primary/70">
+                                            {{ appointment.veterinarian?.specializations || 'Specializes in small animal care and preventive medicine' }}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <!-- Owner Information (Clinic View) -->
+                                <div class="space-y-4" v-else-if="isClinic">
+                                    <h3 class="text-lg font-semibold mb-4">
+                                        Owner Information
+                                    </h3>
+                                    
+                                    <div class="bg-muted/50 rounded-lg p-4 border">
+                                        <h4 class="font-medium mb-2">
+                                            {{ appointment.owner.name }}
+                                        </h4>
+                                        <p class="text-sm text-muted-foreground mb-2">
+                                            {{ appointment.owner.email }}
+                                        </p>
+                                        <p class="text-sm text-muted-foreground mb-4">
+                                            {{ appointment.owner.phone }}
+                                        </p>
+                                        
+                                        <button @click="callOwner"
+                                                class="w-full bg-green-600 text-white py-2 px-3 rounded-md hover:bg-green-700 text-sm font-medium flex items-center justify-center gap-2">
+                                            <Phone class="h-4 w-4" />
+                                            Call Owner
+                                        </button>
+                                    </div>
+
+                                    <!-- Clinic Information with Vet Assignment (Clinic View) -->
+                                    <div class="bg-primary/10 rounded-lg p-4 border border-primary/20">
+                                        <h4 class="font-medium text-primary mb-3">
+                                            {{ appointment.clinic.name }}
+                                        </h4>
+                                        
+                                        <div class="border-t border-primary/20 pt-3 mt-3">
+                                            <div class="flex items-center justify-between mb-2">
+                                                <label class="text-sm font-medium text-primary/80">Assigned Veterinarian</label>
+                                                <div class="relative vet-dropdown-container" v-if="appointment.veterinarian && !isCompleted">
+                                                    <button @click.stop="toggleDropdown" 
+                                                            class="p-1 hover:bg-primary/20 rounded">
+                                                        <MoreVertical class="h-4 w-4" />
+                                                    </button>
+                                                    <div v-if="activeDropdown" 
+                                                         class="absolute right-0 mt-2 w-48 bg-card border rounded-lg shadow-lg z-10">
+                                                        <button @click="changeVeterinarian" 
+                                                                class="w-full px-4 py-2 text-left hover:bg-muted flex items-center gap-2">
+                                                            <Edit class="h-4 w-4" />
+                                                            Change Veterinarian
+                                                        </button>
+                                                        <button @click="removeVeterinarian" 
+                                                                class="w-full px-4 py-2 text-left hover:bg-muted flex items-center gap-2 text-red-600">
+                                                            <UserX class="h-4 w-4" />
+                                                            Remove Assignment
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Assign Veterinarian -->
+                                            <div v-if="!appointment.veterinarian && !isCompleted && availableVeterinarians.length > 0" class="space-y-2">
+                                                <select v-model="vetForm.veterinarian_id" 
+                                                        @change="assignVeterinarian"
+                                                        class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm bg-background">
+                                                    <option :value="null">Select a veterinarian...</option>
+                                                    <option v-for="vet in availableVeterinarians" :key="vet.id" :value="vet.id">
+                                                        {{ vet.name }} {{ vet.license_number ? `(${vet.license_number})` : '' }}
+                                                    </option>
+                                                </select>
+                                            </div>
+                                            
+                                            <div v-else-if="appointment.veterinarian">
+                                                <p class="text-sm font-medium text-primary mb-1">
+                                                    {{ appointment.veterinarian.name }}
+                                                </p>
+                                                <p class="text-xs text-primary/70">
+                                                    {{ appointment.veterinarian.specializations || 'Veterinarian' }}
+                                                </p>
+                                                <p class="text-xs text-primary/70 mt-1" v-if="appointment.veterinarian.license_number">
+                                                    License: {{ appointment.veterinarian.license_number }}
+                                                </p>
+                                            </div>
+                                            
+                                            <p v-else class="text-xs text-primary/70">
+                                                {{ availableVeterinarians.length > 0 ? 'Assign a veterinarian to this appointment' : 'No veterinarians available' }}
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -644,8 +1211,9 @@ const getStatusColor = (status?: string) => {
                         </div>
 
                         <!-- Action Buttons -->
-                        <div class="flex gap-3 pt-4 border-t" 
-                             v-if="['scheduled', 'confirmed', 'scheduled'].includes(appointment.status)">
+                        <!-- Pet Owner Actions -->
+                        <div v-if="isPetOwner && appointment.status === 'pending'" 
+                             class="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t">
                             <button @click="goToReschedule"
                                     class="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 text-sm font-medium">
                                 Reschedule Appointment
@@ -655,14 +1223,141 @@ const getStatusColor = (status?: string) => {
                                 Cancel Appointment
                             </button>
                         </div>
+
+                        <!-- Clinic Actions -->
+                        <div v-if="isClinic && !isCompleted" class="pt-4 border-t">
+                            <div class="flex justify-end gap-3 flex-wrap">
+                                <!-- Pending Status Actions -->
+                                <button v-if="isPending" 
+                                        @click="confirmAppointment"
+                                        class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium">
+                                    Confirm Appointment
+                                </button>
+                                
+                                <!-- In Progress Status Actions -->
+                                <button v-if="canMarkComplete" 
+                                        @click="openNoShowModal"
+                                        class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm font-medium">
+                                    No Show
+                                </button>
+                                <button v-if="canMarkComplete" 
+                                        @click="markAsComplete"
+                                        class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium">
+                                    Complete & Add Record
+                                </button>
+                            </div>
+                        </div>
                         
                         <!-- Completed/Cancelled Status Info -->
-                        <div v-else-if="appointment.status === 'completed'" 
+                        <div v-if="appointment.status === 'completed'" 
                              class="flex items-center gap-2 pt-4 border-t">
                             <CheckCircle2 class="h-5 w-5 text-green-600 dark:text-green-400" />
                             <span class="text-sm text-muted-foreground">
                                 This appointment has been completed.
                             </span>
+                        </div>
+
+                        <!-- Rating Section for Completed Appointments (Pet Owner Only) -->
+                        <div v-if="isPetOwner && appointment.status === 'completed'" class="pt-4 border-t">
+                            <div v-if="!hasRating && !showRatingForm" class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <Star class="h-5 w-5 text-yellow-500" />
+                                        <div>
+                                            <p class="text-sm font-medium text-blue-900 dark:text-blue-100">
+                                                Rate Your Experience
+                                            </p>
+                                            <p class="text-xs text-blue-700 dark:text-blue-300 mt-0.5">
+                                                Help others by sharing your experience with {{ appointment.clinic.name }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button @click="openRatingForm"
+                                            class="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 text-sm font-medium flex items-center gap-2">
+                                        <Star class="h-4 w-4" />
+                                        Rate Now
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Existing Rating Display -->
+                            <div v-if="clinicRating && !showRatingForm" class="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/30 dark:to-purple-900/30 border-2 border-blue-200 dark:border-blue-500/50 rounded-lg p-4">
+                                <div class="flex items-start justify-between mb-3">
+                                    <div>
+                                        <div class="flex items-center gap-2 mb-2">
+                                            <span class="bg-blue-500/20 text-blue-700 dark:text-blue-300 text-xs font-medium px-2 py-1 rounded">Your Rating</span>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <div class="flex text-yellow-400 text-sm">
+                                                <Star v-for="i in clinicRating.rating" :key="`filled-${i}`" class="h-4 w-4 fill-yellow-400" />
+                                                <Star v-for="i in (5 - clinicRating.rating)" :key="`empty-${i}`" class="h-4 w-4" />
+                                            </div>
+                                            <span class="text-sm text-muted-foreground">{{ clinicRating.created_at }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <p v-if="clinicRating.comment" class="text-sm text-foreground">{{ clinicRating.comment }}</p>
+                                <p v-else class="text-sm text-muted-foreground italic">No comment provided</p>
+                            </div>
+
+                            <!-- Rating Form -->
+                            <div v-if="showRatingForm" class="bg-card border rounded-lg p-6">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h4 class="text-lg font-semibold">Rate Your Experience</h4>
+                                    <button @click="closeRatingForm" class="text-muted-foreground hover:text-foreground">
+                                        <X class="h-5 w-5" />
+                                    </button>
+                                </div>
+
+                                <form @submit.prevent="submitRating">
+                                    <!-- Rating Stars -->
+                                    <div class="mb-4">
+                                        <label class="block text-sm font-medium mb-2">Rating</label>
+                                        <div class="flex gap-2">
+                                            <button v-for="star in 5" :key="star" 
+                                                    type="button"
+                                                    @click="ratingForm.rating = star"
+                                                    class="text-3xl transition-colors focus:outline-none hover:scale-110">
+                                                <Star :class="star <= ratingForm.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300 dark:text-gray-600'" />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Comment -->
+                                    <div class="mb-4">
+                                        <label class="block text-sm font-medium mb-2">Comment (Optional)</label>
+                                        <textarea v-model="ratingForm.comment" 
+                                                  rows="4" 
+                                                  maxlength="1000"
+                                                  placeholder="Share your experience at {{ appointment.clinic.name }}..."
+                                                  class="w-full border border-input bg-background rounded-lg px-4 py-2 text-sm placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 resize-none">
+                                        </textarea>
+                                        <div class="text-right text-xs text-muted-foreground mt-1">
+                                            {{ ratingForm.comment?.length || 0 }} / 1000
+                                        </div>
+                                    </div>
+
+                                    <!-- Submit Button -->
+                                    <div class="flex gap-3">
+                                        <button type="submit" 
+                                                :disabled="ratingForm.processing"
+                                                class="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                                            <Send class="h-4 w-4" />
+                                            Submit Rating
+                                        </button>
+                                        <button type="button" @click="closeRatingForm" 
+                                                class="px-4 py-2 border rounded-md hover:bg-muted text-sm font-medium">
+                                            Cancel
+                                        </button>
+                                    </div>
+
+                                    <!-- Error Display -->
+                                    <div v-if="ratingForm.errors.rating || ratingForm.errors.comment" class="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-500/50 rounded-lg">
+                                        <p v-if="ratingForm.errors.rating" class="text-red-600 dark:text-red-400 text-sm">{{ ratingForm.errors.rating }}</p>
+                                        <p v-if="ratingForm.errors.comment" class="text-red-600 dark:text-red-400 text-sm">{{ ratingForm.errors.comment }}</p>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
                         
                         <div v-else-if="appointment.status === 'cancelled'" 
@@ -678,7 +1373,7 @@ const getStatusColor = (status?: string) => {
                     <div v-if="activeTab === 'medical'" class="space-y-6">
                         <div class="bg-muted/30 rounded-lg p-6 border">
                             <div class="flex items-center justify-between mb-4">
-                                <h3 class="text-lg font-semibold">Medical Record</h3>
+                                <h3 class="text-lg font-semibold">Medical Record Summary</h3>
                                 <span class="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full flex items-center gap-1">
                                     <Shield class="h-3 w-3" />
                                     View Only
@@ -756,11 +1451,17 @@ const getStatusColor = (status?: string) => {
                                 <div class="flex items-start gap-3">
                                     <Info class="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
                                     <div>
-                                        <p class="text-sm text-primary/90 font-medium mb-1">Medical records are managed by the clinic</p>
+                                        <p class="text-sm text-primary/90 font-medium mb-1">
+                                            {{ isClinic ? 'Medical Record Management' : 'Medical records are managed by the clinic' }}
+                                        </p>
                                         <p class="text-xs text-primary/70">
-                                            {{ medicalRecord 
-                                                ? 'View the full patient record for complete medical history.' 
-                                                : 'A medical record will be automatically created when the appointment is marked as completed.' 
+                                            {{ isClinic 
+                                                ? (medicalRecord 
+                                                    ? 'To update this medical record, go to Patient Records and use the Add/Edit Medical Record form. Only fields relevant to the selected record type will be saved.' 
+                                                    : 'Medical records can be added through the Patient Records section using the Add Medical Record form after completing the appointment.')
+                                                : (medicalRecord 
+                                                    ? 'This is a summary view. For detailed medical history, clinics maintain complete patient records.' 
+                                                    : 'Medical records will be added by the clinic after your appointment is completed.')
                                             }}
                                         </p>
                                     </div>
@@ -811,26 +1512,7 @@ const getStatusColor = (status?: string) => {
                         </div>
                     </div>
 
-                    <!-- Visit History Tab -->
-                    <div v-if="activeTab === 'history'" class="space-y-4">
-                        <h3 class="text-lg font-semibold">Previous Visits</h3>
-                        <div class="space-y-3">
-                            <div v-for="visit in visitHistory" :key="visit.date"
-                                 class="bg-muted/50 rounded-lg p-4 border">
-                                <div class="flex justify-between items-start mb-2">
-                                    <div>
-                                        <h4 class="font-medium">{{ visit.type }}</h4>
-                                        <p class="text-sm text-muted-foreground">{{ visit.date }} • {{ visit.doctor }}</p>
-                                    </div>
-                                    <span class="text-sm font-medium">{{ visit.cost }}</span>
-                                </div>
-                                <p class="text-sm text-muted-foreground">{{ visit.notes }}</p>
-                            </div>
-                        </div>
-                        <div v-if="visitHistory.length === 0" class="text-center py-8 text-muted-foreground">
-                            <p>No previous visits found for this pet.</p>
-                        </div>
-                    </div>
+
 
                     <!-- Documents Tab -->
                     <div v-if="activeTab === 'documents'" class="space-y-4">
@@ -914,6 +1596,303 @@ const getStatusColor = (status?: string) => {
                             </button>
                         </div>
                     </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Record Type Selection Modal (Clinic) -->
+        <div v-if="isClinic && showRecordTypeSelection" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div class="bg-card rounded-lg p-6 w-full max-w-2xl shadow-xl">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-semibold">Select Medical Record Type</h2>
+                    <button @click="showRecordTypeSelection = false" class="text-muted-foreground hover:text-foreground">
+                        <span class="text-2xl">&times;</span>
+                    </button>
+                </div>
+
+                <div class="mb-6">
+                    <p class="text-muted-foreground mb-4">
+                        Choose the type of medical record to create for this appointment.
+                    </p>
+                    
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        <button v-for="(template, key) in medicalRecordTemplates" :key="key"
+                                @click="selectRecordType(key)"
+                                :class="[
+                                    'p-4 border-2 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors text-left',
+                                    selectedRecordType === key ? 'border-primary bg-primary/10' : 'border-border'
+                                ]">
+                            <div class="text-2xl mb-2">{{ template.icon }}</div>
+                            <div class="font-medium">{{ template.label }}</div>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex justify-end">
+                    <button 
+                        @click="showRecordTypeSelection = false"
+                        class="btn btn-outline"
+                    >
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Medical Record Form Modal (Clinic) -->
+        <div v-if="isClinic && showMedicalRecordModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+            <div class="bg-card rounded-lg p-6 w-full max-w-3xl shadow-xl my-8">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                        <span class="text-3xl">{{ activeTemplate.icon }}</span>
+                        <h2 class="text-xl font-semibold">{{ activeTemplate.label }}</h2>
+                    </div>
+                    <button @click="showMedicalRecordModal = false" class="text-muted-foreground hover:text-foreground">
+                        <span class="text-2xl">&times;</span>
+                    </button>
+                </div>
+
+                <div class="mb-6">
+                    <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 mb-6">
+                        <p class="text-sm text-blue-900 dark:text-blue-100">
+                            Complete this medical record to mark the appointment as completed.
+                        </p>
+                    </div>
+
+                    <!-- Dynamic form fields based on selected type -->
+                    <MedicalRecordFormFields 
+                        :form="medicalForm" 
+                        :fields="activeTemplate.fields" 
+                    />
+
+                    <p class="text-sm text-amber-600 dark:text-amber-400 mt-6 flex items-center gap-2">
+                        <AlertCircle class="h-4 w-4" />
+                        This record will be permanently saved and cannot be deleted, only edited within 24 hours.
+                    </p>
+                </div>
+
+                <div class="flex gap-3">
+                    <button 
+                        @click="showMedicalRecordModal = false"
+                        :disabled="medicalForm.processing"
+                        class="btn btn-outline flex-1"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        @click="confirmComplete"
+                        :disabled="medicalForm.processing || !isFormValid"
+                        class="btn btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        Complete Appointment
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Confirm Appointment Modal (Clinic) -->
+        <div v-if="isClinic && showConfirmModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div class="bg-card rounded-lg p-6 w-full max-w-md shadow-xl">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-semibold">Confirm Appointment</h2>
+                    <button @click="showConfirmModal = false" class="text-muted-foreground hover:text-foreground">
+                        <span class="text-2xl">&times;</span>
+                    </button>
+                </div>
+
+                <div class="mb-6">
+                    <p class="text-muted-foreground mb-4">
+                        Confirm this pending appointment to move it to scheduled status?
+                    </p>
+                    <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-sm">
+                        <p class="text-blue-900 dark:text-blue-100 font-medium">{{ appointment.pet.name }}</p>
+                        <p class="text-blue-700 dark:text-blue-300">{{ appointment.date }} at {{ appointment.time }}</p>
+                        <p class="text-blue-600 dark:text-blue-400">Owner: {{ appointment.owner.name }}</p>
+                    </div>
+                </div>
+
+                <div class="flex gap-3">
+                    <button 
+                        @click="showConfirmModal = false"
+                        class="flex-1 px-4 py-2 border rounded-md hover:bg-muted text-sm font-medium"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        @click="submitConfirmAppointment"
+                        class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+                    >
+                        Confirm Appointment
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cancel Appointment Modal -->
+        <div v-if="showCancelModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div class="bg-card rounded-lg shadow-xl max-w-lg w-full border">
+                <div class="p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-semibold text-foreground flex items-center gap-2">
+                            <AlertCircle class="h-5 w-5 text-red-500" />
+                            Cancel Appointment
+                        </h2>
+                        <button @click="closeCancelModal" class="text-muted-foreground hover:text-foreground">
+                            <X class="h-5 w-5" />
+                        </button>
+                    </div>
+
+                    <div class="mb-6 space-y-4">
+                        <p class="text-muted-foreground">
+                            Are you sure you want to cancel this appointment? This action cannot be undone.
+                        </p>
+
+                        <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                            <p class="text-sm font-medium text-yellow-900 dark:text-yellow-100 mb-2">Appointment Details:</p>
+                            <div class="text-sm text-yellow-800 dark:text-yellow-200 space-y-1">
+                                <p><strong>Pet:</strong> {{ appointment.pet.name }}</p>
+                                <p><strong>Date & Time:</strong> {{ appointment.date }} at {{ appointment.time }}</p>
+                                <p><strong>Clinic:</strong> {{ appointment.clinic.name }}</p>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-foreground mb-2">
+                                Reason for Cancellation (Optional)
+                            </label>
+                            <textarea 
+                                v-model="cancelForm.cancellation_reason"
+                                rows="3"
+                                class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
+                                placeholder="Please let us know why you're canceling..."
+                            ></textarea>
+                        </div>
+
+                        <p class="text-xs text-muted-foreground">
+                            Note: You may be able to rebook another appointment after cancellation.
+                        </p>
+                    </div>
+
+                    <div class="flex gap-3">
+                        <button 
+                            @click="closeCancelModal"
+                            :disabled="cancelForm.processing"
+                            class="flex-1 px-4 py-2 border rounded-md hover:bg-muted text-sm font-medium disabled:opacity-50"
+                        >
+                            Keep Appointment
+                        </button>
+                        <button 
+                            @click="confirmCancel"
+                            :disabled="cancelForm.processing"
+                            class="flex-1 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                            <span v-if="cancelForm.processing">Canceling...</span>
+                            <span v-else>Yes, Cancel Appointment</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reschedule Confirmation Modal -->
+        <div v-if="showRescheduleConfirmModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div class="bg-card rounded-lg shadow-xl max-w-lg w-full border">
+                <div class="p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-semibold text-foreground flex items-center gap-2">
+                            <Calendar class="h-5 w-5 text-blue-500" />
+                            Reschedule Appointment
+                        </h2>
+                        <button @click="cancelReschedule" class="text-muted-foreground hover:text-foreground">
+                            <X class="h-5 w-5" />
+                        </button>
+                    </div>
+
+                    <div class="mb-6 space-y-4">
+                        <p class="text-muted-foreground">
+                            You're about to reschedule this appointment. You'll be able to select a new date and time on the next page.
+                        </p>
+
+                        <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                            <p class="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">Current Appointment:</p>
+                            <div class="text-sm text-blue-800 dark:text-blue-200 space-y-1">
+                                <p><strong>Pet:</strong> {{ appointment.pet.name }}</p>
+                                <p><strong>Date & Time:</strong> {{ appointment.date }} at {{ appointment.time }}</p>
+                                <p><strong>Clinic:</strong> {{ appointment.clinic.name }}</p>
+                                <p v-if="appointment.service"><strong>Service:</strong> {{ appointment.service.name }}</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
+                            <p class="text-xs text-yellow-800 dark:text-yellow-200">
+                                💡 <strong>Tip:</strong> Make sure to choose a time that works best for both you and your pet!
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3">
+                        <button 
+                            @click="cancelReschedule"
+                            class="flex-1 px-4 py-2 border rounded-md hover:bg-muted text-sm font-medium"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            @click="confirmReschedule"
+                            class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium flex items-center justify-center gap-2"
+                        >
+                            <Calendar class="h-4 w-4" />
+                            Continue to Reschedule
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- No Show Confirmation Modal (Clinic) -->
+        <div v-if="isClinic && showNoShowModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div class="bg-card rounded-lg p-6 w-full max-w-md shadow-xl">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-semibold">Mark as No Show</h2>
+                    <button @click="showNoShowModal = false" class="text-muted-foreground hover:text-foreground">
+                        <span class="text-2xl">&times;</span>
+                    </button>
+                </div>
+
+                <div class="mb-6">
+                    <p class="text-muted-foreground mb-4">
+                        Mark this appointment as no-show because the patient did not arrive?
+                    </p>
+                    <div class="bg-gray-50 dark:bg-gray-900/20 rounded-lg p-3 text-sm mb-4">
+                        <p class="text-gray-900 dark:text-gray-100 font-medium">{{ appointment.pet.name }}</p>
+                        <p class="text-gray-700 dark:text-gray-300">{{ appointment.date }} at {{ appointment.time }}</p>
+                        <p class="text-gray-600 dark:text-gray-400">Owner: {{ appointment.owner.name }}</p>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Reason (Optional)</label>
+                        <textarea 
+                            v-model="noShowReason"
+                            class="w-full px-3 py-2 border rounded-md bg-background text-foreground"
+                            rows="3"
+                            placeholder="Additional notes about the no-show..."
+                        ></textarea>
+                    </div>
+                </div>
+
+                <div class="flex gap-3">
+                    <button 
+                        @click="showNoShowModal = false"
+                        class="flex-1 px-4 py-2 border rounded-md hover:bg-muted text-sm font-medium"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        @click="submitNoShow"
+                        class="flex-1 px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm font-medium"
+                    >
+                        Mark as No Show
+                    </button>
                 </div>
             </div>
         </div>

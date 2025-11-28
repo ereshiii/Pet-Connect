@@ -643,81 +643,81 @@ const saveRecord = async () => {
         </div>
 
         <!-- View Medical Record Modal -->
-        <div v-if="showViewModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-            <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-                <div class="flex items-center justify-between p-6 border-b">
-                    <h3 class="text-lg font-semibold">Medical Record Details</h3>
-                    <button @click="closeModals" class="text-gray-400 hover:text-gray-600">
-                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div v-if="showViewModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-2 sm:p-4">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
+                <div class="flex items-center justify-between p-4 sm:p-6 border-b flex-shrink-0">
+                    <h3 class="text-base sm:text-lg font-semibold">Medical Record Details</h3>
+                    <button @click="closeModals" class="text-gray-400 hover:text-gray-600 p-1">
+                        <svg class="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
                     </button>
                 </div>
                 
-                <div v-if="selectedRecord" class="p-6 space-y-4">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div v-if="selectedRecord" class="p-4 sm:p-6 space-y-3 sm:space-y-4 overflow-y-auto flex-1">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                            <p class="text-sm bg-gray-50 p-2 rounded">{{ selectedRecord.formatted_date }}</p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                            <p class="text-sm bg-gray-50 p-2 rounded capitalize">{{ selectedRecord.type }}</p>
-                        </div>
-                        <div class="md:col-span-2">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                            <p class="text-sm bg-gray-50 p-2 rounded">{{ selectedRecord.title || 'No title' }}</p>
-                        </div>
-                        <div class="md:col-span-2">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                            <p class="text-sm bg-gray-50 p-3 rounded min-h-[60px]">{{ selectedRecord.description || 'No description' }}</p>
-                        </div>
-                        <div class="md:col-span-2">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Treatment</label>
-                            <p class="text-sm bg-gray-50 p-3 rounded min-h-[60px]">{{ selectedRecord.treatment || 'No treatment specified' }}</p>
+                            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Date</label>
+                            <p class="text-xs sm:text-sm bg-gray-50 p-2 rounded break-words">{{ selectedRecord.formatted_date }}</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Medication</label>
-                            <p class="text-sm bg-gray-50 p-2 rounded">{{ selectedRecord.medication || 'None' }}</p>
+                            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Type</label>
+                            <p class="text-xs sm:text-sm bg-gray-50 p-2 rounded capitalize">{{ selectedRecord.type }}</p>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Title</label>
+                            <p class="text-xs sm:text-sm bg-gray-50 p-2 rounded break-words">{{ selectedRecord.title || 'No title' }}</p>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Description</label>
+                            <p class="text-xs sm:text-sm bg-gray-50 p-2 sm:p-3 rounded min-h-[50px] sm:min-h-[60px] break-words">{{ selectedRecord.description || 'No description' }}</p>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Treatment</label>
+                            <p class="text-xs sm:text-sm bg-gray-50 p-2 sm:p-3 rounded min-h-[50px] sm:min-h-[60px] break-words">{{ selectedRecord.treatment || 'No treatment specified' }}</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Veterinarian</label>
-                            <p class="text-sm bg-gray-50 p-2 rounded">{{ selectedRecord.veterinarian || 'Not specified' }}</p>
+                            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Medication</label>
+                            <p class="text-xs sm:text-sm bg-gray-50 p-2 rounded break-words">{{ selectedRecord.medication || 'None' }}</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Follow-up Date</label>
-                            <p class="text-sm bg-gray-50 p-2 rounded">{{ selectedRecord.follow_up_date || 'No follow-up scheduled' }}</p>
+                            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Veterinarian</label>
+                            <p class="text-xs sm:text-sm bg-gray-50 p-2 rounded break-words">{{ selectedRecord.veterinarian || 'Not specified' }}</p>
                         </div>
-                        <div v-if="selectedRecord.notes" class="md:col-span-2">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Additional Notes</label>
-                            <p class="text-sm bg-gray-50 p-3 rounded min-h-[60px]">{{ selectedRecord.notes }}</p>
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Follow-up Date</label>
+                            <p class="text-xs sm:text-sm bg-gray-50 p-2 rounded">{{ selectedRecord.follow_up_date || 'No follow-up scheduled' }}</p>
+                        </div>
+                        <div v-if="selectedRecord.notes" class="sm:col-span-2">
+                            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Additional Notes</label>
+                            <p class="text-xs sm:text-sm bg-gray-50 p-2 sm:p-3 rounded min-h-[50px] sm:min-h-[60px] break-words">{{ selectedRecord.notes }}</p>
                         </div>
                     </div>
                 </div>
                 
-                <div class="flex justify-end gap-3 p-6 border-t bg-gray-50">
-                    <button @click="closeModals" class="btn btn-outline px-4 py-2">Close</button>
-                    <button @click="editRecord(selectedRecord!)" class="btn btn-primary px-4 py-2">Edit Record</button>
+                <div class="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 p-4 sm:p-6 border-t bg-gray-50 flex-shrink-0">
+                    <button @click="closeModals" class="btn btn-outline px-4 py-2 text-sm w-full sm:w-auto">Close</button>
+                    <button @click="editRecord(selectedRecord!)" class="btn btn-primary px-4 py-2 text-sm w-full sm:w-auto">Edit Record</button>
                 </div>
             </div>
         </div>
 
         <!-- Edit Medical Record Modal -->
-        <div v-if="showEditModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-            <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-                <div class="flex items-center justify-between p-6 border-b">
-                    <h3 class="text-lg font-semibold">Edit Medical Record</h3>
-                    <button @click="closeModals" class="text-gray-400 hover:text-gray-600">
-                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div v-if="showEditModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-2 sm:p-4">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
+                <div class="flex items-center justify-between p-4 sm:p-6 border-b flex-shrink-0">
+                    <h3 class="text-base sm:text-lg font-semibold">Edit Medical Record</h3>
+                    <button @click="closeModals" class="text-gray-400 hover:text-gray-600 p-1">
+                        <svg class="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
                     </button>
                 </div>
                 
-                <form v-if="selectedRecord" @submit.prevent="saveRecord" class="p-6 space-y-4">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <form v-if="selectedRecord" @submit.prevent="saveRecord" class="p-4 sm:p-6 space-y-3 sm:space-y-4 overflow-y-auto flex-1">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                                 Date <span class="text-red-500">*</span>
                             </label>
                             <input 
@@ -726,20 +726,20 @@ const saveRecord = async () => {
                                 required
                                 @input="clearError('date')"
                                 :max="new Date().toISOString().split('T')[0]"
-                                class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                                class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                                 :class="formErrors.date ? 'border-red-500' : 'border-gray-300'"
                             >
                             <p v-if="formErrors.date" class="text-red-500 text-xs mt-1">{{ formErrors.date }}</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                                 Type <span class="text-red-500">*</span>
                             </label>
                             <select 
                                 v-model="selectedRecord.type" 
                                 required
                                 @change="clearError('type')"
-                                class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                                class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                                 :class="formErrors.type ? 'border-red-500' : 'border-gray-300'"
                             >
                                 <option value="">Select type...</option>
@@ -751,8 +751,8 @@ const saveRecord = async () => {
                             </select>
                             <p v-if="formErrors.type" class="text-red-500 text-xs mt-1">{{ formErrors.type }}</p>
                         </div>
-                        <div class="md:col-span-2">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                                 Title <span class="text-red-500">*</span>
                                 <span class="text-gray-400 text-xs">({{ selectedRecord.title?.length || 0 }}/255)</span>
                             </label>
@@ -763,45 +763,45 @@ const saveRecord = async () => {
                                 maxlength="255"
                                 @input="clearError('title')"
                                 placeholder="Enter record title"
-                                class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                                class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                                 :class="formErrors.title ? 'border-red-500' : 'border-gray-300'"
                             >
                             <p v-if="formErrors.title" class="text-red-500 text-xs mt-1">{{ formErrors.title }}</p>
                         </div>
-                        <div class="md:col-span-2">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                                 Description
                                 <span class="text-gray-400 text-xs">({{ selectedRecord.description?.length || 0 }}/2000)</span>
                             </label>
                             <textarea 
                                 v-model="selectedRecord.description" 
-                                rows="3"
+                                rows="2"
                                 maxlength="2000"
                                 @input="clearError('description')"
                                 placeholder="Enter detailed description"
-                                class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                                class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-primary resize-y"
                                 :class="formErrors.description ? 'border-red-500' : 'border-gray-300'"
                             ></textarea>
                             <p v-if="formErrors.description" class="text-red-500 text-xs mt-1">{{ formErrors.description }}</p>
                         </div>
-                        <div class="md:col-span-2">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                                 Treatment
                                 <span class="text-gray-400 text-xs">({{ selectedRecord.treatment?.length || 0 }}/2000)</span>
                             </label>
                             <textarea 
                                 v-model="selectedRecord.treatment" 
-                                rows="3"
+                                rows="2"
                                 maxlength="2000"
                                 @input="clearError('treatment')"
                                 placeholder="Enter treatment details"
-                                class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                                class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-primary resize-y"
                                 :class="formErrors.treatment ? 'border-red-500' : 'border-gray-300'"
                             ></textarea>
                             <p v-if="formErrors.treatment" class="text-red-500 text-xs mt-1">{{ formErrors.treatment }}</p>
                         </div>
-                        <div class="md:col-span-2">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                                 Medication
                                 <span class="text-gray-400 text-xs">({{ selectedRecord.medication?.length || 0 }}/500)</span>
                             </label>
@@ -811,13 +811,13 @@ const saveRecord = async () => {
                                 maxlength="500"
                                 @input="clearError('medication')"
                                 placeholder="Enter medications prescribed"
-                                class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                                class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                                 :class="formErrors.medication ? 'border-red-500' : 'border-gray-300'"
                             >
                             <p v-if="formErrors.medication" class="text-red-500 text-xs mt-1">{{ formErrors.medication }}</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                                 Veterinarian
                                 <span class="text-gray-400 text-xs">({{ selectedRecord.veterinarian?.length || 0 }}/255)</span>
                             </label>
@@ -827,13 +827,13 @@ const saveRecord = async () => {
                                 maxlength="255"
                                 @input="clearError('veterinarian')"
                                 placeholder="Enter veterinarian name"
-                                class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                                class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                                 :class="formErrors.veterinarian ? 'border-red-500' : 'border-gray-300'"
                             >
                             <p v-if="formErrors.veterinarian" class="text-red-500 text-xs mt-1">{{ formErrors.veterinarian }}</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                                 Follow-up Date
                             </label>
                             <input 
@@ -841,23 +841,23 @@ const saveRecord = async () => {
                                 type="date" 
                                 :min="selectedRecord.date"
                                 @input="clearError('follow_up_date')"
-                                class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                                class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                                 :class="formErrors.follow_up_date ? 'border-red-500' : 'border-gray-300'"
                             >
                             <p v-if="formErrors.follow_up_date" class="text-red-500 text-xs mt-1">{{ formErrors.follow_up_date }}</p>
                         </div>
-                        <div v-if="selectedRecord.notes !== undefined" class="md:col-span-2">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                        <div v-if="selectedRecord.notes !== undefined" class="sm:col-span-2">
+                            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                                 Additional Notes
                                 <span class="text-gray-400 text-xs">({{ selectedRecord.notes?.length || 0 }}/2000)</span>
                             </label>
                             <textarea 
                                 v-model="selectedRecord.notes" 
-                                rows="3"
+                                rows="2"
                                 maxlength="2000"
                                 @input="clearError('notes')"
                                 placeholder="Enter additional notes"
-                                class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                                class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-primary resize-y"
                                 :class="formErrors.notes ? 'border-red-500' : 'border-gray-300'"
                             ></textarea>
                             <p v-if="formErrors.notes" class="text-red-500 text-xs mt-1">{{ formErrors.notes }}</p>
@@ -865,22 +865,22 @@ const saveRecord = async () => {
                     </div>
                     
                     <!-- Validation Summary -->
-                    <div v-if="Object.keys(formErrors).length > 0" class="bg-red-50 border border-red-200 rounded-md p-4">
-                        <h4 class="text-sm font-semibold text-red-800 mb-2">Please correct the following errors:</h4>
-                        <ul class="text-sm text-red-700 list-disc list-inside space-y-1">
+                    <div v-if="Object.keys(formErrors).length > 0" class="bg-red-50 border border-red-200 rounded-md p-3 sm:p-4">
+                        <h4 class="text-xs sm:text-sm font-semibold text-red-800 mb-2">Please correct the following errors:</h4>
+                        <ul class="text-xs sm:text-sm text-red-700 list-disc list-inside space-y-1">
                             <li v-for="(error, field) in formErrors" :key="field">{{ error }}</li>
                         </ul>
                     </div>
                 </form>
                 
-                <div class="flex justify-end gap-3 p-6 border-t bg-gray-50">
-                    <button @click="closeModals" type="button" class="btn btn-outline px-4 py-2" :disabled="isSubmitting">
+                <div class="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 p-4 sm:p-6 border-t bg-gray-50 flex-shrink-0">
+                    <button @click="closeModals" type="button" class="btn btn-outline px-4 py-2 text-sm w-full sm:w-auto" :disabled="isSubmitting">
                         Cancel
                     </button>
                     <button 
                         @click="saveRecord" 
                         type="button"
-                        class="btn btn-primary px-4 py-2 flex items-center gap-2"
+                        class="btn btn-primary px-4 py-2 text-sm flex items-center justify-center gap-2 w-full sm:w-auto"
                         :disabled="isSubmitting"
                     >
                         <span v-if="isSubmitting">Saving...</span>

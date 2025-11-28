@@ -16,12 +16,17 @@ class AdminSeeder extends Seeder
     {
         $this->command->info('👑 Seeding admin account...');
 
+        // Get credentials from environment or use defaults
+        $adminEmail = env('ADMIN_EMAIL', 'admin@petconnect.ph');
+        $adminPassword = env('ADMIN_PASSWORD', 'admin123');
+        $adminName = env('ADMIN_NAME', 'System Administrator');
+
         // Create or update admin user
         $admin = User::updateOrCreate(
-            ['email' => 'admin@petconnect.ph'],
+            ['email' => $adminEmail],
             [
-                'name' => 'System Administrator',
-                'password' => Hash::make('admin123'),
+                'name' => $adminName,
+                'password' => Hash::make($adminPassword),
                 'account_type' => 'admin',
                 'is_admin' => true,
                 'email_verified_at' => now(),
@@ -73,7 +78,8 @@ class AdminSeeder extends Seeder
         $this->command->info('');
         $this->command->info('🔐 ADMIN ACCOUNT:');
         $this->command->info('====================================');
-        $this->command->line('📧 admin@petconnect.ph | 🔑 admin123 | 👤 System Administrator');
+        $this->command->line("📧 {$adminEmail} | 🔑 {$adminPassword} | 👤 {$adminName}");
+        $this->command->warn('⚠️  IMPORTANT: Change default password after first login!');
         $this->command->info('✅ Admin account seeded successfully!');
     }
 }

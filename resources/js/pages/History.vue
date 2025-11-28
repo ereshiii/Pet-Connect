@@ -4,7 +4,7 @@ import { history, appointmentDetails, appointmentsCreate, clinicAppointmentDetai
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
-import { Search, Filter, ChevronLeft, ChevronRight } from 'lucide-vue-next';
+import { Search, Filter, ChevronLeft, ChevronRight, Star } from 'lucide-vue-next';
 
 // Types
 interface Appointment {
@@ -30,6 +30,12 @@ interface Appointment {
         id: number;
         name: string;
         address?: string;
+        phone?: string;
+    };
+    owner?: {
+        id: number;
+        name: string;
+        email?: string;
         phone?: string;
     };
     veterinarian?: {
@@ -65,9 +71,12 @@ interface Props {
     userPets: Pet[];
     filters: {
         pet_id?: number;
-        date_filter: string;
+        date_filter?: string;
+        category?: string;
+        date_range?: string;
+        search?: string;
     };
-    userType?: 'user' | 'clinic'; // Add user type prop
+    userType?: 'user' | 'clinic';
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -93,18 +102,37 @@ const props = withDefaults(defineProps<Props>(), {
     userType: 'user', // Default to user
 });
 
-const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'History',
-        href: history().url,
-    },
-];
+const breadcrumbs = computed<BreadcrumbItem[]>(() => {
+    if (props.userType === 'clinic') {
+        return [
+            {
+                title: 'Clinic Dashboard',
+                href: '/clinic/dashboard',
+            },
+            {
+                title: 'History',
+                href: '/clinic/history',
+            },
+        ];
+    } else {
+        return [
+            {
+                title: 'History',
+                href: history().url,
+            },
+        ];
+    }
+});
 
 // Reactive filter state
 const selectedPetId = ref(props.filters.pet_id || '');
-const selectedDateFilter = ref(props.filters.date_filter);
-const activeCategory = ref<'completed' | 'cancelled' | 'no_show' | 'all'>('all');
-const searchQuery = ref('');
+const selectedDateFilter = ref(props.filters.date_filter || 'last_6_months');
+const selectedCategory = ref(props.filters.category || 'all');
+const selectedDateRange = ref(props.filters.date_range || 'all');
+const activeCategory = ref<'completed' | 'cancelled' | 'no_show' | 'all'>(
+    (props.filters.category as 'completed' | 'cancelled' | 'no_show' | 'all') || 'all'
+);
+const searchQuery = ref(props.filters.search || '');
 
 // Computed properties for filtered appointments
 const filteredAppointments = computed(() => {
@@ -251,12 +279,28 @@ const getDateFilterDisplay = (filter: string) => {
 const applyFilters = () => {
     const params = new URLSearchParams();
     
-    if (selectedPetId.value) {
-        params.append('pet_id', selectedPetId.value.toString());
-    }
-    
-    if (selectedDateFilter.value !== 'last_6_months') {
-        params.append('date_filter', selectedDateFilter.value);
+    if (props.userType === 'clinic') {
+        // Clinic filters
+        if (selectedCategory.value !== 'all') {
+            params.append('category', selectedCategory.value);
+        }
+        
+        if (selectedDateRange.value !== 'all') {
+            params.append('date_range', selectedDateRange.value);
+        }
+        
+        if (searchQuery.value.trim()) {
+            params.append('search', searchQuery.value.trim());
+        }
+    } else {
+        // Pet owner filters
+        if (selectedPetId.value) {
+            params.append('pet_id', selectedPetId.value.toString());
+        }
+        
+        if (selectedDateFilter.value !== 'last_6_months') {
+            params.append('date_filter', selectedDateFilter.value);
+        }
     }
 
     const url = history().url + (params.toString() ? `?${params.toString()}` : '');
@@ -317,8 +361,9 @@ const viewAppointmentDetails = (appointmentId: number) => {
     viewDetails(appointmentId);
 };
 
-const rebookAppointment = (appointment?: Appointment) => {
-    router.visit(appointmentsCreate().url);
+const rateAppointment = (appointment: Appointment) => {
+    // Navigate to appointment details where rating can be submitted
+    viewDetails(appointment.id);
 };
 </script>
 
@@ -353,13 +398,15 @@ const rebookAppointment = (appointment?: Appointment) => {
                             <input 
                                 type="text" 
                                 v-model="searchQuery"
-                                placeholder="Search by pet, clinic, service..."
+                                @input="applyFilters"
+                                :placeholder="userType === 'clinic' ? 'Search by pet, owner, appointment #...' : 'Search by pet, clinic, service...'"
                                 class="w-full pl-10 pr-3 py-2 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                             />
                         </div>
 
-                        <!-- Pet Filter -->
+                        <!-- Pet Filter (Pet Owners Only) -->
                         <select 
+                            v-if="userType === 'user'"
                             v-model="selectedPetId" 
                             @change="applyFilters"
                             class="border border-input bg-background px-3 py-2 text-sm ring-offset-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
@@ -370,8 +417,12 @@ const rebookAppointment = (appointment?: Appointment) => {
                             </option>
                         </select>
 
+                        <!-- Placeholder for clinic view to maintain grid -->
+                        <div v-if="userType === 'clinic'"></div>
+
                         <!-- Date Range Filter -->
                         <select 
+                            v-if="userType === 'user'"
                             v-model="selectedDateFilter" 
                             @change="applyFilters"
                             class="border border-input bg-background px-3 py-2 text-sm ring-offset-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
@@ -381,6 +432,22 @@ const rebookAppointment = (appointment?: Appointment) => {
                             <option value="last_6_months">Last 6 Months</option>
                             <option value="last_year">Last Year</option>
                             <option value="all_time">All Time</option>
+                        </select>
+
+                        <!-- Date Range Filter (Clinics) -->
+                        <select 
+                            v-if="userType === 'clinic'"
+                            v-model="selectedDateRange" 
+                            @change="applyFilters"
+                            class="border border-input bg-background px-3 py-2 text-sm ring-offset-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                        >
+                            <option value="all">All Time</option>
+                            <option value="today">Today</option>
+                            <option value="this_week">This Week</option>
+                            <option value="this_month">This Month</option>
+                            <option value="last_month">Last Month</option>
+                            <option value="this_year">This Year</option>
+                            <option value="last_year">Last Year</option>
                         </select>
                     </div>
                 </div>
@@ -462,7 +529,13 @@ const rebookAppointment = (appointment?: Appointment) => {
                                     </div>
                                     
                                     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-sm">
-                                        <div>
+                                        <!-- For Clinic View: Show Owner -->
+                                        <div v-if="userType === 'clinic' && appointment.owner">
+                                            <p class="text-muted-foreground text-xs mb-1">Pet Owner</p>
+                                            <p class="text-foreground font-medium">{{ appointment.owner.name }}</p>
+                                        </div>
+                                        <!-- For Pet Owner View: Show Clinic -->
+                                        <div v-else>
                                             <p class="text-muted-foreground text-xs mb-1">Clinic</p>
                                             <p class="text-foreground font-medium">{{ appointment.clinic?.name }}</p>
                                         </div>
@@ -489,20 +562,13 @@ const rebookAppointment = (appointment?: Appointment) => {
                                 </div>
                                 
                                 <!-- Action Buttons -->
-                                <div class="flex flex-col gap-2 flex-shrink-0">
+                                <div v-if="userType === 'user' && appointment.status === 'completed'" class="flex flex-col gap-2 flex-shrink-0">
                                     <button 
-                                        v-if="appointment.status === 'completed'"
-                                        @click.stop
-                                        class="px-3 py-1.5 bg-muted hover:bg-muted/80 text-foreground text-xs font-medium rounded-md transition-colors whitespace-nowrap"
+                                        @click.stop="rateAppointment(appointment)"
+                                        class="px-3 py-1.5 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-medium rounded-md transition-colors whitespace-nowrap flex items-center gap-1"
                                     >
-                                        View Report
-                                    </button>
-                                    <button 
-                                        v-if="appointment.status === 'cancelled'"
-                                        @click.stop="rebookAppointment(appointment)"
-                                        class="px-3 py-1.5 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-medium rounded-md transition-colors whitespace-nowrap"
-                                    >
-                                        Rebook
+                                        <Star class="h-3 w-3" />
+                                        Rate
                                     </button>
                                 </div>
                             </div>

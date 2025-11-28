@@ -100,6 +100,7 @@ class ClinicDashboardController extends Controller
             ->whereDate('scheduled_at', $today)
             ->where('status', '!=', 'completed')
             ->where('status', '!=', 'cancelled')
+            ->where('status', '!=', 'pending')
             ->orderBy('scheduled_at')
             ->get();
 
@@ -108,6 +109,12 @@ class ClinicDashboardController extends Controller
             $owner = $pet ? $pet->owner : null;
             $service = $appointment->service;
             $vet = $appointment->veterinarian;
+            
+            // Get duration from service
+            $duration = '30 minutes'; // Default
+            if ($service && $service->duration_minutes) {
+                $duration = $service->duration_minutes . ' minutes';
+            }
             
             return [
                 'id' => $appointment->id,
@@ -121,7 +128,7 @@ class ClinicDashboardController extends Controller
                 'veterinarianName' => $vet ? $vet->name : 'Not Assigned',
                 'status' => $appointment->status,
                 'statusDisplay' => ucfirst(str_replace('_', ' ', $appointment->status)),
-                'duration' => $appointment->duration ?? '30 minutes',
+                'duration' => $duration,
             ];
         })->toArray();
     }
@@ -136,6 +143,7 @@ class ClinicDashboardController extends Controller
             ->where('scheduled_at', '>=', now()) // Changed from whereDate to show all future appointments
             ->where('status', '!=', 'completed')
             ->where('status', '!=', 'cancelled')
+            ->where('status', '!=', 'pending')
             ->orderBy('scheduled_at')
             ->limit(6)
             ->get();
@@ -146,8 +154,11 @@ class ClinicDashboardController extends Controller
             
             return [
                 'id' => $appointment->id,
+                'date' => Carbon::parse($appointment->scheduled_at)->format('M d, Y'),
                 'time' => Carbon::parse($appointment->scheduled_at)->format('g:i A'),
-                'patientName' => $pet ? $pet->name . ' (' . ($pet->breed ?? 'Unknown breed') . ')' : 'Unknown Pet',
+                'dayOfWeek' => Carbon::parse($appointment->scheduled_at)->format('D'),
+                'petName' => $pet ? $pet->name : 'Unknown Pet',
+                'petType' => $pet ? ($pet->breed ?? $pet->species ?? 'Unknown') : 'Unknown',
                 'ownerName' => $owner ? $owner->name : 'Unknown Owner',
                 'type' => $appointment->service ? $appointment->service->name : 'General Consultation',
                 'status' => $this->mapAppointmentStatus($appointment->status),
@@ -216,6 +227,12 @@ class ClinicDashboardController extends Controller
             $service = $appointment->service;
             $vet = $appointment->veterinarian;
             
+            // Get duration from service
+            $duration = '30 minutes'; // Default
+            if ($service && $service->duration_minutes) {
+                $duration = $service->duration_minutes . ' minutes';
+            }
+            
             return [
                 'id' => $appointment->id,
                 'time' => Carbon::parse($appointment->scheduled_at)->format('g:i A'),
@@ -227,7 +244,7 @@ class ClinicDashboardController extends Controller
                 'ownerPhone' => $owner ? $owner->phone : null,
                 'serviceName' => $service ? $service->name : 'General Consultation',
                 'veterinarianName' => $vet ? $vet->name : 'Not Assigned',
-                'duration' => $appointment->duration ?? '30 minutes',
+                'duration' => $duration,
             ];
         })->toArray();
     }

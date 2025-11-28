@@ -17,7 +17,8 @@ import {
     AlertTriangle,
     CheckCircle,
     ArrowUpRight,
-    Plus
+    Plus,
+    Clock
 } from 'lucide-vue-next';
 
 interface User {
@@ -71,6 +72,7 @@ interface Appointment {
     status: string;
     scheduled_at: string;
     type: string;
+    duration?: string;
     pet: {
         name: string;
         species: string;
@@ -286,104 +288,156 @@ const addressSettingsLink = '/settings/address';
 
             <!-- Schedule Overview -->
             <div class="rounded-lg border bg-card">
-                <div class="p-6">
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                        <h2 class="text-xl font-semibold">Schedule Overview</h2>
+                <div class="p-4 sm:p-6">
+                    <div class="flex items-center justify-between mb-4 sm:mb-6">
+                        <h2 class="text-lg sm:text-xl font-semibold">Schedule Overview</h2>
                     </div>
                     
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <!-- Today's Appointment -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+                        <!-- Next Appointment -->
                         <div class="lg:col-span-1">
-                            <div v-if="upcoming_appointments.length > 0 && upcoming_appointments[0]" class="bg-primary/5 rounded-lg p-4 border">
+                            <div 
+                                v-if="upcoming_appointments.length > 0 && upcoming_appointments[0]" 
+                                @click="router.visit(`/appointments/${upcoming_appointments[0].id}`)"
+                                class="bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg p-4 border border-primary/20 cursor-pointer hover:border-primary/50 hover:shadow-md transition-all duration-200"
+                            >
                                 <div class="flex items-center justify-between mb-3">
-                                    <h3 class="font-semibold">Next Appointment</h3>
+                                    <h3 class="text-sm sm:text-base font-semibold">Next Appointment</h3>
                                     <span :class="['px-2 py-1 text-xs font-medium rounded-full', 
                                         upcoming_appointments[0].status === 'confirmed' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300' :
                                         upcoming_appointments[0].status === 'scheduled' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300' :
+                                        upcoming_appointments[0].status === 'pending' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-300' :
                                         'bg-muted text-muted-foreground'
                                     ]">
-                                        {{ upcoming_appointments[0].status === 'confirmed' ? 'Confirmed' : 
-                                           upcoming_appointments[0].status === 'scheduled' ? 'Scheduled' : 'Unknown' }}
+                                        {{ upcoming_appointments[0].status.charAt(0).toUpperCase() + upcoming_appointments[0].status.slice(1).replace('_', ' ') }}
                                     </span>
                                 </div>
                                 
                                 <div class="space-y-3">
-                                    <div>
-                                        <p class="text-sm font-medium">
-                                            {{ upcoming_appointments[0].pet.name }} - {{ upcoming_appointments[0].type }}
-                                        </p>
-                                        <p class="text-xs text-muted-foreground">
-                                            {{ upcoming_appointments[0].pet.species }}
-                                        </p>
+                                    <!-- Pet Info -->
+                                    <div class="flex items-start gap-3 pb-3 border-b border-border/50">
+                                        <div class="p-2 bg-primary/10 rounded-lg">
+                                            <PawPrint class="h-5 w-5 text-primary" />
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-semibold">{{ upcoming_appointments[0].pet.name }}</p>
+                                            <p class="text-xs text-muted-foreground">{{ upcoming_appointments[0].pet.species }}</p>
+                                        </div>
                                     </div>
                                     
-                                    <div>
-                                        <p class="text-sm font-medium">{{ upcoming_appointments[0].clinic.name }}</p>
+                                    <!-- Service Type -->
+                                    <div class="flex items-center gap-2">
+                                        <Stethoscope class="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                        <div class="flex-1">
+                                            <p class="text-xs text-muted-foreground">Service</p>
+                                            <p class="text-sm font-medium">{{ upcoming_appointments[0].type || 'General Consultation' }}</p>
+                                            <p v-if="upcoming_appointments[0].duration" class="text-xs text-muted-foreground">{{ upcoming_appointments[0].duration }}</p>
+                                        </div>
                                     </div>
                                     
-                                    <div class="bg-muted rounded-lg p-3">
-                                        <div class="flex items-center justify-between">
+                                    <!-- Clinic Info -->
+                                    <div v-if="upcoming_appointments[0].clinic" class="flex items-center gap-2">
+                                        <Users class="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                        <div>
+                                            <p class="text-xs text-muted-foreground">Clinic</p>
+                                            <p class="text-sm font-medium">{{ upcoming_appointments[0].clinic.name }}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Date and Time -->
+                                    <div class="bg-background/60 rounded-lg p-3">
+                                        <div class="grid grid-cols-2 gap-3">
                                             <div>
-                                                <p class="text-sm font-medium">
+                                                <div class="flex items-center gap-1 mb-1">
+                                                    <Calendar class="h-3 w-3 text-muted-foreground" />
+                                                    <p class="text-xs text-muted-foreground">Date</p>
+                                                </div>
+                                                <p class="text-sm font-semibold">
                                                     {{ new Date(upcoming_appointments[0].scheduled_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }}
                                                 </p>
                                             </div>
                                             <div class="text-right">
-                                                <p class="text-sm font-medium">
+                                                <div class="flex items-center justify-end gap-1 mb-1">
+                                                    <Clock class="h-3 w-3 text-muted-foreground" />
+                                                    <p class="text-xs text-muted-foreground">Time</p>
+                                                </div>
+                                                <p class="text-sm font-semibold">
                                                     {{ new Date(upcoming_appointments[0].scheduled_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) }}
                                                 </p>
                                             </div>
                                         </div>
                                     </div>
+                                    
+                                    <!-- Appointment Number -->
+                                    <div v-if="upcoming_appointments[0].appointment_number" class="text-center pt-2 border-t border-border/50">
+                                        <p class="text-xs text-muted-foreground">Appointment #</p>
+                                        <p class="text-xs font-mono font-medium">{{ upcoming_appointments[0].appointment_number }}</p>
+                                    </div>
                                 </div>
                             </div>
                             
-                            <!-- No appointment today -->
-                            <div v-else class="bg-muted/50 rounded-lg p-4 border border-dashed">
-                                <div class="text-center py-6">
+                            <!-- No appointment -->
+                            <div v-else class="bg-muted/30 rounded-lg p-6 border border-dashed">
+                                <div class="text-center">
                                     <Calendar class="h-10 w-10 mx-auto mb-2 text-muted-foreground opacity-50" />
-                                    <h3 class="font-semibold mb-1">No appointments scheduled</h3>
-                                    <p class="text-sm text-muted-foreground">Ready to schedule your next visit?</p>
+                                    <h3 class="font-semibold mb-1 text-sm">No appointments scheduled</h3>
+                                    <p class="text-xs text-muted-foreground">Ready to book your next visit?</p>
                                 </div>
                             </div>
                         </div>
                         
-                        <!-- Upcoming Appointments -->
+                        <!-- Upcoming Appointments List -->
                         <div class="lg:col-span-2">
                             <div>
                                 <div class="flex items-center justify-between mb-4">
-                                    <h4 class="font-medium">Upcoming Appointments</h4>
+                                    <h4 class="font-medium text-sm sm:text-base">Upcoming Appointments</h4>
                                 </div>
-                                <div v-if="upcoming_appointments.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div v-for="appointment in upcoming_appointments.slice(0, 6)" :key="appointment.id" 
-                                         class="p-3 bg-card rounded-lg cursor-pointer border hover:bg-muted transition-colors">
-                                        <div class="flex items-center justify-between mb-2">
-                                            <div class="min-w-0 flex-1">
-                                                <p class="text-sm font-medium truncate">
-                                                    {{ appointment.pet.name }} - {{ appointment.type }}
-                                                </p>
-                                                <p class="text-xs text-muted-foreground">
-                                                    {{ new Date(appointment.scheduled_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }} • 
-                                                    {{ new Date(appointment.scheduled_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) }}
-                                                </p>
+                                <div v-if="upcoming_appointments.length > 0" class="space-y-3">
+                                    <div 
+                                        v-for="appointment in upcoming_appointments.slice(0, 6)" 
+                                        :key="appointment.id" 
+                                        @click="router.visit(`/appointments/${appointment.id}`)"
+                                        class="p-3 sm:p-4 bg-card rounded-lg cursor-pointer border hover:border-primary/50 hover:shadow-sm transition-all duration-200"
+                                    >
+                                        <div class="flex items-start justify-between gap-3">
+                                            <div class="flex-1 min-w-0">
+                                                <div class="flex items-center gap-2 mb-2">
+                                                    <PawPrint class="h-4 w-4 text-primary flex-shrink-0" />
+                                                    <p class="text-sm font-semibold truncate">{{ appointment.pet.name }}</p>
+                                                </div>
+                                                <p class="text-xs text-muted-foreground mb-1">{{ appointment.type || 'General Consultation' }}</p>
+                                                <p v-if="appointment.duration" class="text-xs text-muted-foreground mb-1">{{ appointment.duration }}</p>
+                                                <p v-if="appointment.clinic" class="text-xs text-muted-foreground mb-2">{{ appointment.clinic.name }}</p>
+                                                <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-xs text-muted-foreground">
+                                                    <div class="flex items-center gap-1">
+                                                        <Calendar class="h-3 w-3 flex-shrink-0" />
+                                                        <span>{{ new Date(appointment.scheduled_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }}</span>
+                                                    </div>
+                                                    <span class="hidden sm:inline">•</span>
+                                                    <span>{{ new Date(appointment.scheduled_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) }}</span>
+                                                </div>
                                             </div>
-                                            <span :class="['px-2 py-1 text-xs rounded-full font-medium ml-2 flex-shrink-0',
+                                            <span :class="['px-2 py-1 text-xs rounded-full font-medium flex-shrink-0',
                                                 appointment.status === 'confirmed' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300' :
                                                 appointment.status === 'scheduled' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300' :
+                                                appointment.status === 'pending' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-300' :
+                                                appointment.status === 'in_progress' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300' :
                                                 'bg-muted text-muted-foreground'
                                             ]">
-                                                {{ appointment.status === 'confirmed' ? 'Confirmed' : 
-                                                   appointment.status === 'scheduled' ? 'Scheduled' : 'Unknown' }}
+                                                {{ appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1).replace('_', ' ') }}
                                             </span>
                                         </div>
                                     </div>
                                 </div>
                                 
                                 <!-- No upcoming appointments -->
-                                <div v-else class="text-center py-8">
+                                <div v-else class="text-center py-8 sm:py-12">
                                     <Activity class="h-10 w-10 mx-auto mb-3 text-muted-foreground opacity-50" />
-                                    <h3 class="font-semibold mb-2">No upcoming appointments</h3>
-                                    <p class="text-sm text-muted-foreground">Ready to schedule your next visit?</p>
+                                    <h3 class="font-semibold mb-2 text-sm">No upcoming appointments</h3>
+                                    <p class="text-xs text-muted-foreground mb-4">Ready to schedule your next visit?</p>
+                                    <button @click="navigateToBookAppointment" class="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
+                                        Book Appointment
+                                    </button>
                                 </div>
                             </div>
                         </div>

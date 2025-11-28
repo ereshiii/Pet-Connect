@@ -27,15 +27,19 @@ class PetController extends Controller
             ->active();
 
         // Apply filters
-        if ($request->filled('species')) {
-            $query->ofSpecies($request->species);
+        if ($request->filled('type')) {
+            $query->whereHas('type', function ($q) use ($request) {
+                $q->where('name', $request->type);
+            });
         }
 
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('species', 'like', "%{$search}%")
+                  ->orWhereHas('type', function ($typeQuery) use ($search) {
+                      $typeQuery->where('name', 'like', "%{$search}%");
+                  })
                   ->orWhereHas('breed', function ($breedQuery) use ($search) {
                       $breedQuery->where('name', 'like', "%{$search}%");
                   });
@@ -43,17 +47,20 @@ class PetController extends Controller
         }
 
         $pets = $query->orderBy('name')->get()->map(function ($pet) {
+            $breedRelation = $pet->breed_id && $pet->relationLoaded('breed') ? $pet->getRelation('breed') : null;
             return [
                 'id' => $pet->id,
                 'name' => $pet->name,
-                'species' => $pet->species,
-                'breed' => $pet->breed_id && $pet->breed ? $pet->breed->name : ($pet->breed ?? null),
-                'breed_id' => $pet->breed_id,
                 'type' => $pet->type ? $pet->type->name : null,
                 'type_id' => $pet->type_id,
+                'breed' => $breedRelation ? [
+                    'id' => $breedRelation->id,
+                    'name' => $breedRelation->name,
+                    'species' => $breedRelation->species,
+                ] : ($pet->getAttributeValue('breed') ? ['name' => $pet->getAttributeValue('breed')] : null),
+                'breed_id' => $pet->breed_id,
                 'gender' => $pet->gender,
                 'gender_display' => $pet->gender_display,
-                'age' => $pet->age,
                 'age_in_years' => $pet->age_in_years,
                 'birth_date' => $pet->birth_date?->format('Y-m-d'),
                 'weight' => $pet->weight,
@@ -81,16 +88,25 @@ class PetController extends Controller
         // Get summary statistics
         $stats = [
             'total_pets' => $pets->count(),
-            'dogs' => $pets->where('species', 'dog')->count(),
-            'cats' => $pets->where('species', 'cat')->count(),
-            'other_species' => $pets->whereNotIn('species', ['dog', 'cat'])->count(),
+            'dogs' => $pets->where('type', 'Dog')->count(),
+            'cats' => $pets->where('type', 'Cat')->count(),
+            'other_species' => $pets->whereNotIn('type', ['Dog', 'Cat'])->count(),
             'pets_needing_attention' => $pets->where('health_status.overall', 'needs_attention')->count(),
         ];
+
+        // Get all pet types for filter dropdown
+        $petTypes = PetType::orderBy('name')->get()->map(function ($type) {
+            return [
+                'id' => $type->id,
+                'name' => $type->name,
+            ];
+        });
 
         return Inertia::render('pets/Pet', [
             'pets' => $pets,
             'stats' => $stats,
-            'filters' => $request->only(['species', 'search']),
+            'petTypes' => $petTypes,
+            'filters' => $request->only(['type', 'search']),
         ]);
     }
 
@@ -99,35 +115,24 @@ class PetController extends Controller
      */
     public function create()
     {
-        $breeds = PetBreed::orderBy('name')->get(['id', 'name', 'species', 'characteristics']);
-        $types = PetType::orderBy('name')->get(['id', 'name', 'species', 'description']);
+        $petTypes = PetType::orderBy('name')->get()->map(function ($type) {
+            return [
+                'id' => $type->id,
+                'name' => $type->name,
+            ];
+        });
+        
+        $breeds = PetBreed::orderBy('name')->get()->map(function ($breed) {
+            return [
+                'id' => $breed->id,
+                'name' => $breed->name,
+                'type_id' => PetType::where('species', $breed->species)->first()?->id,
+            ];
+        });
 
         return Inertia::render('pets/addPet', [
+            'petTypes' => $petTypes,
             'breeds' => $breeds,
-            'types' => $types,
-            'species_options' => [
-                'dog' => 'Dog',
-                'cat' => 'Cat',
-                'bird' => 'Bird',
-                'rabbit' => 'Rabbit',
-                'hamster' => 'Hamster',
-                'guinea_pig' => 'Guinea Pig',
-                'reptile' => 'Reptile',
-                'fish' => 'Fish',
-                'other' => 'Other',
-            ],
-            'gender_options' => [
-                'male' => 'Male',
-                'female' => 'Female',
-                'unknown' => 'Unknown',
-            ],
-            'size_options' => [
-                'tiny' => 'Tiny',
-                'small' => 'Small',
-                'medium' => 'Medium',
-                'large' => 'Large',
-                'giant' => 'Giant',
-            ],
         ]);
     }
 
@@ -138,16 +143,14 @@ class PetController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'species' => 'required|string|max:50',
+            'type_id' => 'required|exists:pet_types,id',
             'breed_id' => 'nullable|exists:pet_breeds,id',
-            'type_id' => 'nullable|exists:pet_types,id',
             'gender' => 'required|in:male,female,unknown',
             'birth_date' => 'nullable|date|before_or_equal:today',
             'weight' => 'nullable|numeric|min:0|max:500',
-            'size' => 'nullable|in:tiny,small,medium,large,giant',
+            'size' => 'nullable|in:small,medium,large,extra_large',
             'color' => 'nullable|string|max:100',
             'markings' => 'nullable|string|max:500',
-            'microchip_number' => 'nullable|string|max:50|unique:pets,microchip_number',
             'is_neutered' => 'boolean',
             'special_needs' => 'nullable|string|max:1000',
             'notes' => 'nullable|string|max:1000',
@@ -157,7 +160,6 @@ class PetController extends Controller
         ]);
 
         $validated['owner_id'] = Auth::id();
-        $validated['is_active'] = true;
 
         // Handle profile image upload
         if ($request->hasFile('profile_image')) {
@@ -200,25 +202,26 @@ class PetController extends Controller
             'appointments.clinic'
         ]);
 
+        $breedRelation = $pet->breed_id && $pet->relationLoaded('breed') ? $pet->getRelation('breed') : null;
+        
         $petData = [
             'id' => $pet->id,
             'name' => $pet->name,
-            'species' => $pet->species,
-                'breed' => $pet->breed ? [
-                    'id' => $pet->breed->id,
-                    'name' => $pet->breed->name,
-                    'species' => $pet->breed->species,
-                    'size_category' => $pet->breed->size_category,
-                    'size_category_display' => $pet->breed->size_category_display,
-                    'temperament' => $pet->breed->temperament,
-                    'life_expectancy_range' => $pet->breed->life_expectancy_range,
-                    'weight_range' => $pet->breed->weight_range,
-                    'height_range' => $pet->breed->height_range,
-                    'common_health_issues' => $pet->breed->common_health_issues,
-                    'grooming_requirements' => $pet->breed->grooming_requirements,
-                    'exercise_requirements' => $pet->breed->exercise_requirements,
-                    'description' => $pet->breed->description,
-                ] : null,
+            'breed' => $breedRelation ? [
+                'id' => $breedRelation->id,
+                'name' => $breedRelation->name,
+                'species' => $breedRelation->species,
+                    'size_category' => $breedRelation->size_category,
+                    'size_category_display' => $breedRelation->size_category_display,
+                    'temperament' => $breedRelation->temperament,
+                    'life_expectancy_range' => $breedRelation->life_expectancy_range,
+                    'weight_range' => $breedRelation->weight_range,
+                    'height_range' => $breedRelation->height_range,
+                    'common_health_issues' => $breedRelation->common_health_issues,
+                    'grooming_requirements' => $breedRelation->grooming_requirements,
+                    'exercise_requirements' => $breedRelation->exercise_requirements,
+                    'description' => $breedRelation->description,
+                ] : ($pet->getAttributeValue('breed') ? ['name' => $pet->getAttributeValue('breed')] : null),
             'type' => $pet->type ? [
                 'id' => $pet->type->id,
                 'name' => $pet->type->name,
@@ -226,7 +229,6 @@ class PetController extends Controller
             ] : null,
             'gender' => $pet->gender,
             'gender_display' => $pet->gender_display,
-            'age' => $pet->age,
             'age_in_years' => $pet->age_in_years,
             'birth_date' => $pet->birth_date?->format('Y-m-d'),
             'weight' => $pet->weight,
@@ -356,56 +358,41 @@ class PetController extends Controller
 
         $pet->load(['breed', 'type']);
 
-        $breeds = PetBreed::orderBy('name')->get(['id', 'name', 'species', 'characteristics']);
-        $types = PetType::orderBy('name')->get(['id', 'name', 'species', 'description']);
+        $petTypes = PetType::orderBy('name')->get()->map(function ($type) {
+            return [
+                'id' => $type->id,
+                'name' => $type->name,
+            ];
+        });
+        
+        $breeds = PetBreed::orderBy('name')->get()->map(function ($breed) {
+            return [
+                'id' => $breed->id,
+                'name' => $breed->name,
+                'type_id' => PetType::where('species', $breed->species)->first()?->id,
+            ];
+        });
 
         $petData = [
             'id' => $pet->id,
             'name' => $pet->name,
-            'species' => $pet->species,
-            'breed_id' => $pet->breed_id,
             'type_id' => $pet->type_id,
+            'breed_id' => $pet->breed_id,
             'gender' => $pet->gender,
             'birth_date' => $pet->birth_date?->format('Y-m-d'),
             'weight' => $pet->weight,
             'size' => $pet->size,
             'color' => $pet->color,
             'markings' => $pet->markings,
-            'microchip_number' => $pet->microchip_number,
             'is_neutered' => $pet->is_neutered,
             'special_needs' => $pet->special_needs,
             'notes' => $pet->notes,
-            'profile_image' => $pet->profile_image,
-            'images' => $pet->images,
         ];
 
         return Inertia::render('pets/editPet', [
             'pet' => $petData,
+            'petTypes' => $petTypes,
             'breeds' => $breeds,
-            'types' => $types,
-            'species_options' => [
-                'dog' => 'Dog',
-                'cat' => 'Cat',
-                'bird' => 'Bird',
-                'rabbit' => 'Rabbit',
-                'hamster' => 'Hamster',
-                'guinea_pig' => 'Guinea Pig',
-                'reptile' => 'Reptile',
-                'fish' => 'Fish',
-                'other' => 'Other',
-            ],
-            'gender_options' => [
-                'male' => 'Male',
-                'female' => 'Female',
-                'unknown' => 'Unknown',
-            ],
-            'size_options' => [
-                'tiny' => 'Tiny',
-                'small' => 'Small',
-                'medium' => 'Medium',
-                'large' => 'Large',
-                'giant' => 'Giant',
-            ],
         ]);
     }
 
@@ -421,16 +408,14 @@ class PetController extends Controller
 
         $validated = $request->validate([
             'name' => 'sometimes|required|string|max:255',
-            'species' => 'sometimes|required|string|max:50',
+            'type_id' => 'sometimes|required|exists:pet_types,id',
             'breed_id' => 'nullable|exists:pet_breeds,id',
-            'type_id' => 'nullable|exists:pet_types,id',
             'gender' => 'sometimes|required|in:male,female,unknown',
             'birth_date' => 'nullable|date|before_or_equal:today',
             'weight' => 'nullable|numeric|min:0|max:500',
-            'size' => 'nullable|in:tiny,small,medium,large,giant',
+            'size' => 'nullable|in:small,medium,large,extra_large',
             'color' => 'nullable|string|max:100',
             'markings' => 'nullable|string|max:500',
-            'microchip_number' => 'nullable|string|max:50|unique:pets,microchip_number,' . $pet->id,
             'is_neutered' => 'boolean',
             'special_needs' => 'nullable|string|max:1000',
             'notes' => 'nullable|string|max:1000',
@@ -524,24 +509,23 @@ class PetController extends Controller
             abort(403, 'Unauthorized access to pet information.');
         }
 
-        // Soft delete by setting is_active to false
-        $pet->update(['is_active' => false]);
+        // Delete the pet (you can use soft deletes if needed)
+        $petName = $pet->name;
+        
+        // Delete associated images
+        if ($pet->profile_image) {
+            Storage::disk('public')->delete($pet->profile_image);
+        }
+        if ($pet->images) {
+            foreach ($pet->images as $image) {
+                Storage::disk('public')->delete($image);
+            }
+        }
+        
+        $pet->delete();
 
         return redirect()->route('petsIndex')
-            ->with('success', "Pet '{$pet->name}' has been removed from your active pets.");
+            ->with('success', "Pet '{$petName}' has been removed.");
     }
 
-    /**
-     * Get breeds for a specific species.
-     */
-    public function getBreedsBySpecies(Request $request)
-    {
-        $species = $request->get('species');
-        
-        $breeds = PetBreed::ofSpecies($species)
-            ->orderBy('name')
-            ->get(['id', 'name', 'species', 'characteristics']);
-
-        return response()->json($breeds);
-    }
 }

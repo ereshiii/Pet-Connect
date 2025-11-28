@@ -72,12 +72,11 @@ class ReviewSeeder extends Seeder
         ];
 
         $reviewsCreated = 0;
-        $reviewedClinics = []; // Track user-clinic combinations to avoid duplicates
         
-        // Create reviews for ~70% of completed appointments
+        // Create reviews for ~85% of completed appointments (more reviews for demo)
         foreach ($completedAppointments as $appointment) {
-            // Skip some appointments randomly (30% won't have reviews)
-            if (rand(1, 100) <= 30) {
+            // Skip some appointments randomly (15% won't have reviews)
+            if (rand(1, 100) <= 15) {
                 continue;
             }
 
@@ -85,12 +84,6 @@ class ReviewSeeder extends Seeder
             $existingReview = ClinicReview::where('appointment_id', $appointment->id)->first();
             if ($existingReview) {
                 continue;
-            }
-
-            // Check if this user has already reviewed this clinic (unique constraint)
-            $userClinicKey = $appointment->owner_id . '-' . $appointment->clinic_id;
-            if (in_array($userClinicKey, $reviewedClinics)) {
-                continue; // Skip if user already reviewed this clinic
             }
 
             // Generate realistic rating distribution (skewed positive)
@@ -142,9 +135,6 @@ class ReviewSeeder extends Seeder
             }
 
             ClinicReview::create($reviewData);
-
-            // Mark this user-clinic combination as reviewed
-            $reviewedClinics[] = $userClinicKey;
 
             $starEmoji = str_repeat('⭐', $rating);
             $clinicName = $appointment->clinic->clinic_name ?? 'Unknown Clinic';

@@ -4,6 +4,7 @@ import Icon from '@/components/Icon.vue';
 import { viewMap, clinicDetails, booking } from '@/routes';
 import { Head, router } from '@inertiajs/vue3';
 import { ref, onMounted, computed } from 'vue';
+import { Filter, X } from 'lucide-vue-next';
 
 // Props interface
 interface Clinic {
@@ -215,7 +216,7 @@ onUnmounted(() => {
 <template>
     <Head title="Fullscreen Clinic Map" />
 
-    <div class="fixed inset-0 bg-gray-900 z-50">
+    <div class="fixed inset-0 bg-background z-50">
         <!-- Fullscreen Map Container -->
         <div class="relative w-full h-full">
             <MapComponent
@@ -233,16 +234,20 @@ onUnmounted(() => {
             >
                 <!-- Legend -->
                 <template #legend>
-                    <div v-if="showControls" class="absolute bottom-4 left-4 bg-gray-900 border border-gray-800 rounded-lg shadow-lg p-3 text-xs z-[9999]">
-                        <h6 class="font-semibold mb-2 text-white">Legend</h6>
+                    <div v-if="showControls" class="absolute bottom-4 left-4 bg-card border border-border rounded-lg shadow-lg p-3 text-xs z-[9999]">
+                        <h6 class="font-semibold mb-2 text-foreground">Legend</h6>
                         <div class="space-y-1">
                             <div class="flex items-center gap-2">
                                 <div class="w-3 h-3 bg-blue-600 rounded-full"></div>
-                                <span class="text-gray-300">Veterinary Clinic</span>
+                                <span class="text-muted-foreground">Veterinary Clinic</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <div class="w-3 h-3 bg-red-600 rounded-full"></div>
+                                <span class="text-muted-foreground">Emergency Hospital</span>
                             </div>
                             <div class="flex items-center gap-2">
                                 <div class="w-3 h-3 bg-green-600 rounded-full"></div>
-                                <span class="text-gray-300">Your Location</span>
+                                <span class="text-muted-foreground">Your Location</span>
                             </div>
                         </div>
                     </div>
@@ -251,34 +256,34 @@ onUnmounted(() => {
 
             <!-- Top Controls Bar (Outside Map Component) -->
             <div v-if="showControls" class="absolute top-4 left-4 right-4 z-[9999]">
-                <div class="flex justify-between items-start">
+                <div class="flex flex-col sm:flex-row justify-between items-start gap-3">
                     <!-- Left: Title and Stats -->
-                    <div class="bg-gray-900 border border-gray-800 rounded-lg shadow-lg p-4 max-w-md">
-                        <h1 class="text-lg font-semibold text-white mb-1">
+                    <div class="bg-card border border-border rounded-lg shadow-lg p-3 sm:p-4 max-w-md w-full sm:w-auto">
+                        <h1 class="text-base sm:text-lg font-semibold text-foreground mb-1">
                             Clinic Locations - Fullscreen
                         </h1>
-                        <p class="text-sm text-gray-400">
+                        <p class="text-xs sm:text-sm text-muted-foreground">
                             {{ filteredClinics.length }} of {{ props.clinics.length }} clinics shown
                         </p>
-                        <div v-if="serviceFilter || ratingFilter" class="mt-2 text-xs text-gray-400">
+                        <div v-if="serviceFilter || ratingFilter" class="mt-2 text-xs text-muted-foreground">
                             <span v-if="serviceFilter">Category: {{ serviceFilter }}</span>
                             <span v-if="ratingFilter" class="ml-2">Rating: {{ ratingFilter }}+</span>
                         </div>
                     </div>
 
                     <!-- Right: Action Buttons -->
-                    <div class="flex gap-2">
+                    <div class="flex gap-2 w-full sm:w-auto">
                         <button @click="toggleMiniFilters" 
-                                class="bg-gray-900 border border-gray-800 text-gray-300 p-3 rounded-lg shadow-lg hover:bg-gray-800 transition-colors">
-                            <Icon name="filter" class="w-5 h-5" />
+                                class="flex-1 sm:flex-none bg-card border border-border text-foreground p-2 sm:p-3 rounded-lg shadow-lg hover:bg-muted transition-colors">
+                            <Filter class="w-4 h-4 sm:w-5 sm:h-5" />
                         </button>
                         <button @click="toggleControls" 
-                                class="bg-gray-900 border border-gray-800 text-gray-300 p-3 rounded-lg shadow-lg hover:bg-gray-800 transition-colors">
-                            <Icon :name="showControls ? 'eyeOff' : 'eye'" class="w-5 h-5" />
+                                class="flex-1 sm:flex-none bg-card border border-border text-foreground p-2 sm:p-3 rounded-lg shadow-lg hover:bg-muted transition-colors">
+                            <Icon :name="showControls ? 'eyeOff' : 'eye'" class="w-4 h-4 sm:w-5 sm:h-5" />
                         </button>
                         <button @click="exitFullscreen" 
-                                class="bg-gradient-to-r from-red-600 to-red-700 text-white p-3 rounded-lg shadow-lg hover:from-red-700 hover:to-red-800 transition-colors">
-                            <Icon name="x" class="w-5 h-5" />
+                                class="flex-1 sm:flex-none bg-destructive text-destructive-foreground p-2 sm:p-3 rounded-lg shadow-lg hover:bg-destructive/90 transition-colors">
+                            <X class="w-4 h-4 sm:w-5 sm:h-5" />
                         </button>
                     </div>
                 </div>
@@ -286,20 +291,20 @@ onUnmounted(() => {
 
             <!-- Mini Filters Panel (Overlay) -->
             <div v-if="showMiniFilters && showControls" 
-                 class="absolute top-28 left-4 w-80 bg-gray-900 border border-gray-800 rounded-lg shadow-xl p-4 z-[9999]">
+                 class="absolute top-28 sm:top-24 left-4 right-4 sm:right-auto w-auto sm:w-80 bg-card border border-border rounded-lg shadow-xl p-4 z-[9999] max-h-[calc(100vh-10rem)] overflow-y-auto">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-sm font-semibold text-white">Quick Filters</h3>
-                    <button @click="toggleMiniFilters" class="text-gray-400 hover:text-gray-300">
-                        <Icon name="x" class="w-4 h-4" />
+                    <h3 class="text-sm font-semibold text-foreground">Quick Filters</h3>
+                    <button @click="toggleMiniFilters" class="text-muted-foreground hover:text-foreground">
+                        <X class="w-4 h-4" />
                     </button>
                 </div>
                 
                 <div class="space-y-3">
                     <!-- Category Filter -->
                     <div>
-                        <label class="block text-xs font-medium text-gray-300 mb-1">Category</label>
+                        <label class="block text-xs font-medium text-foreground mb-1">Category</label>
                         <select v-model="serviceFilter" 
-                                class="w-full px-2 py-1 border border-gray-700 rounded text-xs bg-gray-800 text-gray-100">
+                                class="w-full px-2 py-1 border border-border rounded text-xs bg-background text-foreground">
                             <option value="">All categories</option>
                             <option value="consultation">Consultation</option>
                             <option value="vaccination">Vaccination</option>
@@ -319,9 +324,9 @@ onUnmounted(() => {
 
                     <!-- Rating Filter -->
                     <div>
-                        <label class="block text-xs font-medium text-gray-300 mb-1">Minimum rating</label>
+                        <label class="block text-xs font-medium text-foreground mb-1">Minimum rating</label>
                         <select v-model="ratingFilter" 
-                                class="w-full px-2 py-1 border border-gray-700 rounded text-xs bg-gray-800 text-gray-100">
+                                class="w-full px-2 py-1 border border-border rounded text-xs bg-background text-foreground">
                             <option value="">Any rating</option>
                             <option value="5">5 stars</option>
                             <option value="4">4+ stars</option>
@@ -333,11 +338,11 @@ onUnmounted(() => {
                     <!-- Filter Buttons -->
                     <div class="flex gap-2 pt-2">
                         <button @click="applyFilters" 
-                                class="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-1 px-2 rounded text-xs hover:from-blue-700 hover:to-purple-700">
+                                class="flex-1 bg-primary text-primary-foreground py-1 px-2 rounded text-xs hover:bg-primary/90">
                             Apply
                         </button>
                         <button @click="clearFilters" 
-                                class="flex-1 border border-gray-700 text-gray-300 py-1 px-2 rounded text-xs hover:bg-gray-800">
+                                class="flex-1 border border-border text-foreground py-1 px-2 rounded text-xs hover:bg-muted">
                             Clear
                         </button>
                     </div>
@@ -346,21 +351,21 @@ onUnmounted(() => {
 
             <!-- Selected Clinic Info (Bottom Right) -->
             <div v-if="selectedClinic && showControls" 
-                 class="absolute bottom-4 right-4 w-80 bg-gray-900 border border-gray-800 rounded-lg shadow-xl p-4 z-[9999]">
+                 class="absolute bottom-4 left-4 right-4 sm:left-auto sm:right-4 w-auto sm:w-80 bg-card border border-border rounded-lg shadow-xl p-3 sm:p-4 z-[9999]">
                 <div class="flex justify-between items-start mb-2">
-                    <h4 class="font-semibold text-white text-sm">Selected Clinic</h4>
-                    <button @click="selectedClinic = null" class="text-gray-400 hover:text-gray-300">
-                        <Icon name="x" class="w-4 h-4" />
+                    <h4 class="font-semibold text-foreground text-sm">Selected Clinic</h4>
+                    <button @click="selectedClinic = null" class="text-muted-foreground hover:text-foreground">
+                        <X class="w-4 h-4" />
                     </button>
                 </div>
                 
-                <div class="bg-gray-800 border border-gray-700 rounded-lg p-3">
-                    <h5 class="font-semibold text-white text-sm">{{ selectedClinic.name }}</h5>
-                    <p class="text-gray-300 text-xs mt-1">📍 {{ selectedClinic.address }}</p>
+                <div class="bg-muted border border-border rounded-lg p-3">
+                    <h5 class="font-semibold text-foreground text-sm">{{ selectedClinic.name }}</h5>
+                    <p class="text-muted-foreground text-xs mt-1">📍 {{ selectedClinic.address }}</p>
                     <div class="flex items-center mt-2 text-xs">
                         <span class="text-yellow-400">{{ selectedClinic.stars }}</span>
-                        <span class="text-gray-300 ml-1">({{ Number(selectedClinic.rating || 0).toFixed(1) }})</span>
-                        <span class="text-gray-400 ml-2">{{ selectedClinic.total_reviews }} reviews</span>
+                        <span class="text-foreground ml-1">({{ Number(selectedClinic.rating || 0).toFixed(1) }})</span>
+                        <span class="text-muted-foreground ml-2">{{ selectedClinic.total_reviews }} reviews</span>
                     </div>
                     <div class="flex items-center mt-1 text-xs">
                         <span :class="selectedClinic.status_color">{{ selectedClinic.status }}</span>
@@ -368,18 +373,18 @@ onUnmounted(() => {
                             24/7
                         </span>
                     </div>
-                    <div class="text-xs text-gray-400 mt-2">
+                    <div class="text-xs text-muted-foreground mt-2">
                         <span class="font-medium">Categories:</span>
                         {{ selectedClinic.services?.slice(0, 3).join(', ') }}
                         <span v-if="selectedClinic.services?.length > 3">...</span>
                     </div>
                     <div class="flex gap-2 mt-3">
                         <button @click="bookSelectedClinic" 
-                                class="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2 px-3 rounded-lg text-xs hover:from-blue-700 hover:to-purple-700">
+                                class="flex-1 bg-primary text-primary-foreground py-2 px-3 rounded-lg text-xs hover:bg-primary/90">
                             Book Appointment
                         </button>
                         <button @click="viewSelectedClinicDetails" 
-                                class="flex-1 border border-gray-600 text-gray-300 py-2 px-3 rounded-lg text-xs hover:bg-gray-700">
+                                class="flex-1 border border-border text-foreground py-2 px-3 rounded-lg text-xs hover:bg-muted">
                             View Details
                         </button>
                     </div>
@@ -389,7 +394,7 @@ onUnmounted(() => {
             <!-- Hide/Show Controls Toggle (Always Visible) -->
             <button v-if="!showControls" 
                     @click="toggleControls"
-                    class="absolute top-4 right-4 bg-gray-900 border border-gray-800 text-gray-300 p-3 rounded-full shadow-lg hover:bg-gray-800 transition-colors z-[10000]">
+                    class="absolute top-4 right-4 bg-card border border-border text-foreground p-3 rounded-full shadow-lg hover:bg-muted transition-colors z-[10000]">
                 <Icon name="eye" class="w-5 h-5" />
             </button>
         </div>

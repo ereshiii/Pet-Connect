@@ -20,8 +20,6 @@ class PetMedicalRecord extends Model
         'description',
         'date',
         'cost',
-        'medication',
-        'instructions',
         'follow_up_date',
         'attachments',
         // Common fields for all record types

@@ -28,7 +28,8 @@ class StoreAppointmentRequest extends FormRequest
         return [
             'pet_id' => 'required|exists:pets,id',
             'clinic_id' => 'required|exists:clinic_registrations,id',
-            'service_id' => 'nullable|exists:clinic_services,id',
+            'service_ids' => 'required|array|size:1',
+            'service_ids.*' => 'required|exists:clinic_services,id',
             'clinic_staff_id' => 'nullable|exists:clinic_staff,id',
             'scheduled_at' => [
                 'required',
@@ -212,7 +213,11 @@ class StoreAppointmentRequest extends FormRequest
             'pet_id.exists' => 'The selected pet does not exist.',
             'clinic_id.required' => 'Please select a clinic for this appointment.',
             'clinic_id.exists' => 'The selected clinic does not exist.',
-            'service_id.exists' => 'The selected service does not exist.',
+            'service_ids.required' => 'Please select a service for this appointment.',
+            'service_ids.array' => 'Service selection is invalid.',
+            'service_ids.size' => 'Please select exactly one service.',
+            'service_ids.*.required' => 'Please select a service.',
+            'service_ids.*.exists' => 'The selected service does not exist.',
             'clinic_staff_id.exists' => 'The selected veterinarian does not exist.',
             'scheduled_at.required' => 'Please select an appointment date and time.',
             'scheduled_at.date' => 'Please provide a valid appointment date and time.',
@@ -308,7 +313,8 @@ class StoreAppointmentRequest extends FormRequest
         return [
             'pet_id' => 'pet',
             'clinic_id' => 'clinic',
-            'service_id' => 'service',
+            'service_ids' => 'service',
+            'service_ids.*' => 'service',
             'clinic_staff_id' => 'veterinarian',
             'scheduled_at' => 'appointment date and time',
             'duration_minutes' => 'duration',

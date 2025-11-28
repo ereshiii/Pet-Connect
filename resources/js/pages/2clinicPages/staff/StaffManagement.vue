@@ -232,7 +232,7 @@ onMounted(() => {
     <Head title="Staff Management" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-6">
+        <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-6 pb-24 md:pb-6">
             <!-- Error Alert -->
             <div v-if="pageErrors?.error" class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
                 <div class="flex items-start gap-2">
@@ -254,30 +254,38 @@ onMounted(() => {
                 <div class="flex gap-2">
                     <button 
                         @click="openAddModal"
-                        class="btn btn-primary flex items-center gap-2"
+                        class="hidden md:flex btn btn-primary items-center gap-2"
                     >
-                        <UserPlus class="h-5 w-5" />
-                        Add Vet
+                        <UserPlus class="h-4 w-4" />
+                        <span>Add Vet</span>
                     </button>
                 </div>
             </div>
 
+            <!-- Floating Add Button (Mobile Only) -->
+            <button 
+                @click="openAddModal"
+                class="md:hidden fixed bottom-6 right-6 z-40 flex items-center justify-center w-14 h-14 bg-primary text-primary-foreground hover:bg-primary/90 rounded-full shadow-lg transition-all hover:scale-110"
+            >
+                <UserPlus class="h-6 w-6" />
+            </button>
+
             <!-- Staff Directory -->
             <div class="rounded-lg border bg-card">
                 <div class="p-6 border-b">
-                    <div class="flex items-center justify-between">
+                    <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                         <h2 class="text-lg font-semibold">Veterinarians Directory</h2>
-                        <div class="flex gap-2">
+                        <div class="w-full md:w-auto md:flex-1 md:max-w-xs">
                             <input 
                                 type="search" 
                                 placeholder="Search veterinarians..." 
-                                class="form-input"
+                                class="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                             />
                         </div>
                     </div>
                 </div>
 
-                <div class="grid gap-4 p-6 md:grid-cols-2 lg:grid-cols-3">
+                <div class="grid gap-4 p-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                     <div 
                         v-for="member in staff_members" 
                         :key="member.id"

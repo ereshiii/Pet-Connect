@@ -9,16 +9,9 @@ import {
     Search, 
     Plus, 
     Filter, 
-    Eye, 
-    EyeOff, 
     Edit, 
     Copy, 
     Trash2, 
-    DollarSign, 
-    Clock, 
-    Users, 
-    TrendingUp,
-    Calendar,
     Settings,
     MoreVertical,
     X
@@ -53,9 +46,6 @@ interface Service {
     category_display: string;
     duration_minutes: number;
     formatted_duration: string;
-    is_active: boolean;
-    requires_appointment: boolean;
-    is_emergency_service: boolean;
     usage: ServiceUsage;
     created_at: string;
     updated_at: string;
@@ -63,8 +53,6 @@ interface Service {
 
 interface ServiceStats {
     total_services: number;
-    active_services: number;
-    inactive_services: number;
     category_stats: Record<string, number>;
     popular_services: Array<{
         name: string;
@@ -115,9 +103,6 @@ const createForm = useForm({
     description: '',
     category: 'consultation',
     duration_minutes: 30,
-    is_active: true,
-    requires_appointment: true,
-    is_emergency_service: false,
 });
 
 const editForm = useForm({
@@ -125,14 +110,10 @@ const editForm = useForm({
     description: '',
     category: '',
     duration_minutes: 30,
-    is_active: true,
-    requires_appointment: true,
-    is_emergency_service: false,
 });
 
 const filterForm = useForm({
     category: props.filters.category || 'all',
-    status: props.filters.status || 'all',
     search: props.filters.search || '',
 });
 
@@ -155,22 +136,17 @@ const filteredServices = computed(() => {
         filtered = filtered.filter(service => service.category === filterForm.category);
     }
     
-    // Apply status filter (client-side)
-    if (filterForm.status && filterForm.status !== 'all') {
-        const isActive = filterForm.status === 'active';
-        filtered = filtered.filter(service => service.is_active === isActive);
-    }
-    
     return filtered;
 });
 
 const shouldGroupByCategory = computed(() => {
-    return filterForm.category && filterForm.category !== 'all';
+    // Only group by category when a specific category is selected (not 'all' and not empty)
+    return filterForm.category && filterForm.category !== 'all' && filterForm.category !== '';
 });
 
 const displayServices = computed(() => {
     if (shouldGroupByCategory.value) {
-        // Group by category when filtered
+        // Group by category when filtered by specific category
         const grouped: Record<string, Service[]> = {};
         filteredServices.value.forEach(service => {
             if (!grouped[service.category]) {
@@ -180,24 +156,25 @@ const displayServices = computed(() => {
         });
         return grouped;
     } else {
-        // Show all services together
+        // When showing all categories, return ungrouped services
         return { 'all': filteredServices.value };
     }
 });
 
 const categoryOptions = computed(() => {
-    return Object.entries(props.categories).map(([value, label]) => ({
-        value,
-        label,
-        count: props.stats.category_stats[value] || 0
-    }));
+    return Object.entries(props.categories)
+        .map(([value, label]) => ({
+            value,
+            label,
+            count: props.stats.category_stats[value] || 0
+        }))
+        .filter(option => option.count > 0); // Only show categories with services
 });
 
 // Methods
 const search = () => {
     router.get(clinicServices().url, {
         category: filterForm.category === 'all' ? '' : filterForm.category,
-        status: filterForm.status === 'all' ? '' : filterForm.status,
         search: filterForm.search,
     }, {
         preserveState: true,
@@ -207,7 +184,6 @@ const search = () => {
 
 const resetFilters = () => {
     filterForm.category = 'all';
-    filterForm.status = 'all';
     filterForm.search = '';
     router.get(clinicServices().url, {}, {
         preserveState: true,
@@ -233,9 +209,6 @@ const openEditModal = (service: Service) => {
     editForm.description = service.description;
     editForm.category = service.category;
     editForm.duration_minutes = service.duration_minutes;
-    editForm.is_active = service.is_active;
-    editForm.requires_appointment = service.requires_appointment;
-    editForm.is_emergency_service = service.is_emergency_service;
     showEditModal.value = true;
     closeDropdown();
 };
@@ -257,14 +230,6 @@ const updateService = () => {
             showEditModal.value = false;
             editForm.reset();
             editingService.value = null;
-        },
-    });
-};
-
-const toggleServiceStatus = (service: Service) => {
-    router.patch(`/clinic/services/${service.id}/toggle-status`, {}, {
-        onSuccess: () => {
-            closeDropdown();
         },
     });
 };
@@ -334,7 +299,7 @@ onMounted(() => {
     <Head title="Services Management" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-6 rounded-xl p-6">
+        <div class="flex h-full flex-1 flex-col gap-6 rounded-xl p-6 pb-24 md:pb-6">
             <!-- Header -->
             <div class="flex items-center justify-between">
                 <div>
@@ -343,12 +308,20 @@ onMounted(() => {
                 </div>
                 <button 
                     @click="openCreateModal"
-                    class="inline-flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-sm font-medium transition-colors"
+                    class="hidden md:inline-flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-sm font-medium transition-colors"
                 >
                     <Plus class="h-4 w-4" />
                     Add Service
                 </button>
             </div>
+
+            <!-- Floating Add Button (Mobile Only) -->
+            <button 
+                @click="openCreateModal"
+                class="md:hidden fixed bottom-6 right-6 z-40 flex items-center justify-center w-14 h-14 bg-primary text-primary-foreground hover:bg-primary/90 rounded-full shadow-lg transition-all hover:scale-110"
+            >
+                <Plus class="h-6 w-6" />
+            </button>
 
             <!-- Filters -->
             <div class="rounded-lg border bg-card">
@@ -359,7 +332,7 @@ onMounted(() => {
                     </h3>
                 </div>
                 <div class="p-4">
-                    <div class="grid gap-4 md:grid-cols-4">
+                    <div class="grid gap-4 md:grid-cols-2">
                         <!-- Search -->
                         <div class="relative">
                             <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -376,42 +349,22 @@ onMounted(() => {
                         <select
                             v-model="filterForm.category"
                             @change="search"
-                            class="border border-input bg-background px-3 py-2 text-sm ring-offset-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                            class="border border-input bg-background text-foreground px-3 py-2 text-sm ring-offset-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                         >
-                            <option value="all">All Categories</option>
+                            <option value="all" class="bg-background text-foreground">All Categories</option>
                             <option 
                                 v-for="category in categoryOptions" 
                                 :key="category.value" 
                                 :value="category.value"
+                                class="bg-background text-foreground"
                             >
                                 {{ category.label }} ({{ category.count }})
                             </option>
                         </select>
-                        
-                        <!-- Status Filter -->
-                        <select
-                            v-model="filterForm.status"
-                            @change="search"
-                            class="border border-input bg-background px-3 py-2 text-sm ring-offset-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                        >
-                            <option value="all">All Status</option>
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
-                        
-                        <!-- Reset Button -->
-                        <button 
-                            @click="resetFilters"
-                            class="px-4 py-2 text-sm border border-input rounded-md hover:bg-muted transition-colors"
-                            :class="{ 'opacity-50 cursor-not-allowed': filterForm.category === 'all' && filterForm.status === 'all' && !filterForm.search }"
-                            :disabled="filterForm.category === 'all' && filterForm.status === 'all' && !filterForm.search"
-                        >
-                            Reset Filters
-                        </button>
                     </div>
                     
                     <!-- Active Filters Display -->
-                    <div v-if="filterForm.category !== 'all' || filterForm.status !== 'all' || filterForm.search" class="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t">
+                    <div v-if="filterForm.category !== 'all' || filterForm.search" class="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t">
                         <span class="text-xs text-muted-foreground font-medium">Active filters:</span>
                         
                         <span v-if="filterForm.search" class="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded-md text-xs font-medium">
@@ -427,13 +380,6 @@ onMounted(() => {
                                 <X class="h-3 w-3" />
                             </button>
                         </span>
-                        
-                        <span v-if="filterForm.status !== 'all'" class="inline-flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 rounded-md text-xs font-medium">
-                            Status: {{ filterForm.status === 'active' ? 'Active' : 'Inactive' }}
-                            <button @click="filterForm.status = 'all'; search()" class="hover:bg-green-200 dark:hover:bg-green-800 rounded-full p-0.5 transition-colors">
-                                <X class="h-3 w-3" />
-                            </button>
-                        </span>
                     </div>
                 </div>
             </div>
@@ -442,12 +388,12 @@ onMounted(() => {
             <div class="space-y-6">
                 <template v-for="(services, category) in displayServices" :key="category">
                     <div class="rounded-lg border bg-card">
-                        <!-- Category Header (only shown when filtered by category) -->
-                        <div v-if="shouldGroupByCategory" class="flex items-center justify-between p-4 border-b">
+                        <!-- Category Header -->
+                        <div v-if="category !== 'all'" class="flex items-center justify-between p-4 border-b">
                             <div class="flex items-center gap-3">
                                 <span class="text-2xl">{{ getCategoryIcon(category) }}</span>
                                 <div>
-                                    <h2 class="text-lg font-semibold">{{ categories[category] }}</h2>
+                                    <h2 class="text-lg font-semibold">{{ categories[category] || services[0]?.category_display || category }}</h2>
                                     <p class="text-sm text-muted-foreground">{{ services.length }} service(s)</p>
                                 </div>
                             </div>
@@ -460,19 +406,12 @@ onMounted(() => {
                                 v-for="service in services"
                                 :key="service.id"
                                 class="relative rounded-lg border p-4 hover:shadow-md transition-shadow"
-                                :class="{ 'opacity-60': !service.is_active }"
                             >
                                 <!-- Service Header -->
                                 <div class="flex items-start justify-between mb-3">
                                     <div class="flex-1">
-                                        <h3 class="font-semibold text-foreground flex items-center gap-2">
+                                        <h3 class="font-semibold text-foreground">
                                             {{ service.name }}
-                                            <span 
-                                                v-if="service.is_emergency_service"
-                                                class="px-1.5 py-0.5 bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded text-xs font-medium"
-                                            >
-                                                Emergency
-                                            </span>
                                         </h3>
                                         <p class="text-sm text-muted-foreground mt-1">{{ service.description || 'No description' }}</p>
                                     </div>
@@ -504,14 +443,6 @@ onMounted(() => {
                                                 <Copy class="h-4 w-4" />
                                                 Duplicate
                                             </button>
-                                            <button 
-                                                @click="toggleServiceStatus(service)"
-                                                class="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-muted text-left"
-                                                :class="service.is_active ? 'text-yellow-600' : 'text-green-600'"
-                                            >
-                                                <component :is="service.is_active ? EyeOff : Eye" class="h-4 w-4" />
-                                                {{ service.is_active ? 'Deactivate' : 'Activate' }}
-                                            </button>
                                             <hr class="my-1" />
                                             <button 
                                                 @click="deleteService(service)"
@@ -527,24 +458,12 @@ onMounted(() => {
                                 <!-- Service Details -->
                                 <div class="space-y-2 mb-4">
                                     <div class="flex justify-between">
+                                        <span class="text-sm text-muted-foreground">Category:</span>
+                                        <span class="text-sm">{{ service.category_display }}</span>
+                                    </div>
+                                    <div class="flex justify-between">
                                         <span class="text-sm text-muted-foreground">Duration:</span>
                                         <span class="text-sm">{{ service.formatted_duration }}</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-sm text-muted-foreground">Appointment:</span>
-                                        <span class="text-sm">{{ service.requires_appointment ? 'Required' : 'Walk-in OK' }}</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-sm text-muted-foreground">Status:</span>
-                                        <span 
-                                            class="text-xs px-2 py-1 rounded-full font-medium"
-                                            :class="{
-                                                'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200': service.is_active,
-                                                'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200': !service.is_active
-                                            }"
-                                        >
-                                            {{ service.is_active ? 'Active' : 'Inactive' }}
-                                        </span>
                                     </div>
                                 </div>
 
@@ -575,7 +494,7 @@ onMounted(() => {
                     <div class="text-muted-foreground">
                         <Settings class="h-12 w-12 mx-auto mb-4 opacity-50" />
                         <p class="text-lg font-medium mb-2">No services found</p>
-                        <p v-if="filterForm.search || filterForm.category !== 'all' || filterForm.status !== 'all'">
+                        <p v-if="filterForm.search || filterForm.category !== 'all'">
                             Try adjusting your filters
                         </p>
                         <p v-else>
@@ -640,10 +559,15 @@ onMounted(() => {
                             <select
                                 v-model="createForm.category"
                                 required
-                                class="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                                class="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground"
                             >
-                                <option value="">Select category</option>
-                                <option v-for="(label, value) in categories" :key="value" :value="value">
+                                <option value="" class="bg-background text-foreground">Select category</option>
+                                <option 
+                                    v-for="(label, value) in categories" 
+                                    :key="value" 
+                                    :value="value"
+                                    class="bg-background text-foreground"
+                                >
                                     {{ label }}
                                 </option>
                             </select>
@@ -680,35 +604,6 @@ onMounted(() => {
                                 {{ createForm.errors.duration_minutes }}
                             </div>
                         </div>
-                    </div>
-
-                    <div class="space-y-3">
-                        <label class="flex items-center gap-2">
-                            <input
-                                v-model="createForm.is_active"
-                                type="checkbox"
-                                class="rounded border-gray-300 text-primary focus:ring-primary"
-                            />
-                            <span class="text-sm">Service is active and bookable</span>
-                        </label>
-
-                        <label class="flex items-center gap-2">
-                            <input
-                                v-model="createForm.requires_appointment"
-                                type="checkbox"
-                                class="rounded border-gray-300 text-primary focus:ring-primary"
-                            />
-                            <span class="text-sm">Requires appointment (not walk-in)</span>
-                        </label>
-
-                        <label class="flex items-center gap-2">
-                            <input
-                                v-model="createForm.is_emergency_service"
-                                type="checkbox"
-                                class="rounded border-gray-300 text-primary focus:ring-primary"
-                            />
-                            <span class="text-sm">Emergency service (available 24/7)</span>
-                        </label>
                     </div>
 
                     <div class="flex gap-3 pt-4">
@@ -761,9 +656,14 @@ onMounted(() => {
                             <select
                                 v-model="editForm.category"
                                 required
-                                class="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                                class="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground"
                             >
-                                <option v-for="(label, value) in categories" :key="value" :value="value">
+                                <option 
+                                    v-for="(label, value) in categories" 
+                                    :key="value" 
+                                    :value="value"
+                                    class="bg-background text-foreground"
+                                >
                                     {{ label }}
                                 </option>
                             </select>
@@ -799,35 +699,6 @@ onMounted(() => {
                                 {{ editForm.errors.duration_minutes }}
                             </div>
                         </div>
-                    </div>
-
-                    <div class="space-y-3">
-                        <label class="flex items-center gap-2">
-                            <input
-                                v-model="editForm.is_active"
-                                type="checkbox"
-                                class="rounded border-gray-300 text-primary focus:ring-primary"
-                            />
-                            <span class="text-sm">Service is active and bookable</span>
-                        </label>
-
-                        <label class="flex items-center gap-2">
-                            <input
-                                v-model="editForm.requires_appointment"
-                                type="checkbox"
-                                class="rounded border-gray-300 text-primary focus:ring-primary"
-                            />
-                            <span class="text-sm">Requires appointment (not walk-in)</span>
-                        </label>
-
-                        <label class="flex items-center gap-2">
-                            <input
-                                v-model="editForm.is_emergency_service"
-                                type="checkbox"
-                                class="rounded border-gray-300 text-primary focus:ring-primary"
-                            />
-                            <span class="text-sm">Emergency service (available 24/7)</span>
-                        </label>
                     </div>
 
                     <div class="flex gap-3 pt-4">

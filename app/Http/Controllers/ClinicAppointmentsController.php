@@ -38,50 +38,15 @@ class ClinicAppointmentsController extends Controller
 
         // Get filter parameters
         $status = $request->get('status', 'all');
-        $date = $request->get('date', 'upcoming'); // Changed from 'today' to 'upcoming'
         $search = $request->get('search', '');
-        $page = $request->get('page', 1);
-        $perPage = 15;
 
-        // Build query
-        $query = Appointment::with(['pet.owner', 'pet.type', 'pet.breed', 'service'])
-            ->where('clinic_id', $clinicId);
+        // Build query - only show active appointments (exclude completed, cancelled, no_show)
+        $query = Appointment::with(['pet.owner', 'pet.type', 'pet.breed', 'service', 'veterinarian'])
+            ->where('clinic_id', $clinicId)
+            ->whereIn('status', ['scheduled', 'pending', 'confirmed', 'in_progress']);
 
-        // Apply date filter
-        switch ($date) {
-            case 'today':
-                $query->whereDate('scheduled_at', Carbon::today());
-                break;
-            case 'tomorrow':
-                $query->whereDate('scheduled_at', Carbon::tomorrow());
-                break;
-            case 'upcoming':
-                // Show all future appointments (from today onwards)
-                $query->whereDate('scheduled_at', '>=', Carbon::today());
-                break;
-            case 'this_week':
-                $query->whereBetween('scheduled_at', [
-                    Carbon::now()->startOfWeek(),
-                    Carbon::now()->endOfWeek()
-                ]);
-                break;
-            case 'next_week':
-                $query->whereBetween('scheduled_at', [
-                    Carbon::now()->addWeek()->startOfWeek(),
-                    Carbon::now()->addWeek()->endOfWeek()
-                ]);
-                break;
-            case 'this_month':
-                $query->whereMonth('scheduled_at', Carbon::now()->month)
-                      ->whereYear('scheduled_at', Carbon::now()->year);
-                break;
-            case 'all':
-                // Show all appointments (past and future)
-                break;
-        }
-
-        // Apply status filter
-        if ($status !== 'all') {
+        // Apply additional status filter if provided
+        if ($status !== 'all' && in_array($status, ['scheduled', 'pending', 'confirmed', 'in_progress'])) {
             $query->where('status', $status);
         }
 
@@ -98,40 +63,48 @@ class ClinicAppointmentsController extends Controller
         $appointments = $query->orderBy('scheduled_at')
             ->get();
 
-        // Get statistics
-        $stats = $this->getAppointmentStats($clinicId, $date);
+        // Debug logging
+        \Log::info('ClinicAppointmentsController - Appointments Count: ' . $appointments->count());
+        \Log::info('ClinicAppointmentsController - Clinic ID: ' . $clinicId);
+        \Log::info('ClinicAppointmentsController - User Role: clinic');
 
-        // Transform appointments data
-        $transformedAppointments = $appointments->map(function ($appointment) {
+        // Transform appointments data - match AppointmentController format exactly
+        $transformedAppointments = $appointments->map(function ($appointment) use ($clinicRegistration) {
             // Skip if appointment is null
             if (!$appointment) {
                 return null;
             }
             
             $pet = $appointment->pet;
+            $clinic = $clinicRegistration;
             $owner = $pet ? $pet->owner : null;
+            $service = $appointment->service;
             
             return [
                 'id' => $appointment->id,
-                'appointment_date' => Carbon::parse($appointment->scheduled_at)->format('Y-m-d'),
-                'appointment_time' => Carbon::parse($appointment->scheduled_at)->format('H:i:s'),
-                'formatted_date' => Carbon::parse($appointment->scheduled_at)->format('M j, Y'),
-                'formatted_time' => Carbon::parse($appointment->scheduled_at)->format('g:i A'),
+                'title' => $service ? $service->name : ($appointment->type ?? 'Appointment'),
+                'scheduled_at' => $appointment->scheduled_at->timezone('Asia/Manila')->toIso8601String(), // ISO format for Vue in PH time
+                'appointment_date' => $appointment->scheduled_at->timezone('Asia/Manila')->format('Y-m-d'),
+                'appointment_time' => $appointment->scheduled_at->timezone('Asia/Manila')->format('H:i:s'),
+                'formatted_date' => $appointment->scheduled_at->timezone('Asia/Manila')->format('M j, Y'),
+                'formatted_time' => $appointment->scheduled_at->timezone('Asia/Manila')->format('g:i A'),
                 'status' => $appointment->status,
-                'status_display' => $this->getStatusDisplay($appointment->status),
-                'appointment_type' => $appointment->type ?? 'regular',
-                'service_type' => $appointment->type ?? 'regular', // Vue expects service_type
+                'statusDisplay' => $this->getStatusDisplay($appointment->status),
+                'priority' => $appointment->priority ?? 'medium',
+                'type' => $appointment->type ?? 'regular',
+                'reason' => $appointment->reason,
                 'notes' => $appointment->notes,
-                'fee' => $appointment->actual_cost,
-                'formatted_fee' => $appointment->actual_cost ? '₱' . number_format($appointment->actual_cost, 2) : null,
-                // Vue expects flat properties
+                'color' => $this->getStatusColor($appointment->status),
+                // Flattened fields for AppointmentsList component
                 'pet_name' => $pet ? $pet->name : 'Unknown Pet',
                 'owner_name' => $owner ? $owner->name : 'Unknown Owner',
+                'service_type' => $service ? $service->name : 'General Consultation',
+                // Nested objects for AppointmentCalendar component
                 'pet' => $pet ? [
                     'id' => $pet->id,
                     'name' => $pet->name,
-                    'type' => $pet->type ? $pet->type->name : 'Unknown',
-                    'breed' => $pet->breed ? $pet->breed->name : 'Unknown',
+                    'type' => $pet->type ? $pet->type->name : ($pet->species ?? 'Unknown'),
+                    'breed' => $pet->breed_id && $pet->breed ? $pet->breed->name : ($pet->breed ?? 'Unknown'),
                     'age' => $pet->age,
                     'gender' => $pet->gender,
                 ] : null,
@@ -141,26 +114,34 @@ class ClinicAppointmentsController extends Controller
                     'email' => $owner->email,
                     'phone' => $owner->phone,
                 ] : null,
-                'service' => $appointment->service ? [
-                    'id' => $appointment->service->id,
-                    'name' => $appointment->service->name,
-                    'category' => $appointment->service->category,
+                'clinic' => $clinic ? [
+                    'id' => $clinic->id,
+                    'name' => $clinic->clinic_name,
+                    'phone' => $clinic->phone,
+                    'address' => $clinic->full_address,
+                ] : null,
+                'service' => $service ? [
+                    'id' => $service->id,
+                    'name' => $service->name,
+                    'description' => $service->description ?? null,
+                ] : null,
+                'veterinarian' => $appointment->veterinarian ? [
+                    'id' => $appointment->veterinarian->id,
+                    'name' => $appointment->veterinarian->name,
                 ] : null,
                 'created_at' => $appointment->created_at,
+                'updated_at' => $appointment->updated_at,
             ];
         })->filter()->values(); // Remove null values and reset keys
 
-        return Inertia::render('2clinicPages/appointments/AppointmentsList', [
+        \Log::info('ClinicAppointmentsController - Transformed Appointments Count: ' . $transformedAppointments->count());
+        \Log::info('ClinicAppointmentsController - First Appointment: ', $transformedAppointments->first() ?? ['none']);
+
+        return Inertia::render('Scheduling/AppointmentCalendar', [
             'appointments' => $transformedAppointments,
-            'stats' => [
-                'today_appointments' => $stats['total'] ?? 0,
-                'scheduled_appointments' => $stats['scheduled'] ?? 0,
-                'completed_today' => $stats['completed'] ?? 0,
-                'new_bookings_today' => $stats['new_bookings_today'] ?? 0,
-            ],
+            'userRole' => 'clinic',
             'filters' => [
                 'status' => $status,
-                'date' => $date,
                 'search' => $search,
             ],
             'clinic' => [
@@ -589,6 +570,7 @@ class ClinicAppointmentsController extends Controller
     {
         $statusMap = [
             'scheduled' => 'Scheduled',
+            'pending' => 'Pending',
             'confirmed' => 'Confirmed',
             'in_progress' => 'In Progress',
             'completed' => 'Completed',
@@ -597,6 +579,23 @@ class ClinicAppointmentsController extends Controller
         ];
 
         return $statusMap[$status] ?? ucfirst($status);
+    }
+
+    /**
+     * Get status color for calendar display.
+     */
+    private function getStatusColor($status): string
+    {
+        return match($status) {
+            'scheduled' => 'bg-green-500',
+            'pending' => 'bg-yellow-500',
+            'confirmed' => 'bg-blue-500',
+            'in_progress' => 'bg-purple-500',
+            'completed' => 'bg-gray-500',
+            'cancelled' => 'bg-red-500',
+            'no_show' => 'bg-red-700',
+            default => 'bg-gray-400',
+        };
     }
 
     /**

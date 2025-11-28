@@ -140,7 +140,7 @@ const formatRelativeTime = (dateString: string) => {
 
 // Navigation methods
 const bookNewAppointment = () => {
-    router.visit(Clinics().url);
+    router.visit(clinics().url);
 };
 
 const viewCalendar = () => {

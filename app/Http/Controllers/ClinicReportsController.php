@@ -87,7 +87,7 @@ class ClinicReportsController extends Controller
             'average_rating' => $ratingsData['average_rating'] ?? 0,
             'total_reviews' => $ratingsData['total_reviews'] ?? 0,
             'active_services' => count($topServices ?? []),
-            'top_service' => !empty($topServices) ? $topServices[0]['name'] : 'N/A',
+            'top_service' => !empty($topServices) ? $topServices[0]['service_name'] : 'N/A',
         ];
 
         return Inertia::render('2clinicPages/reports/Overview', [
@@ -783,8 +783,9 @@ class ClinicReportsController extends Controller
             $q->where('clinic_id', $clinicId)
               ->whereBetween('scheduled_at', [$startDate, $endDate]);
         })
-        ->selectRaw('species, COUNT(*) as count')
-        ->groupBy('species')
+        ->join('pet_types', 'pets.type_id', '=', 'pet_types.id')
+        ->selectRaw('pet_types.name as species, COUNT(*) as count')
+        ->groupBy('pet_types.name')
         ->orderByDesc('count')
         ->get();
 

@@ -42,31 +42,31 @@ class ClinicSubscriptionSeeder extends Seeder
             'pro_plus' => 0,
         ];
 
-        // Distribute subscriptions:
-        // - 60% stay on Basic (free)
-        // - 25% get Professional
-        // - 15% get Pro Plus
+        // Distribute subscriptions to ensure at least 100 paid subscriptions:
+        // - 40% get Professional
+        // - 20% get Pro Plus
+        // - 40% stay on Basic (free)
         foreach ($clinicUsers as $index => $user) {
             $clinicName = $user->clinicRegistration->clinic_name ?? 'Unknown Clinic';
             
             // Determine subscription based on percentage distribution
             $random = rand(1, 100);
             
-            if ($random <= 60) {
-                // 60% - Keep Basic (free) - no subscription record needed as it's the default
-                $subscriptionCounts['basic']++;
-                $this->command->line("  📋 {$clinicName} - Basic (Free)");
-                continue;
-            } elseif ($random <= 85) {
-                // 25% - Professional
+            if ($random <= 40) {
+                // 40% - Professional
                 $plan = $proPlan;
                 $planName = 'Professional';
                 $subscriptionCounts['pro']++;
-            } else {
-                // 15% - Pro Plus
+            } elseif ($random <= 60) {
+                // 20% - Pro Plus
                 $plan = $proPlusPlan;
                 $planName = 'Pro Plus';
                 $subscriptionCounts['pro_plus']++;
+            } else {
+                // 40% - Keep Basic (free) - no subscription record needed as it's the default
+                $subscriptionCounts['basic']++;
+                $this->command->line("  📋 {$clinicName} - Basic (Free)");
+                continue;
             }
 
             // Create subscription record

@@ -50,6 +50,8 @@ interface UpcomingAppointment {
     time: string;
     petName: string;
     dayOfWeek: string;
+    ownerName: string;
+    petType: string;
 }
 
 interface RecentPatient {
@@ -193,90 +195,16 @@ const navigateToSchedule = () => {
                 </button>
             </div>
 
-            <!-- Pending Appointments Alert Section -->
-            <div v-if="dashboardData.pendingAppointments.length > 0" class="rounded-lg border-2 border-orange-200 bg-orange-50 dark:bg-orange-950/30 dark:border-orange-800 p-6">
-                <div class="flex items-start gap-4">
-                    <div class="p-3 bg-orange-100 dark:bg-orange-900/50 rounded-lg">
-                        <AlertCircle class="h-6 w-6 text-orange-600 dark:text-orange-400" />
-                    </div>
-                    <div class="flex-1">
-                        <div class="flex items-center justify-between mb-4">
-                            <div>
-                                <h2 class="text-lg font-bold text-orange-900 dark:text-orange-100">Pending Confirmations</h2>
-                                <p class="text-sm text-orange-700 dark:text-orange-300 mt-1">{{ dashboardData.pendingAppointments.length }} appointment(s) waiting to be confirmed</p>
-                            </div>
-                            <button 
-                                @click="navigateToAppointments"
-                                class="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-sm font-medium transition-colors"
-                            >
-                                View All
-                            </button>
-                        </div>
-                        
-                        <div class="space-y-3">
-                            <div 
-                                v-for="appointment in dashboardData.pendingAppointments.slice(0, 3)" 
-                                :key="appointment.id" 
-                                @click="navigateToAppointment(appointment.id)"
-                                class="bg-white dark:bg-slate-800 border border-orange-200 dark:border-orange-800 rounded-lg p-4 hover:shadow-md cursor-pointer transition-all duration-200"
-                            >
-                                <div class="flex items-start justify-between">
-                                    <div class="flex-1">
-                                        <div class="flex items-center gap-2 mb-2">
-                                            <Clock class="h-4 w-4 text-orange-600 dark:text-orange-400" />
-                                            <p class="font-semibold text-orange-900 dark:text-orange-100">{{ appointment.time }} - {{ appointment.date }}</p>
-                                        </div>
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
-                                            <div>
-                                                <div class="flex items-center gap-2">
-                                                    <PawPrint class="h-4 w-4 text-muted-foreground" />
-                                                    <div>
-                                                        <p class="text-sm font-medium">{{ appointment.petName }}</p>
-                                                        <p class="text-xs text-muted-foreground">{{ appointment.petType }}</p>
-                                                    </div>
-                                                </div>
-                                                <div class="flex items-center gap-2 mt-2">
-                                                    <User class="h-4 w-4 text-muted-foreground" />
-                                                    <div>
-                                                        <p class="text-sm">{{ appointment.ownerName }}</p>
-                                                        <p v-if="appointment.ownerPhone" class="text-xs text-muted-foreground">{{ appointment.ownerPhone }}</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <div class="flex items-center gap-2">
-                                                    <FileText class="h-4 w-4 text-muted-foreground" />
-                                                    <p class="text-sm">{{ appointment.serviceName }}</p>
-                                                </div>
-                                                <div class="flex items-center gap-2 mt-2">
-                                                    <Stethoscope class="h-4 w-4 text-muted-foreground" />
-                                                    <p class="text-sm">{{ appointment.veterinarianName }}</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <ChevronRight class="h-5 w-5 text-muted-foreground flex-shrink-0 ml-2" />
-                                </div>
-                            </div>
-                            
-                            <!-- Show count of remaining pending if more than 3 -->
-                            <div v-if="dashboardData.pendingAppointments.length > 3" class="text-center py-3">
-                                <p class="text-sm text-orange-700 dark:text-orange-300">+{{ dashboardData.pendingAppointments.length - 3 }} more pending appointment(s)</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- Main Content Grid -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Today's Appointments - 2 columns -->
-                <div class="lg:col-span-2">
+                <div class="lg:col-span-2 space-y-6">
+                    <!-- Scheduled Appointments for Today -->
                     <div class="rounded-lg border bg-card p-6">
                         <div class="flex items-center justify-between mb-6">
                             <div>
                                 <h2 class="text-lg font-semibold">Today's Appointments</h2>
-                                <p class="text-sm text-muted-foreground">{{ dashboardData.todayAppointments.length }} appointments scheduled for today</p>
+                                <p class="text-sm text-muted-foreground">{{ dashboardData.todayAppointments.length }} scheduled appointments for today</p>
                             </div>
                             <button @click="navigateToAppointments" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium">
                                 View All
@@ -305,7 +233,7 @@ const navigateToSchedule = () => {
                                     </span>
                                 </div>
                                 
-                                <div class="grid grid-cols-2 gap-4 mt-3">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
                                     <div class="space-y-2">
                                         <div class="flex items-center gap-2">
                                             <PawPrint class="h-4 w-4 text-muted-foreground" />
@@ -324,11 +252,11 @@ const navigateToSchedule = () => {
                                     </div>
                                     <div class="space-y-2">
                                         <div class="flex items-center gap-2">
-                                            <FileText class="h-4 w-4 text-muted-foreground" />
-                                            <p class="text-sm">{{ appointment.serviceName }}</p>
+                                            <FileText class="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                            <p class="text-sm font-medium">{{ appointment.serviceName }}</p>
                                         </div>
                                         <div class="flex items-center gap-2">
-                                            <Stethoscope class="h-4 w-4 text-muted-foreground" />
+                                            <Stethoscope class="h-4 w-4 text-muted-foreground flex-shrink-0" />
                                             <p class="text-sm">{{ appointment.veterinarianName }}</p>
                                         </div>
                                     </div>
@@ -341,8 +269,67 @@ const navigateToSchedule = () => {
                                 class="text-center py-12 text-muted-foreground"
                             >
                                 <Calendar class="h-16 w-16 mx-auto mb-4 opacity-30" />
-                                <p class="font-medium mb-1">No appointments scheduled for today</p>
-                                <p class="text-sm">You have a free day!</p>
+                                <p class="font-medium mb-1">No scheduled appointments for today</p>
+                                <p class="text-sm">Check pending appointments below</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pending Appointments Section -->
+                    <div class="rounded-lg border bg-card p-4 sm:p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h2 class="text-base sm:text-lg font-semibold flex items-center gap-2">
+                                    <AlertCircle class="h-4 w-4 sm:h-5 sm:w-5 text-orange-600 dark:text-orange-400" />
+                                    Pending Appointments
+                                </h2>
+                                <p class="text-xs sm:text-sm text-muted-foreground">{{ dashboardData.pendingAppointments.length }} awaiting confirmation</p>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-2">
+                            <div 
+                                v-for="appointment in dashboardData.pendingAppointments" 
+                                :key="appointment.id" 
+                                @click="navigateToAppointment(appointment.id)"
+                                class="border border-orange-200 dark:border-orange-900/30 rounded-lg p-3 hover:border-orange-500 hover:shadow-md cursor-pointer transition-all duration-200 bg-orange-50/50 dark:bg-orange-900/10"
+                            >
+                                <div class="flex items-center justify-between mb-2">
+                                    <div class="flex items-center gap-2">
+                                        <Clock class="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                                        <div>
+                                            <p class="text-sm font-semibold">{{ appointment.time }}</p>
+                                            <p class="text-xs text-muted-foreground">{{ appointment.date }}</p>
+                                        </div>
+                                    </div>
+                                    <span class="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300">
+                                        Pending
+                                    </span>
+                                </div>
+                                
+                                <div class="flex flex-col sm:flex-row sm:items-center gap-2 text-xs">
+                                    <div class="flex items-center gap-1.5">
+                                        <PawPrint class="h-3.5 w-3.5 text-muted-foreground" />
+                                        <span class="font-medium">{{ appointment.petName }}</span>
+                                    </div>
+                                    <span class="hidden sm:inline text-muted-foreground">•</span>
+                                    <div class="flex items-center gap-1.5">
+                                        <User class="h-3.5 w-3.5 text-muted-foreground" />
+                                        <span>{{ appointment.ownerName }}</span>
+                                    </div>
+                                    <span class="hidden sm:inline text-muted-foreground">•</span>
+                                    <span class="text-muted-foreground">{{ appointment.serviceName }}</span>
+                                </div>
+                            </div>
+                            
+                            <!-- No pending message -->
+                            <div 
+                                v-if="dashboardData.pendingAppointments.length === 0"
+                                class="text-center py-8 text-muted-foreground"
+                            >
+                                <UserCheck class="h-12 w-12 mx-auto mb-3 opacity-30" />
+                                <p class="text-sm font-medium mb-1">No pending appointments</p>
+                                <p class="text-xs">All appointments are confirmed!</p>
                             </div>
                         </div>
                     </div>
@@ -358,25 +345,30 @@ const navigateToSchedule = () => {
                             </div>
                         </div>
                         
-                        <div class="space-y-2">
+                        <div class="space-y-3">
                             <div 
                                 v-for="appointment in dashboardData.upcomingAppointments" 
                                 :key="appointment.id"
                                 @click="navigateToAppointment(appointment.id)"
-                                class="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted cursor-pointer transition-colors group"
+                                class="border rounded-lg p-4 hover:border-blue-500 hover:shadow-md cursor-pointer transition-all duration-200"
                             >
-                                <div class="flex items-center gap-3">
-                                    <div class="text-center">
-                                        <p class="text-xs text-muted-foreground font-medium">{{ appointment.dayOfWeek }}</p>
-                                        <p class="text-sm font-semibold">{{ appointment.date }}</p>
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-center gap-2 mb-2">
+                                            <Calendar class="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                            <p class="text-xs text-muted-foreground">{{ appointment.date }} • {{ appointment.time }}</p>
+                                        </div>
+                                        <div class="flex items-center gap-2 mb-1">
+                                            <PawPrint class="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                            <p class="text-sm font-semibold truncate">{{ appointment.petName }}</p>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <User class="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                            <p class="text-xs text-muted-foreground truncate">{{ appointment.ownerName }}</p>
+                                        </div>
                                     </div>
-                                    <div class="h-8 w-px bg-border"></div>
-                                    <div>
-                                        <p class="text-sm font-medium">{{ appointment.petName }}</p>
-                                        <p class="text-xs text-muted-foreground">{{ appointment.time }}</p>
-                                    </div>
+                                    <ChevronRight class="h-5 w-5 text-muted-foreground flex-shrink-0" />
                                 </div>
-                                <ChevronRight class="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
                             </div>
                             
                             <!-- No upcoming message -->

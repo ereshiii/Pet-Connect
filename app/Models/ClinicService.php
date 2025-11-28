@@ -16,16 +16,10 @@ class ClinicService extends Model
         'description',
         'category',
         'duration_minutes',
-        'is_active',
-        'requires_appointment',
-        'is_emergency_service',
     ];
 
     protected $casts = [
         'duration_minutes' => 'integer',
-        'is_active' => 'boolean',
-        'requires_appointment' => 'boolean',
-        'is_emergency_service' => 'boolean',
     ];
 
     /**
@@ -98,34 +92,10 @@ class ClinicService extends Model
     }
 
     /**
-     * Scope to get active services.
-     */
-    public function scopeActive($query)
-    {
-        return $query->where('is_active', true);
-    }
-
-    /**
      * Scope to get services by category.
      */
     public function scopeByCategory($query, string $category)
     {
         return $query->where('category', $category);
-    }
-
-    /**
-     * Scope to get emergency services.
-     */
-    public function scopeEmergency($query)
-    {
-        return $query->where('is_emergency_service', true);
-    }
-
-    /**
-     * Scope to get services that require appointments.
-     */
-    public function scopeRequiresAppointment($query)
-    {
-        return $query->where('requires_appointment', true);
     }
 }

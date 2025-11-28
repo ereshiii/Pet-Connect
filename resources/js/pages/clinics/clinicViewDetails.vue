@@ -220,7 +220,7 @@ const breadcrumbs: BreadcrumbItem[] = computed(() => {
 });
 
 // State
-const activeTab = ref('overview');
+const activeTab = ref('services');
 const userLocation = ref<{latitude: number, longitude: number} | null>(null);
 const selectedPhoto = ref<string | null>(null);
 const selectedPhotoIndex = ref<number>(0);
@@ -505,6 +505,19 @@ const getDirections = () => {
                             <p class="text-muted-foreground leading-relaxed">{{ clinicData.description }}</p>
                         </div>
                         
+                        <!-- Contact Info -->
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="flex items-center gap-2">
+                                <Phone class="h-4 w-4 text-muted-foreground" />
+                                <a :href="`tel:${clinicData.phone}`" class="text-primary hover:underline">{{ formattedPhone }}</a>
+                            </div>
+                            <span class="text-muted-foreground">•</span>
+                            <div class="flex items-center gap-2">
+                                <Mail class="h-4 w-4 text-muted-foreground" />
+                                <a :href="`mailto:${clinicData.email}`" class="text-primary hover:underline">{{ clinicData.email }}</a>
+                            </div>
+                        </div>
+                        
                         <!-- Quick Contact Actions -->
                         <div class="flex flex-wrap gap-3">
                             <button @click="bookAppointment" 
@@ -522,7 +535,7 @@ const getDirections = () => {
                                 <Navigation class="h-4 w-4" />
                                 <span class="hidden sm:inline">Directions</span>
                             </button>
-                            <button @click="visitWebsite" 
+                            <button v-if="clinicData.website" @click="visitWebsite" 
                                     class="flex-1 min-w-[120px] border py-3 px-4 rounded-lg hover:bg-muted font-medium transition-colors flex items-center justify-center gap-2">
                                 <Globe class="h-4 w-4" />
                                 <span class="hidden sm:inline">Website</span>
@@ -536,12 +549,6 @@ const getDirections = () => {
             <div class="rounded-lg border bg-card">
                 <div class="border-b px-6">
                     <nav class="flex space-x-8 overflow-x-auto">
-                        <button @click="activeTab = 'overview'"
-                                :class="['py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap flex items-center gap-2',
-                                        activeTab === 'overview' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border']">
-                            <Building2 class="h-4 w-4" />
-                            Overview
-                        </button>
                         <button @click="activeTab = 'services'"
                                 :class="['py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap flex items-center gap-2',
                                         activeTab === 'services' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border']">
@@ -577,87 +584,39 @@ const getDirections = () => {
 
                 <!-- Tab Content -->
                 <div class="p-6">
-                    <!-- Overview Tab -->
-                    <div v-if="activeTab === 'overview'">
-                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <div>
-                                <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                                    <Building2 class="h-5 w-5 text-primary" />
-                                    About This Clinic
-                                </h3>
-                                <p class="text-muted-foreground leading-relaxed mb-6">{{ clinicData.description }}</p>
-                                
-                                <!-- <h4 class="font-semibold mb-3 flex items-center gap-2">
-                                    <CheckCircle class="h-5 w-5 text-green-600 dark:text-green-400" />
-                                    Amenities
-                                </h4>
-                                <div class="grid grid-cols-2 gap-3">
-                                    <div v-for="amenity in clinicData.amenities" :key="amenity" 
-                                         class="flex items-center gap-2 text-sm bg-muted/50 p-2 rounded-lg border">
-                                        <div class="w-2 h-2 bg-green-600 dark:bg-green-400 rounded-full"></div>
-                                        {{ amenity }}
-                                    </div>
-                                </div> -->
-                            </div>
-                             
-                            <div>
-                                <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                                    <MapPin class="h-5 w-5 text-primary" />
-                                    Location
-                                </h3>
-                                <div class="bg-muted/50 rounded-lg p-5 mb-4 border">
-                                    <p class="mb-2 font-medium">{{ fullAddress }}</p>
-                                    <p class="text-sm text-muted-foreground mb-3" v-if="calculatedDistance">
-                                        <Navigation class="h-4 w-4 inline mr-1" />
-                                        {{ calculatedDistance }} from your location
-                                    </p>
-                                    <button @click="getDirections" 
-                                            class="text-primary text-sm font-medium hover:underline flex items-center gap-1">
-                                        Get Directions →
-                                    </button>
-                                </div>
-                                
-                                <h4 class="font-semibold mb-3">Contact Information</h4>
-                                <div class="space-y-3">
-                                    <div class="flex items-center gap-2 text-sm">
-                                        <Phone class="h-4 w-4 text-muted-foreground" />
-                                        <span class="font-medium">Phone:</span>
-                                        <span class="text-primary">{{ formattedPhone }}</span>
-                                    </div>
-                                    <div class="flex items-center gap-2 text-sm">
-                                        <Mail class="h-4 w-4 text-muted-foreground" />
-                                        <span class="font-medium">Email:</span>
-                                        <span class="text-primary">{{ clinicData.email }}</span>
-                                    </div>
-                                    <div v-if="clinicData.website" class="flex items-center gap-2 text-sm">
-                                        <Globe class="h-4 w-4 text-muted-foreground" />
-                                        <span class="font-medium">Website:</span>
-                                        <span class="text-primary">{{ clinicData.website }}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- Services Tab -->
                     <div v-if="activeTab === 'services'">
                         <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
                             <Stethoscope class="h-5 w-5 text-primary" />
                             Services Offered
                         </h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            <div v-for="service in formattedServices" :key="service"
+                        <div v-if="clinicData.services && clinicData.services.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div v-for="service in clinicData.services" :key="service.id || service.name || service"
                                  class="bg-muted/50 rounded-lg p-4 border hover:border-primary/50 transition-colors">
                                 <div class="flex items-start gap-3">
                                     <div class="p-2 bg-primary/10 text-primary rounded-lg flex-shrink-0">
                                         <CheckCircle class="h-5 w-5" />
                                     </div>
-                                    <div>
-                                        <h4 class="font-semibold mb-1">{{ service }}</h4>
-                                        <p class="text-sm text-muted-foreground">Professional {{ service.toLowerCase() }} services for your pet.</p>
+                                    <div class="flex-1 min-w-0">
+                                        <h4 class="font-semibold mb-1">{{ typeof service === 'object' ? service.name : service }}</h4>
+                                        <p v-if="typeof service === 'object' && service.description" class="text-sm text-muted-foreground mb-2">{{ service.description }}</p>
+                                        <p v-else class="text-sm text-muted-foreground mb-2">Professional {{ (typeof service === 'object' ? service.name : service).toLowerCase() }} services for your pet.</p>
+                                        <div v-if="typeof service === 'object'" class="flex flex-wrap gap-2 mt-2">
+                                            <span v-if="service.category_display" class="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">
+                                                {{ service.category_display }}
+                                            </span>
+                                            <span v-if="service.duration" class="px-2 py-1 bg-muted text-muted-foreground text-xs rounded-full">
+                                                {{ service.duration }}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                        <div v-else class="text-center py-12">
+                            <Stethoscope class="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+                            <p class="text-muted-foreground font-medium">No services information available</p>
+                            <p class="text-muted-foreground text-sm mt-2">Please contact the clinic for service details</p>
                         </div>
                     </div>
 
@@ -781,23 +740,15 @@ const getDirections = () => {
                             </div>
                         </div>
 
-                        <!-- Write Review Button -->
-                        <div v-if="isAuthenticated && canWriteReview && !showReviewForm" class="mb-6">
-                            <Button @click="showReviewForm = true" class="bg-blue-600 hover:bg-blue-700 text-white">
-                                <MessageSquare class="h-4 w-4 mr-2" />
-                                Write a Review
-                            </Button>
-                        </div>
-
-                        <!-- Not Eligible Message -->
-                        <div v-else-if="isAuthenticated && !canWriteReview && !hasReviewed" class="mb-6 p-4 bg-gray-800 rounded-xl border border-gray-700">
+                        <!-- Review Info Message -->
+                        <div class="mb-6 p-4 bg-gray-800 rounded-xl border border-gray-700">
                             <p class="text-gray-400 text-sm">
-                                <span class="text-gray-300 font-medium">📋 Complete an appointment at this clinic to leave a review.</span>
+                                <span class="text-gray-300 font-medium">💡 Reviews can be submitted after completing an appointment at this clinic.</span>
                             </p>
                         </div>
 
-                        <!-- User's Existing Review (Editable) -->
-                        <div v-if="hasReviewed && userReview && !editingReview" class="bg-gradient-to-br from-blue-900/30 to-purple-900/30 border-2 border-blue-500/50 rounded-xl p-5 mb-6">
+                        <!-- User's Existing Review (Read-only) -->
+                        <div v-if="hasReviewed && userReview" class="bg-gradient-to-br from-blue-900/30 to-purple-900/30 border-2 border-blue-500/50 rounded-xl p-5 mb-6">
                             <div class="flex justify-between items-start mb-3">
                                 <div>
                                     <div class="flex items-center gap-2 mb-2">
@@ -811,74 +762,8 @@ const getDirections = () => {
                                         <span class="text-gray-400 text-sm">{{ userReview.created_at }}</span>
                                     </div>
                                 </div>
-                                <div class="flex gap-2">
-                                    <button @click="startEditing" class="text-blue-400 hover:text-blue-300 p-2">
-                                        <Edit class="h-4 w-4" />
-                                    </button>
-                                    <button @click="deleteReview" class="text-red-400 hover:text-red-300 p-2">
-                                        <Trash2 class="h-4 w-4" />
-                                    </button>
-                                </div>
                             </div>
                             <p class="text-gray-300">{{ userReview.comment || 'No comment provided' }}</p>
-                        </div>
-
-                        <!-- Review Form -->
-                        <div v-if="showReviewForm" class="bg-gray-800 rounded-xl p-6 border border-gray-700 mb-6">
-                            <div class="flex justify-between items-center mb-4">
-                                <h4 class="text-lg font-semibold text-white">{{ editingReview ? 'Edit Your Review' : 'Write a Review' }}</h4>
-                                <button @click="cancelReviewForm" class="text-gray-400 hover:text-white">
-                                    <X class="h-5 w-5" />
-                                </button>
-                            </div>
-
-                            <form @submit.prevent="editingReview ? updateReview() : submitReview()">
-                                <!-- Rating -->
-                                <div class="mb-4">
-                                    <label class="block text-sm font-medium text-gray-300 mb-2">Rating</label>
-                                    <div class="flex gap-2">
-                                        <button v-for="star in 5" :key="star" 
-                                                type="button"
-                                                @click="reviewForm.rating = star"
-                                                class="text-3xl transition-colors focus:outline-none">
-                                            <Star :class="star <= reviewForm.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-600'" />
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <!-- Comment -->
-                                <div class="mb-4">
-                                    <label class="block text-sm font-medium text-gray-300 mb-2">Comment (Optional)</label>
-                                    <textarea v-model="reviewForm.comment" 
-                                              rows="4" 
-                                              maxlength="1000"
-                                              placeholder="Share your experience with this clinic..."
-                                              class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none">
-                                    </textarea>
-                                    <div class="text-right text-xs text-gray-500 mt-1">
-                                        {{ reviewForm.comment?.length || 0 }} / 1000
-                                    </div>
-                                </div>
-
-                                <!-- Submit Buttons -->
-                                <div class="flex gap-3">
-                                    <Button type="submit" 
-                                            :disabled="reviewForm.processing"
-                                            class="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed">
-                                        <Send class="h-4 w-4 mr-2" />
-                                        {{ editingReview ? 'Update Review' : 'Submit Review' }}
-                                    </Button>
-                                    <Button type="button" @click="cancelReviewForm" class="bg-gray-700 hover:bg-gray-600 text-white">
-                                        Cancel
-                                    </Button>
-                                </div>
-
-                                <!-- Error Display -->
-                                <div v-if="reviewForm.errors.rating || reviewForm.errors.comment" class="mt-4 p-3 bg-red-900/20 border border-red-500/50 rounded-lg">
-                                    <p v-if="reviewForm.errors.rating" class="text-red-400 text-sm">{{ reviewForm.errors.rating }}</p>
-                                    <p v-if="reviewForm.errors.comment" class="text-red-400 text-sm">{{ reviewForm.errors.comment }}</p>
-                                </div>
-                            </form>
                         </div>
 
                         <!-- Reviews List -->

@@ -6,6 +6,7 @@ use Laravel\Fortify\Features;
 use App\Http\Controllers\ClinicController;
 use App\Http\Controllers\ClinicDashboardController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\ClinicAppointmentsController;
 use App\Http\Controllers\ClinicPatientsController;
 use App\Http\Controllers\ClinicScheduleController;
@@ -13,7 +14,6 @@ use App\Http\Controllers\ClinicServicesController;
 use App\Http\Controllers\ClinicStaffController;
 use App\Http\Controllers\ClinicVetController;
 use App\Http\Controllers\ClinicReportsController;
-use App\Http\Controllers\ClinicHistoryController;
 use App\Http\Controllers\UserProfileSetupController;
 
 Route::get('/', function () {
@@ -246,16 +246,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
 Route::prefix('clinic')->middleware(['auth', 'verified', 'clinic'])->group(function () {
     Route::get('dashboard', [ClinicDashboardController::class, 'index'])->name('clinicDashboard');
     
+    // Unified appointment routes - using AppointmentController
     Route::get('appointments', [ClinicAppointmentsController::class, 'index'])->name('clinicAppointments');
-    Route::get('appointments/{id}', [ClinicAppointmentsController::class, 'show'])->name('clinicAppointmentDetails');
-    Route::patch('appointments/{id}/status', [ClinicAppointmentsController::class, 'updateStatus'])->name('clinicAppointments.updateStatus');
-    Route::patch('appointments/{id}/confirm', [ClinicAppointmentsController::class, 'confirmAppointment'])->name('clinicAppointments.confirm');
-    Route::patch('appointments/{id}/assign-vet', [ClinicAppointmentsController::class, 'assignVeterinarian'])->name('clinicAppointments.assignVet');
-    Route::post('appointments/{id}/complete', [ClinicAppointmentsController::class, 'completeAppointment'])->name('clinicAppointments.complete');
+    Route::get('appointments/{appointment}', [AppointmentController::class, 'show'])->name('clinicAppointmentDetails');
+    Route::patch('appointments/{appointment}/status', [AppointmentController::class, 'updateStatus'])->name('clinicAppointments.updateStatus');
+    Route::post('appointments/{appointment}/confirm', [AppointmentController::class, 'confirmAppointment'])->name('clinicAppointments.confirm');
+    Route::patch('appointments/{appointment}/assign-vet', [AppointmentController::class, 'assignVeterinarian'])->name('clinicAppointments.assignVet');
+    Route::post('appointments/{appointment}/complete', [AppointmentController::class, 'completeAppointment'])->name('clinicAppointments.complete');
+    Route::post('appointments/{appointment}/no-show', [AppointmentController::class, 'markAsNoShow'])->name('clinicAppointments.noShow');
     
     // History - Requires Professional or Pro Plus plan
     Route::middleware('subscription:history')->group(function () {
-        Route::get('history', [ClinicHistoryController::class, 'index'])->name('clinicHistory');
+        Route::get('history', [AppointmentController::class, 'history'])->name('clinicHistory');
     });
     
     // Patient Records - Requires Professional or Pro Plus plan
