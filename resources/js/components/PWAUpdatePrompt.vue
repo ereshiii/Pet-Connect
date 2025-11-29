@@ -62,24 +62,6 @@ const { state, updateApp, dismissUpdate } = usePWA();
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Features -->
-                    <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                        <div class="grid grid-cols-3 gap-2 text-center">
-                            <div class="px-2">
-                                <div class="text-xs font-semibold text-gray-900 dark:text-white">🚀 Faster</div>
-                                <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Performance boost</div>
-                            </div>
-                            <div class="px-2 border-l border-r border-gray-200 dark:border-gray-700">
-                                <div class="text-xs font-semibold text-gray-900 dark:text-white">🐛 Fixes</div>
-                                <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Bug squashed</div>
-                            </div>
-                            <div class="px-2">
-                                <div class="text-xs font-semibold text-gray-900 dark:text-white">✨ New</div>
-                                <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Features added</div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>

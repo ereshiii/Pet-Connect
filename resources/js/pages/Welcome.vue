@@ -205,12 +205,11 @@ const scrollToSection = (sectionId: string) => {
                 <div class="flex justify-between items-center h-16">
                     <!-- Logo -->
                     <div class="flex items-center gap-2">
-                        <img src="/paw.svg" alt="PetConnect Logo" class="h-8 w-8 sm:h-10 sm:w-10" />
+                        <img src="favicon.svg" alt="PetConnect Logo" class="h-8 w-8 sm:h-10 sm:w-10" />
                         <div class="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
                             PetConnect
                         </div>
                     </div>
-
                     <!-- Desktop Navigation -->
                     <div class="hidden lg:flex items-center space-x-6">
                         <button @click="scrollToSection('features')" class="text-sm font-medium text-gray-700 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400 transition-colors">
@@ -341,7 +340,7 @@ const scrollToSection = (sectionId: string) => {
                     <div class="relative">
                         <div class="relative z-10 rounded-2xl overflow-hidden shadow-2xl">
                             <img 
-                                src="/images/landingpagebackground.jpg" 
+                                src="landingpagebackground2.jpg" 
                                 alt="PetConnect Platform"
                                 class="w-full h-96 object-cover"
                             />
@@ -600,7 +599,7 @@ const scrollToSection = (sectionId: string) => {
                                     </div>
                                     <div>
                                         <div class="font-semibold text-gray-900 dark:text-white">Email</div>
-                                        <div class="text-gray-600 dark:text-gray-300">support@petconnect.ph</div>
+                                        <div class="text-gray-600 dark:text-gray-300">patconnectbus@gmail.com</div>
                                     </div>
                                 </div>
                                 
@@ -612,7 +611,7 @@ const scrollToSection = (sectionId: string) => {
                                     </div>
                                     <div>
                                         <div class="font-semibold text-gray-900 dark:text-white">Phone</div>
-                                        <div class="text-gray-600 dark:text-gray-300">+63 2 8123 4567</div>
+                                        <div class="text-gray-600 dark:text-gray-300">+63 976 221 890</div>
                                     </div>
                                 </div>
                                 
@@ -625,7 +624,7 @@ const scrollToSection = (sectionId: string) => {
                                     </div>
                                     <div>
                                         <div class="font-semibold text-gray-900 dark:text-white">Address</div>
-                                        <div class="text-gray-600 dark:text-gray-300">Makati City, Metro Manila, Philippines</div>
+                                        <div class="text-gray-600 dark:text-gray-300">Lingayen, Pangasinan, Philippines</div>
                                     </div>
                                 </div>
                             </div>
@@ -638,7 +637,7 @@ const scrollToSection = (sectionId: string) => {
                             <div class="space-y-2 text-gray-600 dark:text-gray-300">
                                 <div class="flex justify-between">
                                     <span>Monday - Friday</span>
-                                    <span>9:00 AM - 6:00 PM</span>
+                                    <span>9:00 AM - 3-00 PM</span>
                                 </div>
                                 <div class="flex justify-between">
                                     <span>Saturday</span>
@@ -681,7 +680,7 @@ const scrollToSection = (sectionId: string) => {
                             <p class="text-sm text-gray-600 dark:text-gray-400 text-center">
                                 Questions about our platform? 
                                 <br>
-                                <a href="mailto:support@petconnect.ph" class="text-blue-600 dark:text-blue-400 hover:underline">
+                                <a href="mailto:patconnectbus@gmail.com" class="text-blue-600 dark:text-blue-400 hover:underline">
                                     Contact our support team
                                 </a>
                             </p>
@@ -707,15 +706,15 @@ const scrollToSection = (sectionId: string) => {
                             Complete pet care management platform connecting pet owners with trusted veterinary clinics across the Philippines.
                         </p>
                         <div class="flex space-x-4">
-                            <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                            <a href="https://www.facebook.com/profile.php?id=61584259898036" class="text-gray-400 hover:text-white transition-colors">
                                 <span class="sr-only">Facebook</span>
                                 📘
                             </a>
-                            <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                            <a href="https://x.com/PetConnectBusi" class="text-gray-400 hover:text-white transition-colors">
                                 <span class="sr-only">Twitter</span>
                                 🐦
                             </a>
-                            <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                            <a href="https://www.instagram.com/petconnectbus/" class="text-gray-400 hover:text-white transition-colors">
                                 <span class="sr-only">Instagram</span>
                                 📷
                             </a>
