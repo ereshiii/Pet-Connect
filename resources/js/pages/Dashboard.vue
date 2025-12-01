@@ -304,7 +304,7 @@ const addressSettingsLink = '/settings/address';
                                 <div class="flex items-center justify-between mb-3">
                                     <h3 class="text-sm sm:text-base font-semibold">Next Appointment</h3>
                                     <span :class="['px-2 py-1 text-xs font-medium rounded-full', 
-                                        upcoming_appointments[0].status === 'confirmed' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300' :
+                                        upcoming_appointments[0].status === 'scheduled' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300' :
                                         upcoming_appointments[0].status === 'scheduled' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300' :
                                         upcoming_appointments[0].status === 'pending' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-300' :
                                         'bg-muted text-muted-foreground'
@@ -418,7 +418,7 @@ const addressSettingsLink = '/settings/address';
                                                 </div>
                                             </div>
                                             <span :class="['px-2 py-1 text-xs rounded-full font-medium flex-shrink-0',
-                                                appointment.status === 'confirmed' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300' :
+                                                appointment.status === 'scheduled' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300' :
                                                 appointment.status === 'scheduled' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300' :
                                                 appointment.status === 'pending' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-300' :
                                                 appointment.status === 'in_progress' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300' :

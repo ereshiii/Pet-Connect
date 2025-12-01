@@ -293,12 +293,12 @@ class PetController extends Controller
                 'treatment_given' => $record->treatment_given,
                 'prescriptions' => $record->prescriptions,
                 // Metadata
-                'veterinarian_name' => $record->veterinarian?->name ?? 'Unknown',
-                'clinic_name' => $anonymousClinicName ?? 'Unknown Clinic',
+                'veterinarian_name' => $record->veterinarian?->name ?? null,
+                'clinic_name' => $record->clinicRegistration?->clinic_name ?? null,
                 'days_since_visit' => $record->date ? now()->diffInDays($record->date) : null,
                 'clinic' => $record->clinicRegistration ? [
                     'id' => $record->clinicRegistration->id,
-                    'anonymous_name' => $anonymousClinicName,
+                    'name' => $record->clinicRegistration->clinic_name,
                 ] : null,
             ];
         })->sortByDesc('date')->values();

@@ -38,7 +38,7 @@ class SendFollowUpReminders extends Command
 
         $followUpAppointments = Appointment::query()
             ->where('is_follow_up', true)
-            ->whereIn('status', ['confirmed', 'scheduled'])
+            ->whereIn('status', ['scheduled'])
             ->whereBetween('scheduled_at', [$startWindow, $endWindow])
             ->with(['owner', 'clinic', 'pet'])
             ->get();

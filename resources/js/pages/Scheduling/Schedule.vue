@@ -37,7 +37,7 @@ interface Appointment {
 
 interface RecentActivity {
     id: number;
-    type: 'confirmed' | 'scheduled' | 'reminder' | 'cancelled';
+    type: 'scheduled' | 'reminder' | 'cancelled';
     message: string;
     created_at: string;
     icon?: string;
@@ -106,8 +106,7 @@ const formatAppointmentDate = (scheduledAt: string) => {
 
 const getStatusDisplay = (status: string) => {
     switch (status) {
-        case 'confirmed': return { text: 'Confirmed', class: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' };
-        case 'scheduled': return { text: 'Scheduled', class: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' };
+        case 'scheduled': return { text: 'Scheduled', class: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' };
         case 'cancelled': return { text: 'Cancelled', class: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' };
         default: return { text: 'Unknown', class: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200' };
     }
@@ -117,8 +116,7 @@ const getActivityIcon = (activity: RecentActivity) => {
     if (activity.icon) return activity.icon;
     
     switch (activity.type) {
-        case 'confirmed': return '✅';
-        case 'scheduled': return '📝';
+        case 'scheduled': return '✅';
         case 'reminder': return '📅';
         case 'cancelled': return '❌';
         default: return '📋';

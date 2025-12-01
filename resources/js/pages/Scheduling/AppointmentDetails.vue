@@ -1424,9 +1424,10 @@ const getStatusColor = (status?: string) => {
                         </div>
                         
                         <!-- Follow-Up Button (for completed appointments) -->
-                        <div v-if="isClinic && appointment.status === 'completed' && appointment.can_create_follow_up" class="pt-4 border-t">
+                        <div v-if="isClinic && !isPetOwner && appointment.status === 'completed' && appointment.can_create_follow_up" class="pt-4 border-t">
                             <div class="flex justify-end">
                                 <button 
+                                    type="button"
                                     @click="openFollowUpModal"
                                     class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 text-sm font-medium flex items-center gap-2">
                                     <Plus class="h-4 w-4" />
@@ -1671,8 +1672,8 @@ const getStatusColor = (status?: string) => {
                                 </div>
                             </div>
 
-                            <!-- Dispute Window (if within window) -->
-                            <div v-if="appointment.canBeDisputed && appointment.disputeHoursRemaining" 
+                            <!-- Dispute Window (if within window) - Pet Owners Only -->
+                            <div v-if="isPetOwner && appointment.canBeDisputed && appointment.disputeHoursRemaining" 
                                  class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mt-4">
                                 <div class="flex items-start justify-between gap-4">
                                     <div class="flex items-start gap-3 flex-1">

@@ -10,7 +10,7 @@ interface CalendarEvent {
     type?: 'appointment' | 'reminder' | 'event' | 'holiday' | 'blocked';
     color?: string;
     description?: string;
-    status?: 'confirmed' | 'pending' | 'cancelled' | 'completed';
+    status?: 'scheduled' | 'pending' | 'cancelled' | 'completed';
 }
 
 interface CalendarProps {

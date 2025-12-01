@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\FeatureController;
 use App\Http\Controllers\Api\DeviceTokenController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\PushSubscriptionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -43,6 +44,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/notifications/history', [NotificationController::class, 'history']);
     Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markAsRead']);
     Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
+});
+
+// Push Subscriptions
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::post('/push-subscriptions', [PushSubscriptionController::class, 'store']);
+    Route::delete('/push-subscriptions', [PushSubscriptionController::class, 'destroy']);
+    Route::get('/push-subscriptions', [PushSubscriptionController::class, 'show']);
 });
 
 // Admin-only notification routes

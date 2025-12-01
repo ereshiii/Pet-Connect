@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head } from '@inertiajs/vue3';
-import { Bell, Calendar, Check, CheckCheck, Clock, Trash2, CalendarCheck, Star, CalendarX, RefreshCw } from 'lucide-vue-next';
+import { Bell, Calendar, Check, CheckCheck, Clock, Trash2, CalendarCheck, Star, CalendarX, RefreshCw, BellRing } from 'lucide-vue-next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { router } from '@inertiajs/vue3';
 import axios from 'axios';
 import { useToast } from '@/composables/useToast';
+import { usePushNotifications } from '@/composables/usePushNotifications';
 
 const toast = useToast();
+const pushNotifications = usePushNotifications();
 
 interface Notification {
     id: number;
@@ -48,11 +50,11 @@ const selectedCategory = ref<string>('all');
 const categories = [
     { id: 'all', label: 'All Notifications', icon: Bell, types: [] },
     { id: 'pending', label: 'Pending Appointments', icon: Clock, types: ['appointment_booked', 'appointment_confirmed'] },
-    { id: 'reviews', label: 'New Reviews', icon: Star, types: ['review_received', 'review_submitted'] },
+    { id: 'reviews', label: 'New Reviews', icon: Star, types: ['review_received', 'clinic_review_submitted', 'review_reply'] },
     { id: 'bookings', label: 'New Bookings', icon: CalendarCheck, types: ['appointment_booked'] },
-    { id: 'reschedule', label: 'Reschedule Requests', icon: RefreshCw, types: ['appointment_rescheduled', 'reschedule_request'] },
+    { id: 'reschedule', label: 'Reschedule Requests', icon: RefreshCw, types: ['appointment_rescheduled', 'reschedule_request', 'follow_up_appointment_rescheduled'] },
     { id: 'cancellations', label: 'Cancellation Requests', icon: CalendarX, types: ['appointment_cancelled', 'cancel_request'] },
-    { id: 'reminders', label: 'Reminders', icon: Calendar, types: ['appointment_reminder'] },
+    { id: 'reminders', label: 'Reminders', icon: Calendar, types: ['appointment_reminder', 'follow_up_appointment_reminder'] },
 ];
 
 const filteredNotifications = computed(() => {
@@ -150,6 +152,33 @@ const formatDate = (dateString: string) => {
         minute: '2-digit'
     });
 };
+
+// Push Notifications
+const showPushPrompt = ref(false);
+
+onMounted(() => {
+    // Check if we should show push notification prompt
+    if (pushNotifications.isSupported() && !pushNotifications.isGranted() && !pushNotifications.isDenied()) {
+        showPushPrompt.value = true;
+    }
+    
+    // Check subscription status
+    pushNotifications.checkSubscription();
+});
+
+const enablePushNotifications = async () => {
+    const granted = await pushNotifications.requestPermission();
+    if (granted) {
+        toast.success('Push notifications enabled successfully');
+        showPushPrompt.value = false;
+    } else {
+        toast.error('Failed to enable push notifications');
+    }
+};
+
+const dismissPushPrompt = () => {
+    showPushPrompt.value = false;
+};
 </script>
 
 <template>
@@ -158,6 +187,31 @@ const formatDate = (dateString: string) => {
     <AppLayout>
         <div class="py-6 sm:py-8 md:py-12">
             <div class="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
+                <!-- Push Notification Prompt -->
+                <div v-if="showPushPrompt" class="mb-4 sm:mb-6">
+                    <Card class="border-primary/50 bg-primary/5">
+                        <CardContent class="p-4 sm:p-6">
+                            <div class="flex items-start gap-3 sm:gap-4">
+                                <BellRing class="h-5 w-5 sm:h-6 sm:w-6 text-primary flex-shrink-0 mt-0.5" />
+                                <div class="flex-1">
+                                    <h3 class="font-semibold text-sm sm:text-base mb-1">Enable Push Notifications</h3>
+                                    <p class="text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-4">
+                                        Stay updated with instant notifications for appointments, reminders, and important updates.
+                                    </p>
+                                    <div class="flex flex-col sm:flex-row gap-2">
+                                        <Button @click="enablePushNotifications" size="sm" class="text-xs sm:text-sm">
+                                            Enable Notifications
+                                        </Button>
+                                        <Button @click="dismissPushPrompt" variant="ghost" size="sm" class="text-xs sm:text-sm">
+                                            Maybe Later
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
                 <div class="flex flex-col lg:flex-row gap-4 sm:gap-6">
                     <!-- Sidebar Categories -->
                     <div class="w-full lg:w-64 flex-shrink-0">
@@ -242,14 +296,6 @@ const formatDate = (dateString: string) => {
                                         @click="handleNotificationClick(notification)"
                                     >
                                         <div class="flex gap-2 sm:gap-3 md:gap-4">
-                                            <div class="flex-shrink-0 mt-0.5 sm:mt-1">
-                                                <component
-                                                    :is="getNotificationIcon(notification.type)"
-                                                    class="h-5 w-5 sm:h-6 sm:w-6"
-                                                    :class="notification.is_read ? 'text-muted-foreground' : 'text-primary'"
-                                                />
-                                            </div>
-
                                             <div class="flex-1 min-w-0 space-y-1 sm:space-y-2">
                                                 <div class="flex items-start justify-between gap-2 sm:gap-3 md:gap-4">
                                                     <div class="flex-1">

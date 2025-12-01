@@ -1867,7 +1867,7 @@ class AppointmentController extends Controller
 
         $appointment->update([
             'scheduled_at' => $validated['scheduled_at'],
-            'status' => 'confirmed',
+            'status' => 'scheduled',
             'confirmed_at' => now(),
             'confirmation_window_ends_at' => Carbon::parse($validated['scheduled_at'])->subHours(24),
             'reschedule_reason' => $validated['reason'],
@@ -1933,15 +1933,55 @@ class AppointmentController extends Controller
     /**
      * Schedule follow-up appointment from completed appointment
      */
-    public function scheduleFollowUp(Request $request, Appointment $parentAppointment)
+    public function scheduleFollowUp(Request $request, $appointment)
     {
+        \Log::info('scheduleFollowUp RAW PARAMS', [
+            'appointment_param' => $appointment,
+            'appointment_type' => gettype($appointment),
+            'all_route_params' => $request->route()->parameters(),
+            'url' => $request->url(),
+            'method' => $request->method()
+        ]);
+        
+        // Manually fetch appointment if needed
+        if (!$appointment instanceof Appointment) {
+            $parentAppointment = Appointment::find($appointment);
+            if (!$parentAppointment) {
+                \Log::error('Appointment not found', ['id' => $appointment]);
+                abort(404, 'Appointment not found');
+            }
+        } else {
+            $parentAppointment = $appointment;
+        }
+        
         \Log::info('scheduleFollowUp method called', [
             'appointment_id' => $parentAppointment->id,
+            'appointment_clinic_id' => $parentAppointment->clinic_id,
             'user_id' => Auth::id(),
             'request_data' => $request->all()
         ]);
         
-        $clinicRegistration = Auth::user()->clinicRegistration;
+        $user = Auth::user();
+        
+        \Log::info('User check', [
+            'user_id' => $user->id,
+            'account_type' => $user->account_type,
+            'isClinic' => $user->isClinic()
+        ]);
+        
+        if (!$user->isClinic()) {
+            \Log::error('User is not a clinic', ['user_id' => Auth::id()]);
+            abort(403, 'Only clinic accounts can schedule follow-up appointments');
+        }
+        
+        $clinicRegistration = $user->clinicRegistration;
+        
+        \Log::info('Clinic registration check', [
+            'clinic_registration' => $clinicRegistration ? [
+                'id' => $clinicRegistration->id,
+                'clinic_name' => $clinicRegistration->clinic_name
+            ] : null
+        ]);
         
         if (!$clinicRegistration) {
             \Log::error('No clinic registration found for user', ['user_id' => Auth::id()]);
@@ -1949,12 +1989,26 @@ class AppointmentController extends Controller
         }
         
         // Verify clinic owns parent appointment
+        \Log::info('Ownership check', [
+            'appointment_clinic_id' => $parentAppointment->clinic_id,
+            'user_clinic_id' => $clinicRegistration->id,
+            'matches' => $parentAppointment->clinic_id === $clinicRegistration->id
+        ]);
+        
         if ($parentAppointment->clinic_id !== $clinicRegistration->id) {
-            abort(403);
+            \Log::error('Clinic does not own parent appointment', [
+                'clinic_id' => $clinicRegistration->id,
+                'appointment_clinic_id' => $parentAppointment->clinic_id
+            ]);
+            abort(403, 'You do not have permission to schedule a follow-up for this appointment');
         }
 
         // Check if can create follow-up
         if (!$parentAppointment->canCreateFollowUp()) {
+            \Log::warning('Cannot create follow-up', [
+                'status' => $parentAppointment->status,
+                'has_follow_up' => $parentAppointment->followUpAppointment()->exists()
+            ]);
             return back()->withErrors([
                 'error' => 'Cannot create follow-up appointment. Parent appointment must be completed and have no existing follow-up.'
             ]);
@@ -1976,7 +2030,9 @@ class AppointmentController extends Controller
             'parent_appointment_id' => $parentAppointment->id,
             'is_follow_up' => true,
             'appointment_type' => 'scheduled',
-            'status' => 'confirmed',
+            'type' => $parentAppointment->type ?? 'consultation', // Inherit type from parent
+            'priority' => $parentAppointment->priority ?? 'normal', // Inherit priority from parent
+            'status' => 'scheduled',
             'scheduled_at' => $validated['scheduled_at'],
             'confirmed_at' => now(),
             'confirmation_window_ends_at' => Carbon::parse($validated['scheduled_at'])->subHours(24),

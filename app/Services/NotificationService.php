@@ -515,5 +515,70 @@ class NotificationService
             ]);
         }
     }
+
+    /**
+     * Send notification when a clinic receives a new review.
+     */
+    public function reviewReceived($review): void
+    {
+        // Notify the clinic owner
+        $clinicRegistration = \App\Models\ClinicRegistration::find($review->clinic_id);
+        if ($clinicRegistration && $clinicRegistration->user) {
+            Notification::create([
+                'user_id' => $clinicRegistration->user_id,
+                'type' => 'review_received',
+                'title' => 'New Review Received',
+                'message' => "{$review->user->name} left a {$review->rating}-star review for your clinic.",
+                'priority' => 'normal',
+                'data' => [
+                    'review_id' => $review->id,
+                    'clinic_id' => $review->clinic_id,
+                    'rating' => $review->rating,
+                    'comment' => $review->comment,
+                    'user_id' => $review->user_id,
+                ],
+            ]);
+        }
+    }
+
+    /**
+     * Send notification when a user's review is submitted successfully.
+     */
+    public function reviewSubmitted($review): void
+    {
+        // Notify the user who submitted the review
+        Notification::create([
+            'user_id' => $review->user_id,
+            'type' => 'clinic_review_submitted',
+            'title' => 'Review Submitted',
+            'message' => "Your review for {$review->clinic->clinic_name} has been submitted successfully. Thank you for your feedback!",
+            'priority' => 'low',
+            'data' => [
+                'review_id' => $review->id,
+                'clinic_id' => $review->clinic_id,
+                'rating' => $review->rating,
+            ],
+        ]);
+    }
+
+    /**
+     * Send notification when clinic replies to a review.
+     */
+    public function reviewReply($review): void
+    {
+        // Notify the user who wrote the review
+        Notification::create([
+            'user_id' => $review->user_id,
+            'type' => 'review_reply',
+            'title' => 'Clinic Responded to Your Review',
+            'message' => "{$review->clinic->clinic_name} has responded to your review.",
+            'priority' => 'normal',
+            'data' => [
+                'review_id' => $review->id,
+                'clinic_id' => $review->clinic_id,
+                'reply' => $review->clinic_reply,
+            ],
+        ]);
+    }
 }
 

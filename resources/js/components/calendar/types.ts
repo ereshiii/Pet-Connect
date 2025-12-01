@@ -8,7 +8,7 @@ export interface CalendarEvent {
     type?: 'appointment' | 'reminder' | 'event' | 'holiday' | 'blocked' | 'custom';
     color?: string; // Tailwind CSS class or hex color
     description?: string;
-    status?: 'confirmed' | 'pending' | 'cancelled' | 'completed' | 'rescheduled';
+    status?: 'scheduled' | 'pending' | 'cancelled' | 'completed' | 'rescheduled';
     category?: string;
     priority?: 'low' | 'medium' | 'high' | 'urgent';
     location?: string;

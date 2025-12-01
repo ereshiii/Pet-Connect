@@ -37,7 +37,7 @@ interface Props {
         owner_name: string;
         appointment_date: string;
         appointment_time: string;
-        status: 'completed' | 'cancelled' | 'no-show' | 'pending' | 'confirmed' | 'in_progress';
+        status: 'completed' | 'cancelled' | 'no-show' | 'pending' | 'scheduled' | 'in_progress';
         service_type: string;
         appointment_type?: 'scheduled' | 'walk-in';
         priority?: 'low' | 'normal' | 'high' | 'critical';
@@ -681,7 +681,7 @@ onUnmounted(() => {
                                  :class="[
                                      event.status === 'scheduled' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
                                      event.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                                     event.status === 'confirmed' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' :
+                                     event.status === 'scheduled' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' :
                                      event.status === 'in_progress' ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400' :
                                      event.status === 'pending_completion' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' :
                                      event.status === 'completed' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' :

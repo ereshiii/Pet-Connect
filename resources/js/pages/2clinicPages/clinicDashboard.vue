@@ -111,10 +111,8 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 const getStatusColor = (status: string) => {
     switch (status) {
-        case 'confirmed':
-            return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300';
         case 'scheduled':
-            return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300';
+            return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300';
         case 'in_progress':
             return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300';
         case 'pending':

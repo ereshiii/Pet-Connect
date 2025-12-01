@@ -275,8 +275,7 @@ const getVaccinationStatus = (nextDueDate: string | null) => {
 const activeTab = ref('info');
 const tabs = [
     { id: 'info', name: 'Pet Information', icon: Info },
-    { id: 'history', name: 'Visit History', icon: History },
-    { id: 'documents', name: 'Documents', icon: Folder }
+    { id: 'history', name: 'Visit History', icon: History }
 ];
 
 // Medical Records Categorization
@@ -749,7 +748,7 @@ const deleteDocument = (docId: number) => {
                                                 <User class="w-4 h-4" />
                                                 <span>{{ record.veterinarian_name }}</span>
                                             </div>
-                                            <div class="flex items-center gap-2">
+                                            <div v-if="record.clinic_name" class="flex items-center gap-2">
                                                 <Building2 class="w-4 h-4" />
                                                 <span>{{ record.clinic_name }}</span>
                                             </div>

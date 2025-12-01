@@ -18,27 +18,27 @@ class OrganizedDatabaseSeeder extends Seeder
         $this->call([
             // Step 1: Core accounts
             AdminSeeder::class,
-            UserSeeder::class,
+            // UserSeeder::class,
             // ClinicSeeder::class,
             SubscriptionPlanSeeder::class,
             
-            // Step 2: Clinic subscriptions (requires clinics and subscription plans)
+            // //Step 2: Clinic subscriptions (requires clinics and subscription plans)
             // ClinicSubscriptionSeeder::class,
             
-            // Step 3: Pet breeds and types
+            //Step 3: Pet breeds and types
             PetTypeSeeder::class,
             PetBreedSeeder::class,
             
             // Step 4: Pets (requires users)
             // PetSeeder::class,
             
-            // Step 5: Appointments (requires users, pets, clinics)
+            // // Step 5: Appointments (requires users, pets, clinics)
             // AppointmentSeeder::class,
             
-            // Step 6: Medical Records (requires completed appointments)
+            // // Step 6: Medical Records (requires completed appointments)
             // MedicalRecordSeeder::class,
             
-            // Step 7: Reviews (requires completed appointments)
+            // // Step 7: Reviews (requires completed appointments)
             // ReviewSeeder::class,
         ]);
         

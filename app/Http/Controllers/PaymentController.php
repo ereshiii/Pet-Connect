@@ -8,6 +8,7 @@ use App\Services\SubscriptionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class PaymentController extends Controller
@@ -197,12 +198,16 @@ class PaymentController extends Controller
                 DB::table('subscription_billing_history')->insert([
                     'user_id' => $user->id,
                     'subscription_id' => $subscription,
-                    'plan_name' => $plan->name,
                     'amount' => $amount,
-                    'billing_period_start' => now(),
-                    'billing_period_end' => now()->addMonth(),
+                    'billing_period' => now()->format('M Y'),
+                    'billing_date' => now()->toDateString(),
+                    'period_start' => now()->toDateString(),
+                    'period_end' => now()->addMonth()->toDateString(),
                     'status' => 'paid',
                     'payment_method' => 'Mock Card (****' . $mockCard->card_holder . ')',
+                    'transaction_id' => 'MOCK-' . strtoupper(Str::random(12)),
+                    'mock_card_id' => $mockCard->id,
+                    'notes' => 'Initial subscription payment for ' . $plan->name,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
