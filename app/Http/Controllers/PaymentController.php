@@ -115,25 +115,38 @@ class PaymentController extends Controller
     protected function processCardPayment($user, $plan, $amount, $validated)
     {
         try {
-            // Clean the card number (remove spaces)
-            $cleanCardNumber = str_replace(' ', '', $validated['payment_method_id']);
+            // Get the payment method ID from request
+            $paymentMethodId = $validated['payment_method_id'];
             
-            // Format card number with spaces (standard format: XXXX XXXX XXXX XXXX)
-            $formattedCardNumber = trim(chunk_split($cleanCardNumber, 4, ' '));
+            // Clean the card number (remove all spaces and non-numeric characters except for card_id format)
+            $cleanInput = str_replace(' ', '', $paymentMethodId);
             
-            // Check if this is a mock payment card (match by card_number with or without spaces, or card_id)
+            // Log for debugging
+            Log::info('Processing card payment', [
+                'raw_input' => $paymentMethodId,
+                'clean_input' => $cleanInput,
+                'amount' => $amount,
+            ]);
+            
+            // Check if this is a mock payment card - try multiple matching strategies
             $mockCard = DB::table('mock_payment_cards')
-                ->where(function($query) use ($cleanCardNumber, $formattedCardNumber, $validated) {
-                    // Match by card number without spaces
-                    $query->where('card_number', $cleanCardNumber)
-                          // OR match by card number with spaces
-                          ->orWhere('card_number', $formattedCardNumber)
-                          // OR match by card_id
-                          ->orWhere('card_id', $validated['payment_method_id'])
-                          // OR match by card_id cleaned
-                          ->orWhere('card_id', $cleanCardNumber);
+                ->where(function($query) use ($cleanInput, $paymentMethodId) {
+                    // Match by card_id exactly
+                    $query->where('card_id', $cleanInput)
+                          // OR match by card_id with the raw input
+                          ->orWhere('card_id', $paymentMethodId)
+                          // OR match by card_number without spaces
+                          ->orWhere(DB::raw('REPLACE(card_number, " ", "")'), $cleanInput)
+                          // OR match by card_number with spaces
+                          ->orWhere('card_number', $paymentMethodId);
                 })
                 ->first();
+
+            Log::info('Mock card lookup result', [
+                'found' => $mockCard ? 'yes' : 'no',
+                'card_id' => $mockCard->card_id ?? null,
+                'card_number' => $mockCard->card_number ?? null,
+            ]);
 
             if ($mockCard) {
                 // Only validate sufficient balance
@@ -161,6 +174,11 @@ class PaymentController extends Controller
                     ->where('card_id', $mockCard->card_id)
                     ->decrement('balance', $amount);
 
+                // Add to merchant account
+                DB::table('mock_payment_cards')
+                    ->where('card_id', 'MERCH-PETCONNECT-001')
+                    ->increment('balance', $amount);
+
                 // Create mock subscription
                 $subscription = DB::table('subscriptions')->insertGetId([
                     'user_id' => $user->id,
@@ -175,21 +193,47 @@ class PaymentController extends Controller
                     'updated_at' => now(),
                 ]);
 
+                // Record billing history
+                DB::table('subscription_billing_history')->insert([
+                    'user_id' => $user->id,
+                    'subscription_id' => $subscription,
+                    'plan_name' => $plan->name,
+                    'amount' => $amount,
+                    'billing_period_start' => now(),
+                    'billing_period_end' => now()->addMonth(),
+                    'status' => 'paid',
+                    'payment_method' => 'Mock Card (****' . $mockCard->card_holder . ')',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                Log::info('Subscription created successfully', [
+                    'subscription_id' => $subscription,
+                    'user_id' => $user->id,
+                ]);
+
                 DB::commit();
 
                 return redirect()->route('subscription.success', ['subscription' => $subscription]);
             }
 
             // If no mock card found, this is considered an invalid card
+            Log::warning('No mock card found', ['input' => $cleanInput]);
+            
             DB::rollBack();
             return redirect()->route('subscription.failed', [
-                'error' => 'Card not found. Please use a card registered in the Mock Payment page.',
+                'error' => 'Card not found. Please use a card registered in the Mock Payment Banking System.',
                 'planName' => $plan->name,
                 'amount' => $amount,
             ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Card payment error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
             return redirect()->route('subscription.failed', [
                 'error' => $e->getMessage(),
                 'planName' => $plan->name ?? null,

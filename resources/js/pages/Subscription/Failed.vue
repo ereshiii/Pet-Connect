@@ -22,8 +22,24 @@ const formatCurrency = (amount?: number) => {
 };
 
 const getErrorMessage = () => {
+    // Check URL parameters first, then props
+    const urlParams = new URLSearchParams(window.location.search);
+    const errorParam = urlParams.get('error');
+    
+    if (errorParam) return errorParam;
     if (props.error) return props.error;
     return 'Your payment could not be processed. Please try again or use a different payment method.';
+};
+
+const getPlanName = () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('planName') || props.planName;
+};
+
+const getAmount = () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const amountParam = urlParams.get('amount');
+    return amountParam ? parseFloat(amountParam) : props.amount;
 };
 </script>
 
@@ -49,14 +65,14 @@ const getErrorMessage = () => {
                 </div>
 
                 <!-- Payment Details (if available) -->
-                <div v-if="planName && amount" class="rounded-lg border bg-card p-6 space-y-3 text-left">
-                    <div class="flex justify-between text-sm">
+                <div v-if="getPlanName() || getAmount()" class="rounded-lg border bg-card p-6 space-y-3 text-left">
+                    <div v-if="getPlanName()" class="flex justify-between text-sm">
                         <span class="text-muted-foreground">Attempted Plan</span>
-                        <span class="font-medium">{{ planName }}</span>
+                        <span class="font-medium">{{ getPlanName() }}</span>
                     </div>
-                    <div class="flex justify-between text-sm">
+                    <div v-if="getAmount()" class="flex justify-between text-sm">
                         <span class="text-muted-foreground">Amount</span>
-                        <span class="font-medium">{{ formatCurrency(amount) }}</span>
+                        <span class="font-medium">{{ formatCurrency(getAmount()) }}</span>
                     </div>
                 </div>
 
