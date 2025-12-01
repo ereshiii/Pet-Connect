@@ -47,39 +47,39 @@ const getAmount = () => {
     <Head title="Payment Failed" />
 
     <AppLayout>
-        <div class="flex h-full flex-1 items-center justify-center p-6">
-            <div class="max-w-md w-full space-y-8 text-center">
+        <div class="flex h-full flex-1 items-center justify-center p-3 md:p-6">
+            <div class="max-w-md w-full space-y-6 md:space-y-8 text-center">
                 <!-- Error Icon -->
                 <div class="flex justify-center">
-                    <div class="rounded-full bg-red-100 dark:bg-red-900/20 p-6">
-                        <XCircle class="h-16 w-16 text-red-600 dark:text-red-400" />
+                    <div class="rounded-full bg-red-100 dark:bg-red-900/20 p-4 md:p-6">
+                        <XCircle class="h-12 w-12 md:h-16 md:w-16 text-red-600 dark:text-red-400" />
                     </div>
                 </div>
 
                 <!-- Error Message -->
-                <div class="space-y-2">
-                    <h1 class="text-3xl font-bold">Payment Failed</h1>
-                    <p class="text-muted-foreground">
+                <div class="space-y-1.5 md:space-y-2">
+                    <h1 class="text-2xl md:text-3xl font-bold">Payment Failed</h1>
+                    <p class="text-xs md:text-sm text-muted-foreground px-4">
                         {{ getErrorMessage() }}
                     </p>
                 </div>
 
                 <!-- Payment Details (if available) -->
-                <div v-if="getPlanName() || getAmount()" class="rounded-lg border bg-card p-6 space-y-3 text-left">
-                    <div v-if="getPlanName()" class="flex justify-between text-sm">
+                <div v-if="getPlanName() || getAmount()" class="rounded-lg border bg-card p-4 md:p-6 space-y-2 md:space-y-3 text-left">
+                    <div v-if="getPlanName()" class="flex justify-between text-xs md:text-sm gap-2">
                         <span class="text-muted-foreground">Attempted Plan</span>
-                        <span class="font-medium">{{ getPlanName() }}</span>
+                        <span class="font-medium text-right">{{ getPlanName() }}</span>
                     </div>
-                    <div v-if="getAmount()" class="flex justify-between text-sm">
+                    <div v-if="getAmount()" class="flex justify-between text-xs md:text-sm gap-2">
                         <span class="text-muted-foreground">Amount</span>
                         <span class="font-medium">{{ formatCurrency(getAmount()) }}</span>
                     </div>
                 </div>
 
                 <!-- Common Reasons -->
-                <div class="rounded-lg bg-muted p-6 text-left space-y-3">
-                    <h3 class="font-medium">Common reasons for payment failure:</h3>
-                    <ul class="space-y-2 text-sm text-muted-foreground list-disc list-inside">
+                <div class="rounded-lg bg-muted p-4 md:p-6 text-left space-y-2 md:space-y-3">
+                    <h3 class="text-sm md:text-base font-medium">Common reasons for payment failure:</h3>
+                    <ul class="space-y-1.5 md:space-y-2 text-xs md:text-sm text-muted-foreground list-disc list-inside">
                         <li>Insufficient funds in your account</li>
                         <li>Card has expired or been declined</li>
                         <li>Incorrect card details entered</li>
@@ -89,12 +89,12 @@ const getAmount = () => {
                 </div>
 
                 <!-- Actions -->
-                <div class="flex flex-col sm:flex-row gap-3">
+                <div class="flex flex-col sm:flex-row gap-2 md:gap-3">
                     <Button 
                         class="flex-1"
                         @click="$inertia.visit('/subscription')"
                     >
-                        <RefreshCw class="h-4 w-4 mr-2" />
+                        <RefreshCw class="h-3 w-3 md:h-4 md:w-4 mr-2" />
                         Try Again
                     </Button>
                     <Button 
@@ -108,30 +108,31 @@ const getAmount = () => {
                 </div>
 
                 <!-- Support -->
-                <div class="space-y-2">
-                    <p class="text-sm text-muted-foreground">
+                <div class="space-y-1.5 md:space-y-2">
+                    <p class="text-xs md:text-sm text-muted-foreground">
                         Need help? Our support team is here to assist you.
                     </p>
                     <Button 
                         variant="link" 
                         size="sm"
                         @click="$inertia.visit('/contact')"
+                        class="text-xs md:text-sm"
                     >
                         Contact Support
                     </Button>
                 </div>
 
                 <!-- Payment Method Alternatives -->
-                <div class="pt-6 border-t">
-                    <p class="text-xs text-muted-foreground">
+                <div class="pt-4 md:pt-6 border-t">
+                    <p class="text-[10px] md:text-xs text-muted-foreground">
                         Having trouble with your payment method? Try using:
                     </p>
-                    <div class="flex justify-center gap-4 mt-3">
-                        <span class="text-xs font-medium">GCash</span>
-                        <span class="text-xs text-muted-foreground">•</span>
-                        <span class="text-xs font-medium">Credit/Debit Card</span>
-                        <span class="text-xs text-muted-foreground">•</span>
-                        <span class="text-xs font-medium">GrabPay</span>
+                    <div class="flex flex-wrap justify-center gap-2 md:gap-4 mt-2 md:mt-3">
+                        <span class="text-[10px] md:text-xs font-medium">GCash</span>
+                        <span class="text-[10px] md:text-xs text-muted-foreground">•</span>
+                        <span class="text-[10px] md:text-xs font-medium">Credit/Debit Card</span>
+                        <span class="text-[10px] md:text-xs text-muted-foreground">•</span>
+                        <span class="text-[10px] md:text-xs font-medium">GrabPay</span>
                     </div>
                 </div>
             </div>

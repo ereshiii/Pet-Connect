@@ -57,127 +57,127 @@ const getQueryTimeColor = (time: number) => {
     <Head title="Database Monitoring" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-6 p-6">
+        <div class="flex h-full flex-1 flex-col gap-4 md:gap-6 p-4 md:p-6">
             <!-- Header -->
             <div>
-                <h1 class="text-2xl font-semibold flex items-center gap-2">
-                    <DatabaseIcon class="h-6 w-6" />
+                <h1 class="text-xl md:text-2xl font-semibold flex items-center gap-2">
+                    <DatabaseIcon class="h-5 w-5 md:h-6 md:w-6" />
                     Database Monitoring
                 </h1>
-                <p class="text-muted-foreground">Database performance and query analytics</p>
+                <p class="text-sm text-muted-foreground">Database performance and query analytics</p>
             </div>
 
             <!-- Quick Stats -->
-            <div class="grid gap-4 md:grid-cols-4">
-                <div class="rounded-lg border bg-card p-6">
-                    <div class="flex items-center gap-4">
+            <div class="grid gap-2 md:gap-4 grid-cols-2 md:grid-cols-4">
+                <div class="rounded-lg border bg-card p-2 md:p-6">
+                    <div class="flex items-center gap-1.5 md:gap-4">
                         <div :class="database_metrics.connection_status === 'connected' 
                             ? 'bg-green-50 dark:bg-green-900/20' 
                             : 'bg-red-50 dark:bg-red-900/20'" 
-                            class="rounded-lg p-3">
+                            class="rounded-lg p-1.5 md:p-3">
                             <CheckCircle v-if="database_metrics.connection_status === 'connected'" 
-                                class="h-6 w-6 text-green-600 dark:text-green-400" />
+                                class="h-3 w-3 md:h-6 md:w-6 text-green-600 dark:text-green-400" />
                             <AlertTriangle v-else 
-                                class="h-6 w-6 text-red-600 dark:text-red-400" />
+                                class="h-3 w-3 md:h-6 md:w-6 text-red-600 dark:text-red-400" />
                         </div>
-                        <div>
-                            <p class="text-sm text-muted-foreground">Connection</p>
+                        <div class="min-w-0">
+                            <p class="text-[10px] md:text-sm text-muted-foreground truncate">Connection</p>
                             <h2 :class="database_metrics.connection_status === 'connected' 
                                 ? 'text-green-600 dark:text-green-400' 
                                 : 'text-red-600 dark:text-red-400'" 
-                                class="text-xl font-bold capitalize">
+                                class="text-xs md:text-xl font-bold capitalize">
                                 {{ database_metrics.connection_status }}
                             </h2>
                         </div>
                     </div>
                 </div>
 
-                <div class="rounded-lg border bg-card p-6">
-                    <div class="flex items-center gap-4">
-                        <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
-                            <Table class="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                <div class="rounded-lg border bg-card p-2 md:p-6">
+                    <div class="flex items-center gap-1.5 md:gap-4">
+                        <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-1.5 md:p-3">
+                            <Table class="h-3 w-3 md:h-6 md:w-6 text-blue-600 dark:text-blue-400" />
                         </div>
-                        <div>
-                            <p class="text-sm text-muted-foreground">Total Tables</p>
-                            <h2 class="text-2xl font-bold">{{ database_metrics.total_tables }}</h2>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="rounded-lg border bg-card p-6">
-                    <div class="flex items-center gap-4">
-                        <div class="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3">
-                            <FileText class="h-6 w-6 text-purple-600 dark:text-purple-400" />
-                        </div>
-                        <div>
-                            <p class="text-sm text-muted-foreground">Total Records</p>
-                            <h2 class="text-2xl font-bold">{{ database_metrics.total_records.toLocaleString() }}</h2>
+                        <div class="min-w-0">
+                            <p class="text-[10px] md:text-sm text-muted-foreground truncate">Total Tables</p>
+                            <h2 class="text-sm md:text-2xl font-bold">{{ database_metrics.total_tables }}</h2>
                         </div>
                     </div>
                 </div>
 
-                <div class="rounded-lg border bg-card p-6">
-                    <div class="flex items-center gap-4">
-                        <div class="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-3">
-                            <DatabaseIcon class="h-6 w-6 text-orange-600 dark:text-orange-400" />
+                <div class="rounded-lg border bg-card p-2 md:p-6">
+                    <div class="flex items-center gap-1.5 md:gap-4">
+                        <div class="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-1.5 md:p-3">
+                            <FileText class="h-3 w-3 md:h-6 md:w-6 text-purple-600 dark:text-purple-400" />
                         </div>
-                        <div>
-                            <p class="text-sm text-muted-foreground">Database Size</p>
-                            <h2 class="text-2xl font-bold">{{ database_metrics.database_size_mb.toFixed(2) }} MB</h2>
+                        <div class="min-w-0">
+                            <p class="text-[10px] md:text-sm text-muted-foreground truncate">Total Records</p>
+                            <h2 class="text-sm md:text-2xl font-bold">{{ database_metrics.total_records.toLocaleString() }}</h2>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rounded-lg border bg-card p-2 md:p-6">
+                    <div class="flex items-center gap-1.5 md:gap-4">
+                        <div class="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-1.5 md:p-3">
+                            <DatabaseIcon class="h-3 w-3 md:h-6 md:w-6 text-orange-600 dark:text-orange-400" />
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-[10px] md:text-sm text-muted-foreground truncate">DB Size</p>
+                            <h2 class="text-sm md:text-2xl font-bold">{{ database_metrics.database_size_mb.toFixed(2) }} MB</h2>
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- Query Performance -->
-            <div class="grid gap-4 md:grid-cols-3">
-                <div class="rounded-lg border bg-card p-6">
+            <div class="grid gap-3 md:gap-4 grid-cols-1 md:grid-cols-3">
+                <div class="rounded-lg border bg-card p-4 md:p-6">
                     <div class="flex items-center justify-between mb-2">
-                        <p class="text-sm text-muted-foreground">Queries Today</p>
-                        <Clock class="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                        <p class="text-xs md:text-sm text-muted-foreground">Queries Today</p>
+                        <Clock class="h-4 w-4 md:h-5 md:w-5 text-blue-600 dark:text-blue-400" />
                     </div>
-                    <h2 class="text-3xl font-bold">{{ database_metrics.query_count_today.toLocaleString() }}</h2>
+                    <h2 class="text-2xl md:text-3xl font-bold">{{ database_metrics.query_count_today.toLocaleString() }}</h2>
                 </div>
 
-                <div class="rounded-lg border bg-card p-6">
+                <div class="rounded-lg border bg-card p-4 md:p-6">
                     <div class="flex items-center justify-between mb-2">
-                        <p class="text-sm text-muted-foreground">Slow Queries</p>
-                        <AlertTriangle class="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                        <p class="text-xs md:text-sm text-muted-foreground">Slow Queries</p>
+                        <AlertTriangle class="h-4 w-4 md:h-5 md:w-5 text-yellow-600 dark:text-yellow-400" />
                     </div>
-                    <h2 class="text-3xl font-bold text-yellow-600 dark:text-yellow-400">
+                    <h2 class="text-2xl md:text-3xl font-bold text-yellow-600 dark:text-yellow-400">
                         {{ database_metrics.slow_queries }}
                     </h2>
                 </div>
 
-                <div class="rounded-lg border bg-card p-6">
+                <div class="rounded-lg border bg-card p-4 md:p-6">
                     <div class="flex items-center justify-between mb-2">
-                        <p class="text-sm text-muted-foreground">Avg Query Time</p>
-                        <Clock class="h-5 w-5 text-green-600 dark:text-green-400" />
+                        <p class="text-xs md:text-sm text-muted-foreground">Avg Query Time</p>
+                        <Clock class="h-4 w-4 md:h-5 md:w-5 text-green-600 dark:text-green-400" />
                     </div>
-                    <h2 class="text-3xl font-bold">{{ database_metrics.avg_query_time_ms }}ms</h2>
+                    <h2 class="text-2xl md:text-3xl font-bold">{{ database_metrics.avg_query_time_ms }}ms</h2>
                 </div>
             </div>
 
             <!-- Database Info & Table Stats -->
-            <div class="grid gap-4 md:grid-cols-2">
+            <div class="grid gap-3 md:gap-4 grid-cols-1 md:grid-cols-2">
                 <div class="rounded-lg border bg-card">
-                    <div class="border-b p-6">
-                        <h2 class="text-lg font-semibold">Database Information</h2>
+                    <div class="border-b p-4 md:p-6">
+                        <h2 class="text-base md:text-lg font-semibold">Database Information</h2>
                     </div>
-                    <div class="p-6 space-y-4">
-                        <div class="flex justify-between py-2 border-b">
+                    <div class="p-4 md:p-6 space-y-3 md:space-y-4">
+                        <div class="flex justify-between py-2 border-b text-sm">
                             <span class="text-muted-foreground">Database Type</span>
                             <span class="font-medium">{{ database_metrics.database_type }}</span>
                         </div>
-                        <div class="flex justify-between py-2 border-b">
+                        <div class="flex justify-between py-2 border-b text-sm">
                             <span class="text-muted-foreground">Version</span>
                             <span class="font-medium">{{ database_metrics.database_version }}</span>
                         </div>
-                        <div class="flex justify-between py-2 border-b">
+                        <div class="flex justify-between py-2 border-b text-sm">
                             <span class="text-muted-foreground">Total Size</span>
                             <span class="font-medium">{{ database_metrics.database_size_mb.toFixed(2) }} MB</span>
                         </div>
-                        <div class="flex justify-between py-2">
+                        <div class="flex justify-between py-2 text-sm">
                             <span class="text-muted-foreground">Connection Pool</span>
                             <span class="font-medium text-green-600 dark:text-green-400">Active</span>
                         </div>
@@ -185,18 +185,18 @@ const getQueryTimeColor = (time: number) => {
                 </div>
 
                 <div class="rounded-lg border bg-card">
-                    <div class="border-b p-6">
-                        <h2 class="text-lg font-semibold">Top Tables by Size</h2>
+                    <div class="border-b p-4 md:p-6">
+                        <h2 class="text-base md:text-lg font-semibold">Top Tables by Size</h2>
                     </div>
                     <div class="divide-y max-h-[300px] overflow-y-auto">
-                        <div v-for="table in table_stats" :key="table.table_name" class="p-4">
+                        <div v-for="table in table_stats" :key="table.table_name" class="p-3 md:p-4">
                             <div class="flex justify-between items-center mb-2">
-                                <span class="font-medium">{{ table.table_name }}</span>
-                                <span class="text-sm text-muted-foreground">{{ table.size_mb.toFixed(2) }} MB</span>
+                                <span class="text-sm font-medium">{{ table.table_name }}</span>
+                                <span class="text-xs md:text-sm text-muted-foreground">{{ table.size_mb.toFixed(2) }} MB</span>
                             </div>
-                            <div class="flex justify-between items-center text-sm text-muted-foreground">
+                            <div class="flex justify-between items-center text-xs md:text-sm text-muted-foreground">
                                 <span>{{ table.row_count.toLocaleString() }} rows</span>
-                                <span>Updated: {{ table.last_updated }}</span>
+                                <span class="truncate ml-2">Updated: {{ table.last_updated }}</span>
                             </div>
                         </div>
                     </div>
@@ -205,26 +205,26 @@ const getQueryTimeColor = (time: number) => {
 
             <!-- Recent Queries -->
             <div class="rounded-lg border bg-card">
-                <div class="border-b p-6">
-                    <h2 class="text-lg font-semibold">Recent Query Log</h2>
-                    <p class="text-sm text-muted-foreground">Latest database queries and execution times</p>
+                <div class="border-b p-4 md:p-6">
+                    <h2 class="text-base md:text-lg font-semibold">Recent Query Log</h2>
+                    <p class="text-xs md:text-sm text-muted-foreground">Latest database queries and execution times</p>
                 </div>
                 <div class="divide-y max-h-[400px] overflow-y-auto">
-                    <div v-for="query in recent_queries" :key="query.id" class="p-4 hover:bg-muted/50">
-                        <div class="flex items-start justify-between mb-2">
-                            <div class="flex-1">
-                                <code class="text-xs bg-muted px-2 py-1 rounded">{{ query.query }}</code>
+                    <div v-for="query in recent_queries" :key="query.id" class="p-3 md:p-4 hover:bg-muted/50">
+                        <div class="flex items-start justify-between mb-2 gap-2">
+                            <div class="flex-1 min-w-0">
+                                <code class="text-[10px] md:text-xs bg-muted px-2 py-1 rounded break-all">{{ query.query }}</code>
                             </div>
-                            <div class="flex items-center gap-3 ml-4">
-                                <span :class="getQueryTimeColor(query.execution_time_ms)" class="text-sm font-medium">
+                            <div class="flex items-center gap-2 md:gap-3 flex-shrink-0">
+                                <span :class="getQueryTimeColor(query.execution_time_ms)" class="text-xs md:text-sm font-medium whitespace-nowrap">
                                     {{ query.execution_time_ms }}ms
                                 </span>
-                                <span :class="getQueryStatusColor(query.status)" class="text-xs font-semibold uppercase">
+                                <span :class="getQueryStatusColor(query.status)" class="text-[10px] md:text-xs font-semibold uppercase">
                                     {{ query.status }}
                                 </span>
                             </div>
                         </div>
-                        <span class="text-xs text-muted-foreground">{{ query.timestamp }}</span>
+                        <span class="text-[10px] md:text-xs text-muted-foreground">{{ query.timestamp }}</span>
                     </div>
                 </div>
             </div>

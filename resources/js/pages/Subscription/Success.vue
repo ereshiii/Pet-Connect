@@ -27,64 +27,64 @@ const formatCurrency = (amount: number) => {
     <Head title="Payment Successful" />
 
     <AppLayout>
-        <div class="flex h-full flex-1 items-center justify-center p-6">
-            <div class="max-w-md w-full space-y-8 text-center">
+        <div class="flex h-full flex-1 items-center justify-center p-3 md:p-6">
+            <div class="max-w-md w-full space-y-6 md:space-y-8 text-center">
                 <!-- Success Icon -->
                 <div class="flex justify-center">
-                    <div class="rounded-full bg-green-100 dark:bg-green-900/20 p-6">
-                        <CheckCircle class="h-16 w-16 text-green-600 dark:text-green-400" />
+                    <div class="rounded-full bg-green-100 dark:bg-green-900/20 p-4 md:p-6">
+                        <CheckCircle class="h-12 w-12 md:h-16 md:w-16 text-green-600 dark:text-green-400" />
                     </div>
                 </div>
 
                 <!-- Success Message -->
-                <div class="space-y-2">
-                    <h1 class="text-3xl font-bold">Payment Successful!</h1>
-                    <p class="text-muted-foreground">
+                <div class="space-y-1.5 md:space-y-2">
+                    <h1 class="text-2xl md:text-3xl font-bold">Payment Successful!</h1>
+                    <p class="text-xs md:text-sm text-muted-foreground px-4">
                         Your subscription to <span class="font-medium text-foreground">{{ planName }}</span> has been activated.
                     </p>
                 </div>
 
                 <!-- Payment Details -->
-                <div class="rounded-lg border bg-card p-6 space-y-3 text-left">
-                    <div class="flex justify-between text-sm">
+                <div class="rounded-lg border bg-card p-4 md:p-6 space-y-2 md:space-y-3 text-left">
+                    <div class="flex justify-between text-xs md:text-sm gap-2">
                         <span class="text-muted-foreground">Plan</span>
-                        <span class="font-medium">{{ planName }}</span>
+                        <span class="font-medium text-right">{{ planName }}</span>
                     </div>
-                    <div class="flex justify-between text-sm">
+                    <div class="flex justify-between text-xs md:text-sm gap-2">
                         <span class="text-muted-foreground">Billing Cycle</span>
                         <span class="font-medium capitalize">{{ billingCycle }}</span>
                     </div>
-                    <div class="flex justify-between text-sm">
+                    <div class="flex justify-between text-xs md:text-sm gap-2">
                         <span class="text-muted-foreground">Amount Paid</span>
                         <span class="font-medium">{{ formatCurrency(amount) }}</span>
                     </div>
-                    <div v-if="transactionId" class="flex justify-between text-sm">
+                    <div v-if="transactionId" class="flex justify-between text-xs md:text-sm gap-2">
                         <span class="text-muted-foreground">Transaction ID</span>
-                        <span class="font-mono text-xs">{{ transactionId }}</span>
+                        <span class="font-mono text-[10px] md:text-xs break-all">{{ transactionId }}</span>
                     </div>
                 </div>
 
                 <!-- What's Next -->
-                <div class="rounded-lg bg-muted p-6 text-left space-y-3">
-                    <h3 class="font-medium">What's next?</h3>
-                    <ul class="space-y-2 text-sm text-muted-foreground">
-                        <li class="flex items-start gap-2">
-                            <ArrowRight class="h-4 w-4 mt-0.5 flex-shrink-0 text-primary" />
+                <div class="rounded-lg bg-muted p-4 md:p-6 text-left space-y-2 md:space-y-3">
+                    <h3 class="text-sm md:text-base font-medium">What's next?</h3>
+                    <ul class="space-y-1.5 md:space-y-2 text-xs md:text-sm text-muted-foreground">
+                        <li class="flex items-start gap-1.5 md:gap-2">
+                            <ArrowRight class="h-3 w-3 md:h-4 md:w-4 mt-0.5 flex-shrink-0 text-primary" />
                             <span>Access all features included in your plan</span>
                         </li>
-                        <li class="flex items-start gap-2">
-                            <ArrowRight class="h-4 w-4 mt-0.5 flex-shrink-0 text-primary" />
+                        <li class="flex items-start gap-1.5 md:gap-2">
+                            <ArrowRight class="h-3 w-3 md:h-4 md:w-4 mt-0.5 flex-shrink-0 text-primary" />
                             <span>View your subscription details in the dashboard</span>
                         </li>
-                        <li class="flex items-start gap-2">
-                            <ArrowRight class="h-4 w-4 mt-0.5 flex-shrink-0 text-primary" />
+                        <li class="flex items-start gap-1.5 md:gap-2">
+                            <ArrowRight class="h-3 w-3 md:h-4 md:w-4 mt-0.5 flex-shrink-0 text-primary" />
                             <span>A receipt has been sent to your email</span>
                         </li>
                     </ul>
                 </div>
 
                 <!-- Actions -->
-                <div class="flex flex-col sm:flex-row gap-3">
+                <div class="flex flex-col sm:flex-row gap-2 md:gap-3">
                     <Button 
                         class="flex-1"
                         @click="$inertia.visit(redirectTo || '/subscription/dashboard')"

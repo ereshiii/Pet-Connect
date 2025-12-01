@@ -467,60 +467,60 @@ onUnmounted(() => {
     <Head title="Appointments" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-3 sm:gap-4 overflow-x-auto rounded-xl p-3 sm:p-4">
+        <div class="flex h-full flex-1 flex-col gap-2 md:gap-4 overflow-x-auto rounded-xl p-2 md:p-4">
             <!-- Header -->
-            <div class="rounded-lg border bg-card p-3 sm:p-4 md:p-6">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-4 sm:mb-6">
+            <div class="rounded-lg border bg-card p-3 md:p-6">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-3 md:mb-6">
                     <div>
-                        <h1 class="text-lg sm:text-xl md:text-2xl font-semibold mb-2 flex items-center gap-2">
-                            <CalendarIcon class="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+                        <h1 class="text-base md:text-2xl font-semibold mb-1.5 md:mb-2 flex items-center gap-1.5 md:gap-2">
+                            <CalendarIcon class="h-4 w-4 md:h-6 md:w-6 text-primary" />
                             Appointments
                         </h1>
-                        <p class="text-xs sm:text-sm text-muted-foreground">
+                        <p class="text-xs md:text-sm text-muted-foreground">
                             {{ isClinic ? 'Manage and view your clinic appointments' : 'Manage and view your pet appointments' }}
                         </p>
                     </div>
                     
                     <!-- Control Panel -->
-                    <div class="flex flex-col gap-2 sm:gap-3 mt-3 sm:mt-4 md:mt-0">
+                    <div class="flex flex-col gap-2 mt-3 md:mt-0">
                         <!-- Create Walk-in Button (Clinic only) -->
                         <button 
                             v-if="isClinic"
                             @click="openWalkInModal"
-                            class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm font-medium flex items-center gap-2 transition-colors"
+                            class="px-3 md:px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-xs md:text-sm font-medium flex items-center justify-center gap-1.5 md:gap-2 transition-colors"
                         >
-                            <Plus class="h-4 w-4" />
+                            <Plus class="h-3 w-3 md:h-4 md:w-4" />
                             Emergency Walk-In
                         </button>
                         
                         <!-- View Mode Toggle -->
-                        <div class="flex items-center gap-0.5 sm:gap-1 bg-muted rounded-md p-0.5 sm:p-1">
+                        <div class="flex items-center gap-0.5 bg-muted rounded-md p-0.5">
                             <button 
                                 @click="viewMode = 'calendar'"
-                                class="px-3 py-1.5 text-xs sm:text-sm rounded transition-colors flex items-center gap-2"
+                                class="px-2 md:px-3 py-1.5 text-xs md:text-sm rounded transition-colors flex items-center gap-1.5 md:gap-2"
                                 :class="viewMode === 'calendar' ? 'bg-background shadow-sm font-medium' : 'text-muted-foreground hover:text-foreground'"
                             >
-                                <CalendarIcon class="h-4 w-4" />
-                                Calendar
+                                <CalendarIcon class="h-3 w-3 md:h-4 md:w-4" />
+                                <span class="hidden sm:inline">Calendar</span>
                             </button>
                             <button 
                                 @click="viewMode = 'list'"
-                                class="px-3 py-1.5 text-xs sm:text-sm rounded transition-colors flex items-center gap-2"
+                                class="px-2 md:px-3 py-1.5 text-xs md:text-sm rounded transition-colors flex items-center gap-1.5 md:gap-2"
                                 :class="viewMode === 'list' ? 'bg-background shadow-sm font-medium' : 'text-muted-foreground hover:text-foreground'"
                             >
-                                <List class="h-4 w-4" />
-                                List
+                                <List class="h-3 w-3 md:h-4 md:w-4" />
+                                <span class="hidden sm:inline">List</span>
                             </button>
                         </div>
                     </div>
                 </div>
                 
                 <!-- Tab Navigation -->
-                <div class="mt-4 border-b">
-                    <div class="flex gap-4">
+                <div class="mt-3 md:mt-4 border-b overflow-x-auto">
+                    <div class="flex gap-2 md:gap-4 min-w-max">
                         <button
                             @click="selectedTab = 'all'"
-                            class="px-4 py-2 text-sm font-medium transition-colors border-b-2"
+                            class="px-3 md:px-4 py-2 text-xs md:text-sm font-medium transition-colors border-b-2 whitespace-nowrap"
                             :class="selectedTab === 'all' 
                                 ? 'border-primary text-primary' 
                                 : 'border-transparent text-muted-foreground hover:text-foreground'"
@@ -530,12 +530,12 @@ onUnmounted(() => {
                         <button
                             v-if="isClinic"
                             @click="selectedTab = 'emergency'"
-                            class="px-4 py-2 text-sm font-medium transition-colors border-b-2 flex items-center gap-2"
+                            class="px-3 md:px-4 py-2 text-xs md:text-sm font-medium transition-colors border-b-2 flex items-center gap-1.5 md:gap-2 whitespace-nowrap"
                             :class="selectedTab === 'emergency' 
                                 ? 'border-red-600 text-red-600' 
                                 : 'border-transparent text-muted-foreground hover:text-foreground'"
                         >
-                            <AlertCircle class="h-4 w-4" />
+                            <AlertCircle class="h-3 w-3 md:h-4 md:w-4" />
                             Emergency Walk-Ins
                         </button>
                     </div>
@@ -698,19 +698,19 @@ onUnmounted(() => {
         </div>
         
         <!-- Walk-In Modal -->
-        <div v-if="showWalkInModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" @click.self="closeWalkInModal">
+        <div v-if="showWalkInModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 md:p-4" @click.self="closeWalkInModal">
             <div class="bg-background rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                <div class="sticky top-0 bg-background border-b px-6 py-4 flex items-center justify-between">
-                    <h2 class="text-xl font-semibold flex items-center gap-2">
-                        <AlertCircle class="h-5 w-5 text-red-600" />
+                <div class="sticky top-0 bg-background border-b px-3 md:px-6 py-3 md:py-4 flex items-center justify-between">
+                    <h2 class="text-base md:text-xl font-semibold flex items-center gap-1.5 md:gap-2">
+                        <AlertCircle class="h-4 w-4 md:h-5 md:w-5 text-red-600" />
                         Emergency Walk-In Appointment
                     </h2>
-                    <button @click="closeWalkInModal" class="p-2 hover:bg-muted rounded-md transition-colors">
-                        <X class="h-5 w-5" />
+                    <button @click="closeWalkInModal" class="p-1.5 md:p-2 hover:bg-muted rounded-md transition-colors">
+                        <X class="h-4 w-4 md:h-5 md:w-5" />
                     </button>
                 </div>
                 
-                <form @submit.prevent="submitWalkIn" class="p-6 space-y-6">
+                <form @submit.prevent="submitWalkIn" class="p-3 md:p-6 space-y-4 md:space-y-6">
                     <!-- Owner Search/Selection -->
                     <div>
                         <label class="block text-sm font-medium mb-2">Pet Owner</label>

@@ -170,20 +170,20 @@ const doughnutOptions = {
     <Head title="User Management - Overview" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-6 p-6">
+        <div class="flex h-full flex-1 flex-col gap-4 md:gap-6 p-4 md:p-6">
             <!-- Header -->
             <div>
-                <h1 class="text-2xl font-semibold">User Management Overview</h1>
-                <p class="text-muted-foreground">Comprehensive analytics and insights</p>
+                <h1 class="text-xl md:text-2xl font-semibold">User Management Overview</h1>
+                <p class="text-sm text-muted-foreground">Comprehensive analytics and insights</p>
             </div>
 
             <!-- Period Filter -->
             <div class="flex items-center gap-2">
-                <Filter class="h-5 w-5 text-muted-foreground" />
+                <Filter class="h-4 w-4 md:h-5 md:w-5 text-muted-foreground" />
                 <select 
                     v-model="selectedPeriod" 
                     @change="changePeriod(selectedPeriod)"
-                    class="form-select w-48 rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800"
+                    class="form-select w-full md:w-48 rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 text-sm"
                 >
                     <option value="daily">Daily (Last 24 Hours)</option>
                     <option value="weekly">Weekly (Last 7 Days)</option>
@@ -195,82 +195,84 @@ const doughnutOptions = {
             </div>
 
             <!-- Stats Grid -->
-            <div class="grid gap-4 md:grid-cols-4">
-                <div class="rounded-lg border bg-card p-6">
+            <div class="grid gap-3 grid-cols-2 md:grid-cols-4 md:gap-4">
+                <div class="rounded-lg border bg-card p-3 md:p-6">
                     <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm text-muted-foreground">Total Users</p>
-                            <h2 class="text-3xl font-bold mt-2">{{ stats.total_users }}</h2>
-                            <p class="text-xs text-muted-foreground mt-1">All registered users</p>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-xs md:text-sm text-muted-foreground truncate">Total Users</p>
+                            <h2 class="text-xl md:text-3xl font-bold mt-1 md:mt-2">{{ stats.total_users }}</h2>
+                            <p class="text-[10px] md:text-xs text-muted-foreground mt-0.5 md:mt-1 hidden md:block">All registered users</p>
                         </div>
-                        <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
-                            <Users class="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                        <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 md:p-3 flex-shrink-0">
+                            <Users class="h-4 w-4 md:h-6 md:w-6 text-blue-600 dark:text-blue-400" />
                         </div>
                     </div>
                 </div>
 
-                <div class="rounded-lg border bg-card p-6">
+                <div class="rounded-lg border bg-card p-3 md:p-6">
                     <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm text-muted-foreground">Pet Owners</p>
-                            <h2 class="text-3xl font-bold mt-2">{{ stats.pet_owners }}</h2>
-                            <p class="text-xs mt-1 flex items-center gap-1" :class="stats.pet_owners_growth >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
-                                <TrendingUp v-if="stats.pet_owners_growth >= 0" class="h-3 w-3" />
-                                <TrendingDown v-else class="h-3 w-3" />
-                                {{ Math.abs(stats.pet_owners_growth) }}% this month
+                        <div class="min-w-0 flex-1">
+                            <p class="text-xs md:text-sm text-muted-foreground truncate">Pet Owners</p>
+                            <h2 class="text-xl md:text-3xl font-bold mt-1 md:mt-2">{{ stats.pet_owners }}</h2>
+                            <p class="text-[10px] md:text-xs mt-0.5 md:mt-1 flex items-center gap-1" :class="stats.pet_owners_growth >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
+                                <TrendingUp v-if="stats.pet_owners_growth >= 0" class="h-2.5 w-2.5 md:h-3 md:w-3" />
+                                <TrendingDown v-else class="h-2.5 w-2.5 md:h-3 md:w-3" />
+                                <span class="hidden md:inline">{{ Math.abs(stats.pet_owners_growth) }}% this month</span>
+                                <span class="md:hidden">{{ Math.abs(stats.pet_owners_growth) }}%</span>
                             </p>
                         </div>
-                        <div class="bg-green-50 dark:bg-green-900/20 rounded-lg p-3">
-                            <UserCheck class="h-6 w-6 text-green-600 dark:text-green-400" />
+                        <div class="bg-green-50 dark:bg-green-900/20 rounded-lg p-2 md:p-3 flex-shrink-0">
+                            <UserCheck class="h-4 w-4 md:h-6 md:w-6 text-green-600 dark:text-green-400" />
                         </div>
                     </div>
                 </div>
 
-                <div class="rounded-lg border bg-card p-6">
+                <div class="rounded-lg border bg-card p-3 md:p-6">
                     <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm text-muted-foreground">Clinics</p>
-                            <h2 class="text-3xl font-bold mt-2">{{ stats.clinics }}</h2>
-                            <p class="text-xs mt-1 flex items-center gap-1" :class="stats.clinics_growth >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
-                                <TrendingUp v-if="stats.clinics_growth >= 0" class="h-3 w-3" />
-                                <TrendingDown v-else class="h-3 w-3" />
-                                {{ Math.abs(stats.clinics_growth) }}% this month
+                        <div class="min-w-0 flex-1">
+                            <p class="text-xs md:text-sm text-muted-foreground truncate">Clinics</p>
+                            <h2 class="text-xl md:text-3xl font-bold mt-1 md:mt-2">{{ stats.clinics }}</h2>
+                            <p class="text-[10px] md:text-xs mt-0.5 md:mt-1 flex items-center gap-1" :class="stats.clinics_growth >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
+                                <TrendingUp v-if="stats.clinics_growth >= 0" class="h-2.5 w-2.5 md:h-3 md:w-3" />
+                                <TrendingDown v-else class="h-2.5 w-2.5 md:h-3 md:w-3" />
+                                <span class="hidden md:inline">{{ Math.abs(stats.clinics_growth) }}% this month</span>
+                                <span class="md:hidden">{{ Math.abs(stats.clinics_growth) }}%</span>
                             </p>
                         </div>
-                        <div class="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3">
-                            <Building2 class="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                        <div class="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-2 md:p-3 flex-shrink-0">
+                            <Building2 class="h-4 w-4 md:h-6 md:w-6 text-purple-600 dark:text-purple-400" />
                         </div>
                     </div>
                 </div>
 
-                <div class="rounded-lg border bg-card p-6">
+                <div class="rounded-lg border bg-card p-3 md:p-6">
                     <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm text-muted-foreground">Active Now</p>
-                            <h2 class="text-3xl font-bold mt-2">{{ stats.active_users }}</h2>
-                            <p class="text-xs text-muted-foreground mt-1">Last 15 minutes</p>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-xs md:text-sm text-muted-foreground truncate">Active Now</p>
+                            <h2 class="text-xl md:text-3xl font-bold mt-1 md:mt-2">{{ stats.active_users }}</h2>
+                            <p class="text-[10px] md:text-xs text-muted-foreground mt-0.5 md:mt-1 hidden md:block">Last 15 minutes</p>
                         </div>
-                        <div class="bg-cyan-50 dark:bg-cyan-900/20 rounded-lg p-3">
-                            <Activity class="h-6 w-6 text-cyan-600 dark:text-cyan-400" />
+                        <div class="bg-cyan-50 dark:bg-cyan-900/20 rounded-lg p-2 md:p-3 flex-shrink-0">
+                            <Activity class="h-4 w-4 md:h-6 md:w-6 text-cyan-600 dark:text-cyan-400" />
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- Charts Grid -->
-            <div class="grid gap-6 md:grid-cols-3">
+            <div class="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-3">
                 <!-- User Growth Chart -->
-                <div class="rounded-lg border bg-card p-6 md:col-span-2">
-                    <h3 class="text-lg font-semibold mb-4">User Growth Trend</h3>
-                    <div class="h-64">
+                <div class="rounded-lg border bg-card p-4 md:p-6 md:col-span-2">
+                    <h3 class="text-base md:text-lg font-semibold mb-3 md:mb-4">User Growth Trend</h3>
+                    <div class="h-48 md:h-64">
                         <Line :data="userGrowthChartData" :options="chartOptions" />
                     </div>
                 </div>
 
                 <!-- User Distribution Chart -->
-                <div class="rounded-lg border bg-card p-6">
-                    <h3 class="text-lg font-semibold mb-4">User Distribution</h3>
-                    <div class="h-64">
+                <div class="rounded-lg border bg-card p-4 md:p-6">
+                    <h3 class="text-base md:text-lg font-semibold mb-3 md:mb-4">User Distribution</h3>
+                    <div class="h-48 md:h-64">
                         <Doughnut :data="userDistributionChartData" :options="doughnutOptions" />
                     </div>
                 </div>
@@ -278,36 +280,36 @@ const doughnutOptions = {
 
             <!-- Recent Users Table -->
             <div class="rounded-lg border bg-card">
-                <div class="border-b p-6">
-                    <h2 class="text-lg font-semibold">Recent Users</h2>
-                    <p class="text-sm text-muted-foreground">Latest user registrations</p>
+                <div class="border-b p-4 md:p-6">
+                    <h2 class="text-base md:text-lg font-semibold">Recent Users</h2>
+                    <p class="text-xs md:text-sm text-muted-foreground">Latest user registrations</p>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full">
+                    <table class="w-full min-w-[640px]">
                         <thead class="border-b">
                             <tr>
-                                <th class="px-6 py-3 text-left text-sm font-medium text-muted-foreground">Name</th>
-                                <th class="px-6 py-3 text-left text-sm font-medium text-muted-foreground">Email</th>
-                                <th class="px-6 py-3 text-left text-sm font-medium text-muted-foreground">Role</th>
-                                <th class="px-6 py-3 text-left text-sm font-medium text-muted-foreground">Status</th>
-                                <th class="px-6 py-3 text-left text-sm font-medium text-muted-foreground">Joined</th>
+                                <th class="px-3 md:px-6 py-2 md:py-3 text-left text-xs md:text-sm font-medium text-muted-foreground">Name</th>
+                                <th class="px-3 md:px-6 py-2 md:py-3 text-left text-xs md:text-sm font-medium text-muted-foreground">Email</th>
+                                <th class="px-3 md:px-6 py-2 md:py-3 text-left text-xs md:text-sm font-medium text-muted-foreground">Role</th>
+                                <th class="px-3 md:px-6 py-2 md:py-3 text-left text-xs md:text-sm font-medium text-muted-foreground">Status</th>
+                                <th class="px-3 md:px-6 py-2 md:py-3 text-left text-xs md:text-sm font-medium text-muted-foreground">Joined</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y">
                             <tr v-for="user in recent_users" :key="user.id" class="hover:bg-muted/50">
-                                <td class="px-6 py-4 text-sm font-medium">{{ user.name }}</td>
-                                <td class="px-6 py-4 text-sm text-muted-foreground">{{ user.email }}</td>
-                                <td class="px-6 py-4">
-                                    <span :class="getRoleBadge(user.role)" class="inline-flex rounded-full px-2 py-1 text-xs font-semibold">
+                                <td class="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm font-medium">{{ user.name }}</td>
+                                <td class="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm text-muted-foreground">{{ user.email }}</td>
+                                <td class="px-3 md:px-6 py-3 md:py-4">
+                                    <span :class="getRoleBadge(user.role)" class="inline-flex rounded-full px-1.5 md:px-2 py-0.5 md:py-1 text-[10px] md:text-xs font-semibold">
                                         {{ user.role.replace('_', ' ').toUpperCase() }}
                                     </span>
                                 </td>
-                                <td class="px-6 py-4">
-                                    <span :class="getStatusBadge(user.status)" class="inline-flex rounded-full px-2 py-1 text-xs font-semibold">
+                                <td class="px-3 md:px-6 py-3 md:py-4">
+                                    <span :class="getStatusBadge(user.status)" class="inline-flex rounded-full px-1.5 md:px-2 py-0.5 md:py-1 text-[10px] md:text-xs font-semibold">
                                         {{ user.status.toUpperCase() }}
                                     </span>
                                 </td>
-                                <td class="px-6 py-4 text-sm text-muted-foreground">{{ user.created_at }}</td>
+                                <td class="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm text-muted-foreground">{{ user.created_at }}</td>
                             </tr>
                         </tbody>
                     </table>

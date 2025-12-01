@@ -106,8 +106,6 @@ const operatingHoursForm = useForm({
             is_closed: existingHour?.is_closed ?? false,
             opening_time: existingHour?.opening_time ? convertTo12Hour(existingHour.opening_time.substring(0, 5)) : '9:00 AM',
             closing_time: existingHour?.closing_time ? convertTo12Hour(existingHour.closing_time.substring(0, 5)) : '5:00 PM',
-            break_start_time: existingHour?.break_start_time ? convertTo12Hour(existingHour.break_start_time.substring(0, 5)) : '',
-            break_end_time: existingHour?.break_end_time ? convertTo12Hour(existingHour.break_end_time.substring(0, 5)) : '',
         };
     })
 });
@@ -122,8 +120,6 @@ const updateOperatingHours = () => {
         ...hour,
         opening_time: hour.is_closed ? null : convertTo24Hour(hour.opening_time),
         closing_time: hour.is_closed ? null : convertTo24Hour(hour.closing_time),
-        break_start_time: hour.is_closed || !hour.break_start_time ? null : convertTo24Hour(hour.break_start_time),
-        break_end_time: hour.is_closed || !hour.break_end_time ? null : convertTo24Hour(hour.break_end_time),
     }));
     
     operatingHoursForm.transform(() => ({ hours: hoursData })).patch('/clinic/schedule/operating-hours', {
@@ -146,8 +142,6 @@ const copyToAllDays = (sourceIndex: number) => {
                 is_closed: sourceDay.is_closed,
                 opening_time: sourceDay.opening_time,
                 closing_time: sourceDay.closing_time,
-                break_start_time: sourceDay.break_start_time,
-                break_end_time: sourceDay.break_end_time,
             };
         });
     }
@@ -165,8 +159,6 @@ const copyToWeekdays = (sourceIndex: number) => {
                     is_closed: sourceDay.is_closed,
                     opening_time: sourceDay.opening_time,
                     closing_time: sourceDay.closing_time,
-                    break_start_time: sourceDay.break_start_time,
-                    break_end_time: sourceDay.break_end_time,
                 };
             }
         });
@@ -183,24 +175,24 @@ const getDayDisplay = (day: string): string => {
     <Head title="Operating Hours Management" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-6">
+        <div class="flex h-full flex-1 flex-col gap-3 md:gap-6 overflow-x-auto rounded-xl p-3 md:p-6">
             <!-- Success Message -->
             <div 
                 v-if="savedMessage" 
-                class="rounded-lg border bg-card p-4 border-green-500 dark:border-green-700"
+                class="rounded-lg border bg-card p-3 md:p-4 border-green-500 dark:border-green-700"
             >
                 <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <div class="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                            <span class="text-xl">✅</span>
+                    <div class="flex items-center gap-2 md:gap-3">
+                        <div class="h-8 w-8 md:h-10 md:w-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                            <span class="text-base md:text-xl">✅</span>
                         </div>
                         <div>
-                            <p class="font-semibold text-green-800 dark:text-green-300">Success!</p>
-                            <p class="text-sm text-green-700 dark:text-green-400">Operating hours updated successfully</p>
+                            <p class="text-sm md:text-base font-semibold text-green-800 dark:text-green-300">Success!</p>
+                            <p class="text-xs md:text-sm text-green-700 dark:text-green-400">Operating hours updated successfully</p>
                         </div>
                     </div>
                     <button @click="savedMessage = false" class="text-muted-foreground hover:text-foreground">
-                        <X class="h-5 w-5" />
+                        <X class="h-4 w-4 md:h-5 md:w-5" />
                     </button>
                 </div>
             </div>
@@ -208,17 +200,17 @@ const getDayDisplay = (day: string): string => {
             <!-- Page Header -->
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 class="text-2xl font-semibold text-foreground">Operating Hours</h1>
-                    <p class="text-muted-foreground">
+                    <h1 class="text-xl md:text-2xl font-semibold text-foreground">Operating Hours</h1>
+                    <p class="text-xs md:text-sm text-muted-foreground">
                         Manage your clinic's opening and closing hours for each day of the week
                     </p>
                 </div>
                 <button 
                     @click="updateOperatingHours"
                     :disabled="operatingHoursForm.processing"
-                    class="hidden sm:flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="hidden sm:flex items-center gap-2 px-4 md:px-6 py-2 md:py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm md:text-base"
                 >
-                    <Save class="h-5 w-5" />
+                    <Save class="h-4 w-4 md:h-5 md:w-5" />
                     {{ operatingHoursForm.processing ? 'Saving...' : 'Save Changes' }}
                 </button>
             </div>
@@ -228,68 +220,71 @@ const getDayDisplay = (day: string): string => {
                 <button 
                     @click="updateOperatingHours"
                     :disabled="operatingHoursForm.processing"
-                    class="flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-full shadow-lg hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105"
+                    class="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-full shadow-lg hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 text-sm"
                 >
-                    <Save class="h-5 w-5" />
+                    <Save class="h-4 w-4" />
                     {{ operatingHoursForm.processing ? 'Saving...' : 'Save' }}
                 </button>
             </div>
 
             <!-- Operating Hours Form -->
             <form @submit.prevent="updateOperatingHours" class="rounded-lg border bg-card">
-                <div class="p-6 border-b">
-                    <div class="flex items-center justify-between">
-                        <h2 class="text-lg font-semibold">Weekly Schedule</h2>
-                        <div class="flex items-center gap-2 text-sm text-muted-foreground">
-                            <AlertCircle class="h-4 w-4" />
-                            <span>Set your clinic's operating hours for each day</span>
+                <div class="p-3 md:p-6 border-b">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <h2 class="text-base md:text-lg font-semibold">Weekly Schedule</h2>
+                        <div class="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm text-muted-foreground">
+                            <AlertCircle class="h-3 w-3 md:h-4 md:w-4" />
+                            <span class="hidden sm:inline">Set your clinic's operating hours for each day</span>
+                            <span class="sm:hidden">Set operating hours</span>
                         </div>
                     </div>
                 </div>
 
-                <div class="p-6 space-y-4">
+                <div class="p-3 md:p-6 space-y-3 md:space-y-4">
                     <div 
                         v-for="(dayHour, index) in operatingHoursForm.hours" 
                         :key="dayHour.day_of_week"
-                        class="p-4 rounded-lg border transition-all duration-200"
+                        class="p-2 md:p-4 rounded-lg border transition-all duration-200"
                         :class="dayHour.is_closed ? 'bg-muted/50' : 'hover:border-primary'"
                     >
                         <!-- Day Header -->
-                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-                            <div class="flex items-center gap-3">
-                                <div class="h-10 w-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                                    <Clock class="h-5 w-5 text-muted-foreground" />
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 md:gap-4 mb-2 md:mb-4">
+                            <div class="flex items-center gap-2 md:gap-3">
+                                <div class="h-8 w-8 md:h-10 md:w-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                                    <Clock class="h-4 w-4 md:h-5 md:w-5 text-muted-foreground" />
                                 </div>
                                 <div class="min-w-0">
-                                    <h3 class="font-semibold">{{ getDayDisplay(dayHour.day_of_week) }}</h3>
-                                    <p class="text-sm text-muted-foreground" v-if="!dayHour.is_closed">Click to edit hours</p>
-                                    <p class="text-sm text-red-500 dark:text-red-400" v-else>Closed</p>
+                                    <h3 class="text-sm md:text-base font-semibold">{{ getDayDisplay(dayHour.day_of_week) }}</h3>
+                                    <p class="text-xs md:text-sm text-muted-foreground" v-if="!dayHour.is_closed">Click to edit hours</p>
+                                    <p class="text-xs md:text-sm text-red-500 dark:text-red-400" v-else>Closed</p>
                                 </div>
                             </div>
                             <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2">
                                 <!-- Copy Options -->
-                                <div class="flex gap-2 w-full sm:w-auto">
+                                <div class="flex gap-1.5 md:gap-2 w-full sm:w-auto">
                                     <button
                                         v-if="!dayHour.is_closed"
                                         type="button"
                                         @click.stop="copyToWeekdays(index)"
-                                        class="text-xs px-3 py-1.5 border rounded-md hover:bg-muted text-muted-foreground transition-colors flex-1 sm:flex-none whitespace-nowrap"
+                                        class="text-[10px] md:text-xs px-2 md:px-3 py-1 md:py-1.5 border rounded-md hover:bg-muted text-muted-foreground transition-colors flex-1 sm:flex-none whitespace-nowrap"
                                     >
-                                        Copy to Weekdays
+                                        <span class="hidden sm:inline">Copy to Weekdays</span>
+                                        <span class="sm:hidden">Weekdays</span>
                                     </button>
                                     <button
                                         v-if="!dayHour.is_closed"
                                         type="button"
                                         @click.stop="copyToAllDays(index)"
-                                        class="text-xs px-3 py-1.5 border rounded-md hover:bg-muted text-muted-foreground transition-colors flex-1 sm:flex-none whitespace-nowrap"
+                                        class="text-[10px] md:text-xs px-2 md:px-3 py-1 md:py-1.5 border rounded-md hover:bg-muted text-muted-foreground transition-colors flex-1 sm:flex-none whitespace-nowrap"
                                     >
-                                        Copy to All
+                                        <span class="hidden sm:inline">Copy to All</span>
+                                        <span class="sm:hidden">All Days</span>
                                     </button>
                                 </div>
                                 
                                 <!-- Open/Closed Toggle Switch -->
-                                <div class="flex items-center gap-2 justify-between sm:justify-start w-full sm:w-auto" @click.stop.prevent @touchstart.stop.prevent>
-                                    <span class="text-sm font-medium pointer-events-none" :class="!dayHour.is_closed ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'">
+                                <div class="flex items-center gap-1.5 md:gap-2 justify-between sm:justify-start w-full sm:w-auto" @click.stop.prevent @touchstart.stop.prevent>
+                                    <span class="text-xs md:text-sm font-medium pointer-events-none" :class="!dayHour.is_closed ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'">
                                         Open
                                     </span>
                                     <button
@@ -297,18 +292,18 @@ const getDayDisplay = (day: string): string => {
                                         @click.stop.prevent="operatingHoursForm.hours[index].is_closed = !operatingHoursForm.hours[index].is_closed"
                                         @touchend.stop.prevent="operatingHoursForm.hours[index].is_closed = !operatingHoursForm.hours[index].is_closed"
                                         :class="[
-                                            'relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 flex-shrink-0 touch-none',
+                                            'relative inline-flex h-5 w-9 md:h-6 md:w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 flex-shrink-0 touch-none',
                                             dayHour.is_closed ? 'bg-red-600' : 'bg-green-600'
                                         ]"
                                     >
                                         <span
                                             :class="[
-                                                'inline-block h-4 w-4 transform rounded-full bg-white transition-transform pointer-events-none touch-none',
-                                                dayHour.is_closed ? 'translate-x-6' : 'translate-x-1'
+                                                'inline-block h-3.5 w-3.5 md:h-4 md:w-4 transform rounded-full bg-white transition-transform pointer-events-none touch-none',
+                                                dayHour.is_closed ? 'translate-x-4 md:translate-x-6' : 'translate-x-1'
                                             ]"
                                         />
                                     </button>
-                                    <span class="text-sm font-medium pointer-events-none" :class="dayHour.is_closed ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'">
+                                    <span class="text-xs md:text-sm font-medium pointer-events-none" :class="dayHour.is_closed ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'">
                                         Closed
                                     </span>
                                 </div>
@@ -316,9 +311,9 @@ const getDayDisplay = (day: string): string => {
                         </div>
                         
                         <!-- Time Inputs -->
-                        <div v-if="!dayHour.is_closed" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div v-if="!dayHour.is_closed" class="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-4">
                             <div>
-                                <label class="block text-sm font-medium mb-1">
+                                <label class="block text-xs md:text-sm font-medium mb-1">
                                     Opening Time <span class="text-red-500">*</span>
                                 </label>
                                 <TimePicker
@@ -328,7 +323,7 @@ const getDayDisplay = (day: string): string => {
                                 />
                             </div>
                             <div>
-                                <label class="block text-sm font-medium mb-1">
+                                <label class="block text-xs md:text-sm font-medium mb-1">
                                     Closing Time <span class="text-red-500">*</span>
                                 </label>
                                 <TimePicker
@@ -337,51 +332,30 @@ const getDayDisplay = (day: string): string => {
                                     placeholder="Select closing time"
                                 />
                             </div>
-                            <div>
-                                <label class="block text-sm font-medium mb-1">
-                                    Break Start <span class="text-muted-foreground text-xs">(optional)</span>
-                                </label>
-                                <TimePicker
-                                    v-model="operatingHoursForm.hours[index].break_start_time"
-                                    :available-slots="allTimeSlots"
-                                    placeholder="Select break start"
-                                />
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium mb-1">
-                                    Break End <span class="text-muted-foreground text-xs">(optional)</span>
-                                </label>
-                                <TimePicker
-                                    v-model="operatingHoursForm.hours[index].break_end_time"
-                                    :available-slots="allTimeSlots"
-                                    placeholder="Select break end"
-                                />
-                            </div>
                         </div>
 
                         <!-- Closed Message -->
-                        <div v-else class="text-center py-8 text-muted-foreground">
-                            <div class="h-12 w-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-2">
-                                <Lock class="h-6 w-6 text-muted-foreground" />
+                        <div v-else class="text-center py-4 md:py-8 text-muted-foreground">
+                            <div class="h-10 w-10 md:h-12 md:w-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-1.5 md:mb-2">
+                                <Lock class="h-5 w-5 md:h-6 md:w-6 text-muted-foreground" />
                             </div>
-                            <p class="text-sm">Clinic is closed on this day</p>
+                            <p class="text-xs md:text-sm">Clinic is closed on this day</p>
                         </div>
                     </div>
                 </div>
             </form>
 
             <!-- Help Section -->
-            <div class="rounded-lg border bg-card p-6">
-                <div class="flex items-center gap-2 mb-4">
-                    <div class="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                        <span class="text-lg">💡</span>
+            <div class="rounded-lg border bg-card p-3 md:p-6">
+                <div class="flex items-center gap-1.5 md:gap-2 mb-2 md:mb-4">
+                    <div class="h-6 w-6 md:h-8 md:w-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                        <span class="text-sm md:text-lg">💡</span>
                     </div>
-                    <h3 class="font-semibold">Tips & Guidelines</h3>
+                    <h3 class="text-sm md:text-base font-semibold">Tips & Guidelines</h3>
                 </div>
-                <ul class="space-y-2 text-sm text-muted-foreground">
+                <ul class="space-y-1.5 md:space-y-2 text-xs md:text-sm text-muted-foreground">
                     <li>• Use "Copy to Weekdays" to quickly set the same hours for Monday through Friday</li>
                     <li>• Use "Copy to All Days" to apply hours to the entire week</li>
-                    <li>• Break times are optional - leave them blank if your clinic doesn't have break hours</li>
                     <li>• Toggle the switch to "Closed" for days when your clinic is not operating</li>
                     <li>• These hours will be displayed to pet owners when they book appointments</li>
                 </ul>

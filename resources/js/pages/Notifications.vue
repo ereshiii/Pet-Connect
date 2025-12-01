@@ -46,6 +46,10 @@ const loading = ref(false);
 const currentUnreadCount = ref(props.unreadCount || 0);
 const selectedCategory = ref<string>('all');
 
+// Pagination
+const notificationsPerPage = ref(10);
+const currentPage = ref(1);
+
 // Notification categories
 const categories = [
     { id: 'all', label: 'All Notifications', icon: Bell, types: [] },
@@ -69,6 +73,30 @@ const filteredNotifications = computed(() => {
         category.types.some(type => n.type.includes(type))
     );
 });
+
+// Paginated notifications
+const paginatedNotifications = computed(() => {
+    const start = (currentPage.value - 1) * notificationsPerPage.value;
+    const end = start + notificationsPerPage.value;
+    return filteredNotifications.value.slice(start, end);
+});
+
+const totalPages = computed(() => {
+    return Math.ceil(filteredNotifications.value.length / notificationsPerPage.value);
+});
+
+const changePage = (page: number) => {
+    if (page >= 1 && page <= totalPages.value) {
+        currentPage.value = page;
+        // Scroll to top of notifications
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+};
+
+const changePerPage = (perPage: number) => {
+    notificationsPerPage.value = perPage;
+    currentPage.value = 1; // Reset to first page
+};
 
 const getCategoryCount = (categoryId: string) => {
     if (categoryId === 'all') {
@@ -275,6 +303,42 @@ const dismissPushPrompt = () => {
                                 </div>
                             </CardHeader>
                             <CardContent class="p-3 sm:p-4 md:p-6">
+                                <!-- Pagination Controls -->
+                                <div v-if="filteredNotifications.length > 0" class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-3 p-2 sm:p-3 bg-muted/30 rounded-lg border mb-3 sm:mb-4">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">Show:</span>
+                                        <select 
+                                            v-model="notificationsPerPage" 
+                                            @change="changePerPage(notificationsPerPage)"
+                                            class="flex-1 sm:flex-none px-2 sm:px-3 py-1.5 sm:py-1 border rounded-md bg-background text-xs sm:text-sm"
+                                        >
+                                            <option :value="10">10 per page</option>
+                                            <option :value="50">50 per page</option>
+                                            <option :value="100">100 per page</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="flex items-center justify-between sm:justify-start gap-2">
+                                        <button 
+                                            @click="changePage(currentPage - 1)"
+                                            :disabled="currentPage === 1"
+                                            class="flex-1 sm:flex-none px-2 sm:px-3 py-1.5 sm:py-1 border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium"
+                                        >
+                                            Previous
+                                        </button>
+                                        <span class="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
+                                            Page {{ currentPage }} of {{ totalPages }}
+                                        </span>
+                                        <button 
+                                            @click="changePage(currentPage + 1)"
+                                            :disabled="currentPage === totalPages"
+                                            class="flex-1 sm:flex-none px-2 sm:px-3 py-1.5 sm:py-1 border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium"
+                                        >
+                                            Next
+                                        </button>
+                                    </div>
+                                </div>
+
                                 <div v-if="loading" class="text-center py-6 sm:py-8 text-xs sm:text-sm text-muted-foreground">
                                     Loading notifications...
                                 </div>
@@ -289,7 +353,7 @@ const dismissPushPrompt = () => {
 
                                 <div v-else class="space-y-2 sm:space-y-3">
                                     <div
-                                        v-for="notification in filteredNotifications"
+                                        v-for="notification in paginatedNotifications"
                                         :key="notification.id"
                                         class="relative p-3 sm:p-4 border rounded-lg transition-colors hover:bg-accent/50 cursor-pointer group"
                                         :class="{ 'bg-accent/20 border-primary/20': !notification.is_read }"

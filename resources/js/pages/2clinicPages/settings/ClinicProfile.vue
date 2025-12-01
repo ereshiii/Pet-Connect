@@ -150,26 +150,26 @@ const submit = () => {
     <AppLayout :breadcrumbs="breadcrumbItems">
         <Head title="Clinic Profile" />
 
-        <div class="px-4 py-6">
-            <div class="max-w-3xl mx-auto space-y-6">
+        <div class="px-3 md:px-4 py-4 md:py-6">
+            <div class="max-w-3xl mx-auto space-y-4 md:space-y-6">
                 <HeadingSmall
                     title="Clinic Profile"
                     description="Manage your clinic's business information and profile photo"
                 />
 
                 <!-- Clinic Profile Preview Card -->
-                <div class="bg-card border rounded-lg p-6 shadow-sm">
-                    <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                        <Building2 class="h-5 w-5" />
+                <div class="bg-card border rounded-lg p-3 md:p-6 shadow-sm">
+                    <h3 class="text-base md:text-lg font-semibold mb-3 md:mb-4 flex items-center gap-1.5 md:gap-2">
+                        <Building2 class="h-4 w-4 md:h-5 md:w-5" />
                         Clinic Profile Preview
                     </h3>
                     
-                    <div class="flex flex-col md:flex-row gap-6">
+                    <div class="flex flex-col md:flex-row gap-4 md:gap-6">
                         <!-- Photo Section -->
-                        <div class="flex flex-col items-center space-y-4">
+                        <div class="flex flex-col items-center space-y-3 md:space-y-4">
                             <div class="relative">
                                 <div 
-                                    class="w-32 h-32 rounded-lg overflow-hidden border-2 border-border bg-muted flex items-center justify-center"
+                                    class="w-24 h-24 md:w-32 md:h-32 rounded-lg overflow-hidden border-2 border-border bg-muted flex items-center justify-center"
                                 >
                                     <img 
                                         v-if="currentPhoto" 
@@ -177,9 +177,9 @@ const submit = () => {
                                         :alt="clinicRegistration?.clinic_name || 'Clinic'" 
                                         class="w-full h-full object-cover"
                                     />
-                                    <div v-else class="text-muted-foreground text-center p-4">
-                                        <Building2 class="h-12 w-12 mx-auto mb-2" />
-                                        <p class="text-xs">No photo</p>
+                                    <div v-else class="text-muted-foreground text-center p-2 md:p-4">
+                                        <Building2 class="h-8 w-8 md:h-12 md:w-12 mx-auto mb-1 md:mb-2" />
+                                        <p class="text-[10px] md:text-xs">No photo</p>
                                     </div>
                                 </div>
                                 
@@ -187,9 +187,9 @@ const submit = () => {
                                     v-if="currentPhoto && !photoPreview"
                                     @click="removePhoto"
                                     type="button"
-                                    class="absolute -top-2 -right-2 p-1 bg-destructive text-destructive-foreground rounded-full hover:bg-destructive/90 transition-colors"
+                                    class="absolute -top-1 -right-1 md:-top-2 md:-right-2 p-0.5 md:p-1 bg-destructive text-destructive-foreground rounded-full hover:bg-destructive/90 transition-colors"
                                 >
-                                    <X class="h-4 w-4" />
+                                    <X class="h-3 w-3 md:h-4 md:w-4" />
                                 </button>
                             </div>
                             
@@ -201,27 +201,27 @@ const submit = () => {
                                 @change="updatePhotoPreview"
                             />
                             
-                            <div class="flex flex-col gap-2 w-full">
+                            <div class="flex flex-col gap-1.5 md:gap-2 w-full">
                                 <Button
                                     @click="selectNewPhoto"
                                     type="button"
                                     variant="outline"
                                     size="sm"
-                                    class="w-full"
+                                    class="w-full text-xs md:text-sm"
                                 >
-                                    <Camera class="h-4 w-4 mr-2" />
+                                    <Camera class="h-3 w-3 md:h-4 md:w-4 mr-1.5 md:mr-2" />
                                     Change Photo
                                 </Button>
                                 
-                                <div v-if="form.clinic_photo || form.remove_photo" class="flex gap-2">
+                                <div v-if="form.clinic_photo || form.remove_photo" class="flex gap-1.5 md:gap-2">
                                     <Button
                                         @click="submitPhoto"
                                         type="button"
                                         size="sm"
                                         :disabled="form.processing"
-                                        class="flex-1"
+                                        class="flex-1 text-xs md:text-sm"
                                     >
-                                        <Upload class="h-4 w-4 mr-2" />
+                                        <Upload class="h-3 w-3 md:h-4 md:w-4 mr-1.5 md:mr-2" />
                                         Save
                                     </Button>
                                     <Button
@@ -230,6 +230,7 @@ const submit = () => {
                                         variant="outline"
                                         size="sm"
                                         :disabled="form.processing"
+                                        class="text-xs md:text-sm"
                                     >
                                         Cancel
                                     </Button>
@@ -238,45 +239,45 @@ const submit = () => {
                             
                             <InputError :message="form.errors.clinic_photo" class="mt-2" />
                             
-                            <p class="text-xs text-muted-foreground text-center">
+                            <p class="text-[10px] md:text-xs text-muted-foreground text-center">
                                 JPG, PNG or GIF. Max 10MB.
                             </p>
                         </div>
                         
                         <!-- Clinic Info Preview -->
                         <div class="flex-1">
-                            <div class="space-y-3">
+                            <div class="space-y-2 md:space-y-3">
                                 <div>
-                                    <h4 class="text-xl font-bold">
+                                    <h4 class="text-base md:text-xl font-bold">
                                         {{ form.clinic_name || 'Your Clinic Name' }}
                                     </h4>
-                                    <div class="flex items-center gap-2 mt-1">
+                                    <div class="flex items-center gap-1.5 md:gap-2 mt-0.5 md:mt-1">
                                         <div class="flex items-center">
-                                            <span class="text-yellow-500">★</span>
-                                            <span class="ml-1 text-sm font-medium">
+                                            <span class="text-yellow-500 text-sm md:text-base">★</span>
+                                            <span class="ml-0.5 md:ml-1 text-xs md:text-sm font-medium">
                                                 {{ clinicRegistration?.rating?.toFixed(1) || '0.0' }}
                                             </span>
                                         </div>
-                                        <span class="text-sm text-muted-foreground">
+                                        <span class="text-xs md:text-sm text-muted-foreground">
                                             ({{ clinicRegistration?.total_reviews || 0 }} reviews)
                                         </span>
                                     </div>
                                 </div>
                                 
                                 <p
-                                    class="text-sm text-muted-foreground overflow-hidden max-w-full"
+                                    class="text-xs md:text-sm text-muted-foreground overflow-hidden max-w-full"
                                     :title="form.clinic_description || 'Add a description to your clinic profile below.'"
                                     style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;"
                                 >
                                     {{ form.clinic_description || 'Add a description to your clinic profile below.' }}
                                 </p>
                                 
-                                <div class="text-sm text-muted-foreground">
+                                <div class="text-xs md:text-sm text-muted-foreground">
                                     <p>📍 {{ clinicRegistration?.city || 'City' }}, {{ clinicRegistration?.province || 'Province' }}</p>
                                 </div>
                                 
-                                <div class="pt-2 border-t">
-                                    <p class="text-xs text-muted-foreground">
+                                <div class="pt-1.5 md:pt-2 border-t">
+                                    <p class="text-[10px] md:text-xs text-muted-foreground">
                                         💡 All clinic information including contact and address can be updated below.
                                     </p>
                                 </div>
@@ -286,11 +287,11 @@ const submit = () => {
                 </div>
 
                 <!-- Consolidated Clinic Settings Form -->
-                <form @submit.prevent="submit" class="space-y-8">
+                <form @submit.prevent="submit" class="space-y-6 md:space-y-8">
                     <!-- Basic Clinic Information -->
-                    <div class="border-b pb-6">
-                        <h3 class="text-lg font-semibold mb-4">Basic Information</h3>
-                        <div class="space-y-4">
+                    <div class="border-b pb-4 md:pb-6">
+                        <h3 class="text-base md:text-lg font-semibold mb-3 md:mb-4">Basic Information</h3>
+                        <div class="space-y-3 md:space-y-4">
                             <div class="grid gap-2">
                                 <Label for="clinic_name">Clinic Name *</Label>
                                 <Input
@@ -330,9 +331,9 @@ const submit = () => {
                     </div>
 
                     <!-- Contact Information -->
-                    <div class="border-b pb-6">
-                        <h3 class="text-lg font-semibold mb-4">Contact Information</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="border-b pb-4 md:pb-6">
+                        <h3 class="text-base md:text-lg font-semibold mb-3 md:mb-4">Contact Information</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                             <div class="grid gap-2">
                                 <Label for="email">Email *</Label>
                                 <Input
@@ -362,9 +363,9 @@ const submit = () => {
                     </div>
 
                     <!-- Address Information -->
-                    <div class="border-b pb-6">
-                        <h3 class="text-lg font-semibold mb-4">Address Information</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="border-b pb-4 md:pb-6">
+                        <h3 class="text-base md:text-lg font-semibold mb-3 md:mb-4">Address Information</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                             <!-- Region -->
                             <div class="grid gap-2">
                                 <Label for="region">Region *</Label>
@@ -465,20 +466,22 @@ const submit = () => {
                     </div>
 
                     <!-- Location Pinning -->
-                    <div class="border-b pb-6">
-                        <h3 class="text-lg font-semibold mb-4">Clinic Location on Map</h3>
-                        <p class="text-sm text-muted-foreground mb-4">Pin your clinic's exact location on the map for accurate directions</p>
-                        <PinAddressLocation
-                            :initial-latitude="form.latitude"
-                            :initial-longitude="form.longitude"
-                            @location-update="handleLocationUpdate"
-                        />
+                    <div class="border-b pb-4 md:pb-6">
+                        <h3 class="text-base md:text-lg font-semibold mb-3 md:mb-4">Clinic Location on Map</h3>
+                        <p class="text-xs md:text-sm text-muted-foreground mb-3 md:mb-4">Pin your clinic's exact location on the map for accurate directions</p>
+                        <div class="relative z-0 overflow-hidden rounded-lg">
+                            <PinAddressLocation
+                                :initial-latitude="form.latitude"
+                                :initial-longitude="form.longitude"
+                                @location-update="handleLocationUpdate"
+                            />
+                        </div>
                         <InputError :message="form.errors.latitude || form.errors.longitude" />
                     </div>
 
                     <!-- Submit Buttons -->
-                    <div class="flex items-center gap-4">
-                        <Button type="submit" :disabled="form.processing">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 md:gap-4">
+                        <Button type="submit" :disabled="form.processing" class="text-sm md:text-base w-full sm:w-auto">
                             {{ form.processing ? 'Saving...' : 'Save All Changes' }}
                         </Button>
 
@@ -490,7 +493,7 @@ const submit = () => {
                         >
                             <p
                                 v-show="form.recentlySuccessful"
-                                class="text-sm text-neutral-600"
+                                class="text-xs md:text-sm text-neutral-600"
                             >
                                 Saved successfully!
                             </p>

@@ -166,63 +166,53 @@ onMounted(() => {
                 <div
                     v-for="notification in notifications"
                     :key="notification.id"
-                    class="relative px-2 sm:px-3 py-3 hover:bg-accent/50 cursor-pointer transition-colors group"
+                    class="relative px-3 sm:px-4 py-2.5 sm:py-3 hover:bg-accent/50 cursor-pointer transition-colors group"
                     :class="{ 'bg-accent/20': !notification.is_read }"
                     @click="handleNotificationClick(notification)"
                 >
-                    <div class="flex gap-2 sm:gap-3">
-                        <div class="mt-1 flex-shrink-0">
-                            <component
-                                :is="getNotificationIcon(notification.type)"
-                                class="h-4 w-4 sm:h-5 sm:w-5"
-                                :class="notification.is_read ? 'text-muted-foreground' : 'text-primary'"
-                            />
+                    <div class="flex-1 min-w-0 space-y-1">
+                        <div class="flex items-start justify-between gap-2">
+                            <p
+                                class="text-xs sm:text-sm font-medium leading-tight pr-1 flex-1"
+                                :class="notification.is_read ? 'text-muted-foreground' : 'text-foreground'"
+                            >
+                                {{ notification.title }}
+                            </p>
+                            
+                            <div class="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
+                                <Button
+                                    v-if="!notification.is_read"
+                                    variant="ghost"
+                                    size="icon"
+                                    class="h-6 w-6 sm:h-7 sm:w-7 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+                                    @click.stop="markAsRead(notification)"
+                                >
+                                    <Check class="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                                </Button>
+                                
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    class="h-6 w-6 sm:h-7 sm:w-7 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+                                    @click.stop="deleteNotification(notification)"
+                                >
+                                    <Trash2 class="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                                </Button>
+                            </div>
                         </div>
                         
-                        <div class="flex-1 min-w-0 space-y-1">
-                            <div class="flex items-start justify-between gap-2">
-                                <p
-                                    class="text-xs sm:text-sm font-medium leading-tight pr-1"
-                                    :class="notification.is_read ? 'text-muted-foreground' : 'text-foreground'"
-                                >
-                                    {{ notification.title }}
-                                </p>
-                                
-                                <div class="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
-                                    <Button
-                                        v-if="!notification.is_read"
-                                        variant="ghost"
-                                        size="icon"
-                                        class="h-6 w-6 sm:h-7 sm:w-7 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
-                                        @click.stop="markAsRead(notification)"
-                                    >
-                                        <Check class="h-3 w-3" />
-                                    </Button>
-                                    
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        class="h-6 w-6 sm:h-7 sm:w-7 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
-                                        @click.stop="deleteNotification(notification)"
-                                    >
-                                        <Trash2 class="h-3 w-3" />
-                                    </Button>
-                                </div>
-                            </div>
-                            
-                            <p class="text-xs text-muted-foreground line-clamp-2">
-                                {{ notification.message }}
-                            </p>
-                            
-                            <p class="text-[10px] sm:text-xs text-muted-foreground">
-                                {{ formatTimeAgo(notification.created_at) }}
-                            </p>
-                        </div>
+                        <p class="text-xs sm:text-sm text-muted-foreground line-clamp-2 leading-relaxed">
+                            {{ notification.message }}
+                        </p>
+                        
+                        <p class="text-[10px] sm:text-xs text-muted-foreground">
+                            {{ formatTimeAgo(notification.created_at) }}
+                        </p>
                     </div>
                     
                     <div
                         v-if="!notification.is_read"
-                        class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-r"
+                        class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-10 sm:h-12 bg-primary rounded-r"
                     />
                 </div>
             </div>

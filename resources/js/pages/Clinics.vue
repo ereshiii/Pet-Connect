@@ -525,25 +525,28 @@ const getDistanceValue = (clinic: Clinic) => {
                 <Filter class="h-5 w-5" />
             </button>
 
-            <div class="grid auto-rows-min gap-4 md:gap-6 lg:grid-cols-[300px_1fr] xl:grid-cols-[320px_1fr] 2xl:grid-cols-[360px_1fr] grid-cols-1">
-                <!-- Desktop Filters -->
-                <div class="hidden lg:block">
-                    <ClinicFilters
-                        v-model="filters"
-                        :showViewOnMapButton="true"
-                        :showLocationStatus="true"
-                        :showRegion="false"
-                        :hasUserLocation="!!userLocation"
-                        :resultCount="filteredClinics.length"
-                        @clear="clearFilters"
-                        @viewOnMap="viewOnMap"
-                        @requestLocation="requestLocation"
-                    />
-                </div>
-                
-                <!-- Featured Clinics Section -->
-                <div class="p-3 sm:p-6 overflow-hidden">
-                    <div class="flex justify-between items-center mb-4 sm:mb-6">
+            <!-- Filters and Featured Clinics - Side by Side on Desktop -->
+            <div class="px-3 sm:px-6 pt-3 sm:pt-6 pb-3 sm:pb-6">
+                <div class="grid grid-cols-1 lg:grid-cols-[320px_1fr] xl:grid-cols-[360px_1fr] gap-4 lg:gap-6">
+                    <!-- Filters Section - Desktop Only (Hidden on Mobile) -->
+                    <div class="hidden lg:block relative" style="z-index: 10;">
+                        <ClinicFilters
+                            v-model="filters"
+                            :showViewOnMapButton="true"
+                            :showLocationStatus="true"
+                            :showRegion="false"
+                            :hasUserLocation="!!userLocation"
+                            :resultCount="filteredClinics.length"
+                            @clear="clearFilters"
+                            @viewOnMap="viewOnMap"
+                            @requestLocation="requestLocation"
+                        />
+                    </div>
+
+                    <!-- Featured Clinics Section -->
+                    <div class="lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
+                <div class="sticky top-0 bg-background pb-4 sm:pb-6" style="z-index: 5;">
+                    <div class="flex justify-between items-center">
                         <div class="flex items-center gap-2 sm:gap-3">
                             <Star class="w-5 h-5 sm:w-6 sm:h-6 text-yellow-500 fill-yellow-500 flex-shrink-0" />
                             <h2 class="text-base sm:text-xl font-semibold text-foreground">Featured Clinics</h2>
@@ -552,15 +555,15 @@ const getDistanceValue = (clinic: Clinic) => {
                             {{ featuredClinics.length }} clinic{{ featuredClinics.length !== 1 ? 's' : '' }}
                         </span>
                     </div>
-                    
-                    <!-- Featured Clinics Grid -->
-                    <div v-if="featuredClinics.length > 0" class="grid grid-cols-2 sm:flex gap-3 sm:gap-4 sm:overflow-x-auto sm:scrollbar-hide sm:snap-x sm:snap-mandatory pb-4 -mx-3 sm:-mx-6 px-3 sm:px-6" style="scroll-behavior: smooth;">
-                        <div 
-                            v-for="(clinic, index) in featuredClinics" 
-                            :key="clinic.id"
-                            @click="viewClinicDetails(clinic.id)"
-                            class="sm:flex-none w-full sm:w-[280px] md:w-[320px] lg:w-[350px] sm:snap-start bg-card rounded-2xl p-3 sm:p-6 border border-border hover:border-primary/50 transition-all cursor-pointer group relative overflow-hidden shadow-lg"
-                        >
+                </div>
+                
+                <!-- Featured Clinics Horizontal Scroll -->
+                <div v-if="featuredClinics.length > 0" class="flex gap-3 sm:gap-4 overflow-x-auto lg:overflow-x-visible lg:grid lg:grid-cols-1 xl:grid-cols-2 scrollbar-hide snap-x snap-mandatory pb-4 -mx-3 sm:-mx-6 px-3 sm:px-6 lg:mx-0 lg:px-0" style="scroll-behavior: smooth;">
+                    <div 
+                        v-for="(clinic, index) in featuredClinics" 
+                        :key="clinic.id"
+                        @click="viewClinicDetails(clinic.id)"
+                        class="flex-none lg:flex-auto w-[260px] sm:w-[280px] md:w-[320px] lg:w-auto snap-start bg-card rounded-2xl p-4 sm:p-6 border border-border hover:border-primary/50 transition-all cursor-pointer group relative overflow-hidden shadow-lg">
                             <!-- Favorite Button -->
                             <button
                                 @click.stop="toggleFavorite(clinic)"
@@ -580,7 +583,7 @@ const getDistanceValue = (clinic: Clinic) => {
                             </button>
                             
                             <!-- Clinic Image -->
-                            <div class="w-full h-24 sm:h-40 rounded-lg mb-2 sm:mb-4 overflow-hidden bg-muted">
+                            <div class="w-full h-40 rounded-lg mb-4 overflow-hidden bg-muted">
                                 <img v-if="clinic.clinic_photo" 
                                      :src="clinic.clinic_photo" 
                                      :alt="clinic.name"
@@ -592,30 +595,30 @@ const getDistanceValue = (clinic: Clinic) => {
                                          class="w-full h-full object-cover" />
                                 </div>
                                 <div v-else :class="['w-full h-full flex items-center justify-center', getRandomColor(index).bg]">
-                                    <span :class="['text-xs sm:text-base font-medium text-center px-2', getRandomColor(index).text]">{{ clinic.name }}</span>
+                                    <span :class="['text-base font-medium text-center px-2', getRandomColor(index).text]">{{ clinic.name }}</span>
                                 </div>
                             </div>
                             
                             <!-- Clinic Info -->
-                            <h3 class="font-semibold text-foreground text-sm sm:text-lg mb-1.5 sm:mb-3 line-clamp-1">{{ clinic.name }}</h3>
+                            <h3 class="font-semibold text-foreground text-lg mb-3 line-clamp-1">{{ clinic.name }}</h3>
                             
                             <!-- Rating -->
-                            <div class="flex items-center mb-1.5 sm:mb-3">
-                                <Star class="h-3 w-3 sm:h-4 sm:w-4 text-yellow-400 fill-yellow-400 mr-1" />
-                                <span class="text-xs sm:text-sm text-foreground font-medium">{{ Number(clinic.rating || 0).toFixed(1) }}</span>
-                                <span class="text-[10px] sm:text-xs text-muted-foreground ml-1 sm:ml-2">({{ clinic.total_reviews }})</span>
+                            <div class="flex items-center mb-3">
+                                <Star class="h-4 w-4 text-yellow-400 fill-yellow-400 mr-1" />
+                                <span class="text-sm text-foreground font-medium">{{ Number(clinic.rating || 0).toFixed(1) }}</span>
+                                <span class="text-xs text-muted-foreground ml-2">({{ clinic.total_reviews }} review{{ clinic.total_reviews !== 1 ? 's' : '' }})</span>
                             </div>
                             
-                            <p class="text-[10px] sm:text-sm text-muted-foreground mb-2 sm:mb-3 line-clamp-1 sm:line-clamp-2">{{ clinic.description || 'Professional veterinary care for your beloved pets.' }}</p>
+                            <p class="text-sm text-muted-foreground mb-3 line-clamp-2">{{ clinic.description || 'Professional veterinary care for your beloved pets.' }}</p>
                             
                             <!-- Location -->
-                            <div class="flex items-start gap-1 sm:gap-2 text-[10px] sm:text-sm text-muted-foreground mb-2 sm:mb-4">
-                                <MapPin class="h-3 w-3 sm:h-4 sm:w-4 mt-0.5 flex-shrink-0" />
+                            <div class="flex items-start gap-2 text-sm text-muted-foreground mb-4">
+                                <MapPin class="h-4 w-4 mt-0.5 flex-shrink-0" />
                                 <span class="line-clamp-1">{{ clinic.address }}</span>
                             </div>
                             
                             <!-- Status & Operating Hours - Single Row -->
-                            <div class="flex items-center justify-between text-[10px] sm:text-xs pb-2 sm:pb-4 border-b border-border">
+                            <div class="flex items-center justify-between text-xs pb-4 border-b border-border">
                                 <div class="flex items-center gap-1">
                                     <Clock class="h-3 w-3" :class="clinic.operating_status?.is_open || clinic.is_open ? 'text-green-400' : 'text-red-400'" />
                                     <span :class="clinic.operating_status?.is_open || clinic.is_open ? 'text-green-400' : 'text-red-400'">{{ clinic.operating_status?.status || clinic.status }}</span>
@@ -634,9 +637,13 @@ const getDistanceValue = (clinic: Clinic) => {
                         </div>
                     </div>
                 </div>
+                    </div>
+                </div>
             </div>
-            <div class="relative min-h-[100vh] flex-1 md:min-h-min overflow-hidden">
-                <div class="p-3 sm:p-6 space-y-6 sm:space-y-8">
+
+            <!-- Other Content -->
+            <div class="relative flex-1">
+                <div class="px-3 sm:px-6 pb-3 sm:pb-6 space-y-6 sm:space-y-8">
                     <!-- Nearby Clinics Section -->
                     <div v-if="nearbyClinics.length > 0">
                         <div class="flex justify-between items-center mb-4 sm:mb-6">
@@ -821,7 +828,6 @@ const getDistanceValue = (clinic: Clinic) => {
                     </div>
                 </div>
             </div>
-        </div>
 
         <!-- Location Request Modal -->
         <LocationRequestModal 

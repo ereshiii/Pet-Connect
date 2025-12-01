@@ -390,7 +390,7 @@ const retrySubmit = () => {
 
 const goBack = () => {
     if (props.mode === 'reschedule' && props.appointment) {
-        router.visit(appointmentDetails(props.appointment.id).url);
+        router.visit('/dashboard');
     } else {
         router.visit(clinicsRoute().url);
     }
@@ -433,7 +433,8 @@ const formatDate = (dateStr: string) => {
                 <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mb-4">
                     <div class="flex-1">
                         <h1 class="text-xl sm:text-2xl md:text-3xl font-bold">{{ pageTitle }}</h1>
-                        <p v-if="mode === 'create'" class="text-blue-100 mt-1 sm:mt-2 flex items-center gap-2 text-sm sm:text-base">\n                            <MapPin class="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                        <p v-if="mode === 'create'" class="text-blue-100 mt-1 sm:mt-2 flex items-center gap-2 text-sm sm:text-base">
+                            <MapPin class="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
                             <span class="font-semibold truncate">{{ selectedClinicName }}</span>
                         </p>
                         <p v-else class="text-blue-100 mt-1 sm:mt-2 text-sm sm:text-base">
@@ -455,7 +456,7 @@ const formatDate = (dateStr: string) => {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm">
                         <div class="space-y-2">
                             <p class="text-blue-100">
-                                <span class="font-semibold text-white">Pet:</span> {{ appointment.pet.name }} ({{ appointment.pet.type }} - {{ appointment.pet.breed }})
+                                <span class="font-semibold text-white">Pet:</span> {{ appointment.pet.name }} ({{ appointment.pet.type }}, {{ appointment.pet.breed }})
                             </p>
                             <p v-if="appointment.service" class="text-blue-100">
                                 <span class="font-semibold text-white">Service:</span> {{ appointment.service.name }}
@@ -495,7 +496,7 @@ const formatDate = (dateStr: string) => {
                         >
                             <option value="">Select your pet</option>
                             <option v-for="pet in pets" :key="pet.id" :value="pet.id">
-                                {{ pet.name }} ({{ pet.type }} - {{ pet.breed }})
+                                {{ pet.name }}
                             </option>
                         </select>
                         <p v-if="form.errors.pet_id" class="text-red-600 dark:text-red-400 text-sm mt-2">
@@ -637,7 +638,7 @@ const formatDate = (dateStr: string) => {
                             📋 {{ mode === 'reschedule' ? 'Updated ' : '' }}Appointment Summary
                         </h4>
                         <div class="text-xs sm:text-sm text-blue-800 dark:text-blue-200 space-y-1.5 sm:space-y-2">
-                            <p><span class="font-semibold">Pet:</span> {{ selectedPet.name }} ({{ selectedPet.type }} - {{ selectedPet.breed }})</p>
+                            <p><span class="font-semibold">Pet:</span> {{ selectedPet.name }} ({{ selectedPet.type }}, {{ selectedPet.breed }})</p>
                             <p><span class="font-semibold">Clinic:</span> {{ selectedClinic.name }}</p>
                             <div v-if="selectedServices.length > 0">
                                 <p class="font-semibold mb-1">Services:</p>

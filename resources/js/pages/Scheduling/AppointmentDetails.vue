@@ -1012,42 +1012,42 @@ const getStatusColor = (status?: string) => {
     <Head title="Appointment Details" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-3 sm:gap-4 overflow-x-auto rounded-xl p-3 sm:p-4">
+        <div class="flex h-full flex-1 flex-col gap-2 md:gap-4 overflow-x-auto rounded-xl p-2 md:p-4">
             <!-- Header -->
-            <div class="rounded-lg border bg-card p-3 sm:p-4 md:p-6">
-                <div class="mb-3 sm:mb-4">
-                    <h1 class="text-lg sm:text-xl md:text-2xl font-semibold">Appointment Details</h1>
-                    <p class="text-xs sm:text-sm text-muted-foreground mt-1">
+            <div class="rounded-lg border bg-card p-3 md:p-6">
+                <div class="mb-3 md:mb-4">
+                    <h1 class="text-base md:text-2xl font-semibold">Appointment Details</h1>
+                    <p class="text-xs md:text-sm text-muted-foreground mt-1">
                         Confirmation #{{ appointment.confirmationNumber }}
                     </p>
                 </div>
 
                 <!-- Status Update Alert -->
-                <div v-if="statusUpdateAlert" class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 animate-pulse">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-2">
-                            <AlertCircle class="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                            <p class="text-sm font-medium text-blue-900 dark:text-blue-100">
+                <div v-if="statusUpdateAlert" class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-2 md:p-4 animate-pulse">
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-1.5 md:gap-2">
+                            <AlertCircle class="h-4 w-4 md:h-5 md:w-5 text-blue-600 dark:text-blue-400" />
+                            <p class="text-xs md:text-sm font-medium text-blue-900 dark:text-blue-100">
                                 Appointment status has been updated
                             </p>
                         </div>
                         <button @click="statusUpdateAlert = false" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200">
-                            <span class="text-xl">&times;</span>
+                            <span class="text-lg md:text-xl">&times;</span>
                         </button>
                     </div>
                 </div>
 
                 <!-- Status Banner -->
-                <div :class="getStatusBanner(appointment.status).bgClass" class="rounded-lg p-4 border">
+                <div :class="getStatusBanner(appointment.status).bgClass" class="rounded-lg p-2 md:p-4 border">
                     <div class="flex items-center">
                         <component :is="getStatusBanner(appointment.status).icon" 
                                    :class="getStatusBanner(appointment.status).iconColor" 
-                                   class="h-5 w-5 mr-3" />
+                                   class="h-4 w-4 md:h-5 md:w-5 mr-2 md:mr-3" />
                         <div>
-                            <p :class="getStatusBanner(appointment.status).titleColor" class="font-medium">
+                            <p :class="getStatusBanner(appointment.status).titleColor" class="text-sm md:text-base font-medium">
                                 Appointment {{ appointment.statusDisplay }}
                             </p>
-                            <p :class="getStatusBanner(appointment.status).descColor" class="text-sm">
+                            <p :class="getStatusBanner(appointment.status).descColor" class="text-xs md:text-sm">
                                 <span v-if="appointment.status === 'cancelled'">
                                     This appointment was cancelled
                                 </span>
@@ -1072,82 +1072,82 @@ const getStatusColor = (status?: string) => {
             <!-- Tab Navigation -->
             <div class="rounded-lg border bg-card">
                 <div class="border-b overflow-x-auto">
-                    <nav class="flex space-x-4 sm:space-x-8 px-4 sm:px-6 min-w-max sm:min-w-0" aria-label="Tabs">
+                    <nav class="flex space-x-2 md:space-x-8 px-3 md:px-6 min-w-max sm:min-w-0" aria-label="Tabs">
                         <button
                             v-for="tab in tabs"
                             :key="tab.id"
                             @click="activeTab = tab.id"
                             :class="[
-                                'whitespace-nowrap py-3 sm:py-4 px-2 sm:px-1 border-b-2 font-medium text-sm flex items-center gap-2',
+                                'whitespace-nowrap py-2 md:py-4 px-2 md:px-1 border-b-2 font-medium text-xs md:text-sm flex items-center gap-1.5 md:gap-2',
                                 activeTab === tab.id
                                     ? 'border-primary text-primary'
                                     : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
                             ]"
                         >
-                            <component :is="tab.icon" class="h-4 w-4" />
+                            <component :is="tab.icon" class="h-3 w-3 md:h-4 md:w-4" />
                             <span class="hidden sm:inline">{{ tab.name }}</span>
                         </button>
                     </nav>
                 </div>
 
                 <!-- Tab Content -->
-                <div class="p-4 sm:p-6">
+                <div class="p-3 md:p-6">
                     <!-- Appointment Details Tab -->
-                    <div v-if="activeTab === 'details'" class="space-y-6">
-                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div v-if="activeTab === 'details'" class="space-y-4 md:space-y-6">
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
                             <!-- Left Column -->
-                            <div class="space-y-6">
+                            <div class="space-y-4 md:space-y-6">
                                 <!-- Appointment Information -->
-                                <div class="space-y-4">
-                                    <h3 class="text-lg font-semibold mb-4">
+                                <div class="space-y-3 md:space-y-4">
+                                    <h3 class="text-base md:text-lg font-semibold mb-3 md:mb-4">
                                         Appointment Information
                                     </h3>
                                     
-                                    <div class="space-y-3">
-                                        <div class="flex justify-between">
-                                            <span class="text-sm text-muted-foreground">Date & Time:</span>
-                                            <span class="text-sm font-medium">
+                                    <div class="space-y-2 md:space-y-3">
+                                        <div class="flex justify-between gap-2">
+                                            <span class="text-xs md:text-sm text-muted-foreground">Date & Time:</span>
+                                            <span class="text-xs md:text-sm font-medium text-right">
                                                 {{ appointment.date }} at {{ appointment.time }}
                                             </span>
                                         </div>
-                                        <div class="flex justify-between">
-                                            <span class="text-sm text-muted-foreground">Duration:</span>
-                                            <span class="text-sm font-medium">
+                                        <div class="flex justify-between gap-2">
+                                            <span class="text-xs md:text-sm text-muted-foreground">Duration:</span>
+                                            <span class="text-xs md:text-sm font-medium">
                                                 {{ appointment.duration }}
                                             </span>
                                         </div>
-                                        <div class="flex justify-between">
-                                            <span class="text-sm text-muted-foreground">Type:</span>
-                                            <span class="text-sm font-medium">
+                                        <div class="flex justify-between gap-2">
+                                            <span class="text-xs md:text-sm text-muted-foreground">Type:</span>
+                                            <span class="text-xs md:text-sm font-medium">
                                                 {{ appointment.type }}
                                             </span>
                                         </div>
-                                        <div class="flex justify-between">
-                                            <span class="text-sm text-muted-foreground">Status:</span>
-                                            <span :class="['text-sm font-medium', getStatusColor(appointment.status)]">
+                                        <div class="flex justify-between gap-2">
+                                            <span class="text-xs md:text-sm text-muted-foreground">Status:</span>
+                                            <span :class="['text-xs md:text-sm font-medium', getStatusColor(appointment.status)]">
                                                 {{ appointment.statusDisplay }}
                                             </span>
                                         </div>
-                                        <div class="flex justify-between" v-if="appointment.estimatedCost">
-                                            <span class="text-sm text-muted-foreground">Estimated Cost:</span>
-                                            <span class="text-sm font-medium">
+                                        <div class="flex justify-between gap-2" v-if="appointment.estimatedCost">
+                                            <span class="text-xs md:text-sm text-muted-foreground">Estimated Cost:</span>
+                                            <span class="text-xs md:text-sm font-medium">
                                                 {{ appointment.estimatedCost }}
                                             </span>
                                         </div>
-                                        <div class="flex justify-between" v-if="appointment.actualCost">
-                                            <span class="text-sm text-muted-foreground">Actual Cost:</span>
-                                            <span class="text-sm font-medium">
+                                        <div class="flex justify-between gap-2" v-if="appointment.actualCost">
+                                            <span class="text-xs md:text-sm text-muted-foreground">Actual Cost:</span>
+                                            <span class="text-xs md:text-sm font-medium">
                                                 {{ appointment.actualCost }}
                                             </span>
                                         </div>
                                     </div>
 
                                     <!-- Services -->
-                                    <div class="pt-4 border-t">
-                                        <h4 class="text-sm font-medium mb-2">Services Included</h4>
-                                        <div class="flex flex-wrap gap-2">
+                                    <div class="pt-3 md:pt-4 border-t">
+                                        <h4 class="text-xs md:text-sm font-medium mb-2">Services Included</h4>
+                                        <div class="flex flex-wrap gap-1.5 md:gap-2">
                                             <span v-if="appointment.service" 
-                                                  class="px-2 py-1 bg-primary/10 text-primary text-xs font-medium rounded border border-primary/20">
+                                                  class="px-2 py-1 bg-primary/10 text-primary text-[10px] md:text-xs font-medium rounded border border-primary/20">
                                                 {{ appointment.service.name }}
                                             </span>
                                             <span v-else
@@ -1159,28 +1159,28 @@ const getStatusColor = (status?: string) => {
                                 </div>
 
                                 <!-- Pet Information -->
-                                <div class="space-y-4">
-                                    <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                                        <User class="h-5 w-5 text-primary" />
+                                <div class="space-y-3 md:space-y-4">
+                                    <h3 class="text-base md:text-lg font-semibold mb-3 md:mb-4 flex items-center gap-1.5 md:gap-2">
+                                        <User class="h-4 w-4 md:h-5 md:w-5 text-primary" />
                                         Pet Information
                                     </h3>
                                     
-                                    <div class="bg-muted/50 rounded-lg p-4 border">
-                                        <h4 class="font-medium mb-3">{{ appointment.pet.name }}</h4>
-                                        <div class="space-y-2">
-                                            <div class="flex justify-between text-sm">
+                                    <div class="bg-muted/50 rounded-lg p-3 md:p-4 border">
+                                        <h4 class="text-sm md:text-base font-medium mb-2 md:mb-3">{{ appointment.pet.name }}</h4>
+                                        <div class="space-y-1.5 md:space-y-2">
+                                            <div class="flex justify-between gap-2 text-xs md:text-sm">
                                                 <span class="text-muted-foreground">Type:</span>
                                                 <span class="font-medium">{{ appointment.pet.type }}</span>
                                             </div>
-                                            <div class="flex justify-between text-sm">
+                                            <div class="flex justify-between gap-2 text-xs md:text-sm">
                                                 <span class="text-muted-foreground">Breed:</span>
                                                 <span class="font-medium">{{ appointment.pet.breed }}</span>
                                             </div>
-                                            <div class="flex justify-between text-sm">
+                                            <div class="flex justify-between gap-2 text-xs md:text-sm">
                                                 <span class="text-muted-foreground">Age:</span>
                                                 <span class="font-medium">{{ appointment.pet.age }}</span>
                                             </div>
-                                            <div v-if="appointment.pet.weight" class="flex justify-between text-sm">
+                                            <div v-if="appointment.pet.weight" class="flex justify-between gap-2 text-xs md:text-sm">
                                                 <span class="text-muted-foreground">Weight:</span>
                                                 <span class="font-medium">{{ appointment.pet.weight }} kg</span>
                                             </div>
@@ -1190,72 +1190,72 @@ const getStatusColor = (status?: string) => {
                             </div>
 
                             <!-- Right Column -->
-                            <div class="space-y-6">
+                            <div class="space-y-4 md:space-y-6">
                                 <!-- Clinic Information (Pet Owner View) / Owner Information (Clinic View) -->
-                                <div class="space-y-4" v-if="isPetOwner">
-                                    <h3 class="text-lg font-semibold mb-4">
+                                <div class="space-y-3 md:space-y-4" v-if="isPetOwner">
+                                    <h3 class="text-base md:text-lg font-semibold mb-3 md:mb-4">
                                         Clinic Information
                                     </h3>
                                     
-                                    <div class="bg-muted/50 rounded-lg p-4 border">
-                                        <h4 class="font-medium mb-2">
+                                    <div class="bg-muted/50 rounded-lg p-3 md:p-4 border">
+                                        <h4 class="text-sm md:text-base font-medium mb-2">
                                             {{ appointment.clinic.name }}
                                         </h4>
-                                        <p class="text-sm text-muted-foreground mb-2">
+                                        <p class="text-xs md:text-sm text-muted-foreground mb-2">
                                             {{ appointment.clinic.address }}
                                         </p>
-                                        <p class="text-sm text-muted-foreground mb-4">
+                                        <p class="text-xs md:text-sm text-muted-foreground mb-3 md:mb-4">
                                             {{ appointment.clinic.phone }}
                                         </p>
                                         
-                                        <div class="flex gap-2">
+                                        <div class="flex flex-col sm:flex-row gap-2">
                                             <button @click="callClinic"
-                                                    class="flex-1 bg-green-600 text-white py-2 px-3 rounded-md hover:bg-green-700 text-sm font-medium flex items-center justify-center gap-2">
-                                                <Phone class="h-4 w-4" />
+                                                    class="flex-1 bg-green-600 text-white py-2 px-3 rounded-md hover:bg-green-700 text-xs md:text-sm font-medium flex items-center justify-center gap-1.5 md:gap-2">
+                                                <Phone class="h-3 w-3 md:h-4 md:w-4" />
                                                 Call Clinic
                                             </button>
                                             <button @click="getDirections"
-                                                    class="flex-1 border py-2 px-3 rounded-md hover:bg-muted text-sm font-medium flex items-center justify-center gap-2">
-                                                <MapPin class="h-4 w-4" />
+                                                    class="flex-1 border py-2 px-3 rounded-md hover:bg-muted text-xs md:text-sm font-medium flex items-center justify-center gap-1.5 md:gap-2">
+                                                <MapPin class="h-3 w-3 md:h-4 md:w-4" />
                                                 Get Directions
                                             </button>
                                         </div>
                                     </div>
 
                                     <!-- Veterinarian Information (Pet Owner) -->
-                                    <div class="bg-primary/10 rounded-lg p-4 border border-primary/20">
-                                        <h4 class="font-medium text-primary mb-2">
+                                    <div class="bg-primary/10 rounded-lg p-3 md:p-4 border border-primary/20">
+                                        <h4 class="text-sm md:text-base font-medium text-primary mb-2">
                                             {{ appointment.veterinarian?.name || 'To Be Assigned' }}
                                         </h4>
-                                        <p class="text-sm text-primary/80 mb-2">
+                                        <p class="text-xs md:text-sm text-primary/80 mb-2">
                                             Veterinarian
                                         </p>
-                                        <p class="text-xs text-primary/70">
+                                        <p class="text-[10px] md:text-xs text-primary/70">
                                             {{ appointment.veterinarian?.specializations || 'Specializes in small animal care and preventive medicine' }}
                                         </p>
                                     </div>
                                 </div>
 
                                 <!-- Owner Information (Clinic View) -->
-                                <div class="space-y-4" v-else-if="isClinic">
-                                    <h3 class="text-lg font-semibold mb-4">
+                                <div class="space-y-3 md:space-y-4" v-else-if="isClinic">
+                                    <h3 class="text-base md:text-lg font-semibold mb-3 md:mb-4">
                                         Owner Information
                                     </h3>
                                     
-                                    <div class="bg-muted/50 rounded-lg p-4 border">
-                                        <h4 class="font-medium mb-2">
+                                    <div class="bg-muted/50 rounded-lg p-3 md:p-4 border">
+                                        <h4 class="text-sm md:text-base font-medium mb-2">
                                             {{ appointment.owner.name }}
                                         </h4>
-                                        <p class="text-sm text-muted-foreground mb-2">
+                                        <p class="text-xs md:text-sm text-muted-foreground mb-2">
                                             {{ appointment.owner.email }}
                                         </p>
-                                        <p class="text-sm text-muted-foreground mb-4">
+                                        <p class="text-xs md:text-sm text-muted-foreground mb-3 md:mb-4">
                                             {{ appointment.owner.phone }}
                                         </p>
                                         
                                         <button @click="callOwner"
-                                                class="w-full bg-green-600 text-white py-2 px-3 rounded-md hover:bg-green-700 text-sm font-medium flex items-center justify-center gap-2">
-                                            <Phone class="h-4 w-4" />
+                                                class="w-full bg-green-600 text-white py-2 px-3 rounded-md hover:bg-green-700 text-xs md:text-sm font-medium flex items-center justify-center gap-1.5 md:gap-2">
+                                            <Phone class="h-3 w-3 md:h-4 md:w-4" />
                                             Call Owner
                                         </button>
                                     </div>

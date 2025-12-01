@@ -450,13 +450,13 @@ const getDirections = () => {
     <Head :title="`${clinicData.name} - ${isOwnProfile ? 'Profile' : 'Clinic Details'}`" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
+        <div class="flex h-full flex-1 flex-col gap-3 sm:gap-4 overflow-x-auto rounded-xl p-3 sm:p-4">
             <!-- Header Section -->
-            <div class="rounded-lg border bg-card p-6">
-                <div class="flex flex-col lg:flex-row gap-6 items-stretch">
+            <div class="rounded-lg border bg-card p-3 sm:p-4 md:p-6">
+                <div class="flex flex-col lg:flex-row gap-4 sm:gap-6 items-stretch">
                     <!-- Clinic Image -->
                     <div class="lg:w-1/3 flex-shrink-0">
-                        <div class="w-full h-64 lg:h-full bg-muted/50 rounded-lg border overflow-hidden">
+                        <div class="w-full h-48 sm:h-56 md:h-64 lg:h-full bg-muted/50 rounded-lg border overflow-hidden">
                             <img v-if="clinicData.clinic_photo" 
                                  :src="clinicData.clinic_photo" 
                                  :alt="clinicData.name"
@@ -477,68 +477,68 @@ const getDirections = () => {
                     <!-- Clinic Info -->
                     <div class="lg:w-2/3 flex flex-col flex-1">
                         <div class="flex-1">
-                            <h1 class="text-3xl font-bold mb-2">{{ clinicData.name }}</h1>
-                            <div class="flex items-center gap-2 mb-3">
-                                <MapPin class="h-4 w-4 text-muted-foreground" />
-                                <p class="text-muted-foreground">{{ fullAddress }}</p>
+                            <h1 class="text-xl sm:text-2xl md:text-3xl font-bold mb-2">{{ clinicData.name }}</h1>
+                            <div class="flex items-start gap-2 mb-3">
+                                <MapPin class="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                                <p class="text-muted-foreground text-xs sm:text-sm">{{ fullAddress }}</p>
                             </div>
-                            <div class="flex items-center gap-4 flex-wrap mb-4">
+                            <div class="flex items-center gap-2 sm:gap-4 flex-wrap mb-3 sm:mb-4">
                                 <div class="flex items-center gap-1">
-                                    <Star class="h-5 w-5 text-yellow-400 fill-yellow-400" />
-                                    <span class="font-semibold">{{ clinicData.rating }}</span>
-                                    <span class="text-muted-foreground">({{ clinicData.total_reviews }} reviews)</span>
+                                    <Star class="h-4 w-4 sm:h-5 sm:w-5 text-yellow-400 fill-yellow-400" />
+                                    <span class="font-semibold text-sm sm:text-base">{{ clinicData.rating }}</span>
+                                    <span class="text-muted-foreground text-xs sm:text-sm">({{ clinicData.total_reviews }} reviews)</span>
                                 </div>
                                 <div class="flex items-center gap-1">
-                                    <Clock class="h-4 w-4" />
-                                    <span :class="clinicData.current_status?.is_open ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
+                                    <Clock class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                                    <span class="text-xs sm:text-sm" :class="clinicData.current_status?.is_open ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
                                         {{ currentStatus }}
                                     </span>
                                 </div>
                                 <div v-if="calculatedDistance" class="flex items-center gap-1">
-                                    <Navigation class="h-4 w-4 text-muted-foreground" />
-                                    <span class="text-muted-foreground">{{ calculatedDistance }}</span>
+                                    <Navigation class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
+                                    <span class="text-muted-foreground text-xs sm:text-sm">{{ calculatedDistance }}</span>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="mb-4">
-                            <p class="text-muted-foreground leading-relaxed">{{ clinicData.description }}</p>
+                        <div class="mb-3 sm:mb-4">
+                            <p class="text-muted-foreground leading-relaxed text-xs sm:text-sm">{{ clinicData.description }}</p>
                         </div>
                         
                         <!-- Contact Info -->
-                        <div class="flex items-center gap-4 mb-4">
+                        <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-3 sm:mb-4">
                             <div class="flex items-center gap-2">
-                                <Phone class="h-4 w-4 text-muted-foreground" />
-                                <a :href="`tel:${clinicData.phone}`" class="text-primary hover:underline">{{ formattedPhone }}</a>
+                                <Phone class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
+                                <a :href="`tel:${clinicData.phone}`" class="text-primary hover:underline text-xs sm:text-sm truncate">{{ formattedPhone }}</a>
                             </div>
-                            <span class="text-muted-foreground">•</span>
+                            <span class="text-muted-foreground hidden sm:inline">•</span>
                             <div class="flex items-center gap-2">
-                                <Mail class="h-4 w-4 text-muted-foreground" />
-                                <a :href="`mailto:${clinicData.email}`" class="text-primary hover:underline">{{ clinicData.email }}</a>
+                                <Mail class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
+                                <a :href="`mailto:${clinicData.email}`" class="text-primary hover:underline text-xs sm:text-sm truncate">{{ clinicData.email }}</a>
                             </div>
                         </div>
                         
                         <!-- Quick Contact Actions -->
-                        <div class="flex flex-wrap gap-3">
-                            <button @click="bookAppointment" 
-                                    class="flex-1 min-w-[140px] bg-primary text-primary-foreground py-3 px-4 rounded-lg hover:bg-primary/90 font-medium transition-colors flex items-center justify-center gap-2">
-                                <Calendar class="h-4 w-4" />
-                                <span class="hidden sm:inline">Book Now</span>
-                            </button>
+                        <div class="grid grid-cols-2 gap-2 sm:gap-3">
                             <button @click="callClinic" 
-                                    class="flex-1 min-w-[100px] border py-3 px-4 rounded-lg hover:bg-muted font-medium transition-colors flex items-center justify-center gap-2">
+                                    class="border py-2.5 sm:py-3 px-3 sm:px-4 rounded-lg hover:bg-muted font-medium transition-colors flex items-center justify-center gap-2 text-sm">
                                 <Phone class="h-4 w-4" />
-                                <span class="hidden sm:inline">Call</span>
+                                <span>Call</span>
                             </button>
                             <button @click="getDirections" 
-                                    class="flex-1 min-w-[120px] border py-3 px-4 rounded-lg hover:bg-muted font-medium transition-colors flex items-center justify-center gap-2">
+                                    class="border py-2.5 sm:py-3 px-3 sm:px-4 rounded-lg hover:bg-muted font-medium transition-colors flex items-center justify-center gap-2 text-sm">
                                 <Navigation class="h-4 w-4" />
-                                <span class="hidden sm:inline">Directions</span>
+                                <span>Directions</span>
+                            </button>
+                            <button @click="bookAppointment" 
+                                    class="col-span-2 bg-primary text-primary-foreground py-2.5 sm:py-3 px-3 sm:px-4 rounded-lg hover:bg-primary/90 font-medium transition-colors flex items-center justify-center gap-2 text-sm">
+                                <Calendar class="h-4 w-4" />
+                                <span>Book Now</span>
                             </button>
                             <button v-if="clinicData.website" @click="visitWebsite" 
-                                    class="flex-1 min-w-[120px] border py-3 px-4 rounded-lg hover:bg-muted font-medium transition-colors flex items-center justify-center gap-2">
+                                    class="col-span-2 border py-2.5 sm:py-3 px-3 sm:px-4 rounded-lg hover:bg-muted font-medium transition-colors flex items-center justify-center gap-2 text-sm">
                                 <Globe class="h-4 w-4" />
-                                <span class="hidden sm:inline">Website</span>
+                                <span>Website</span>
                             </button>
                         </div>
                     </div>
@@ -547,60 +547,60 @@ const getDirections = () => {
 
             <!-- Tabs Navigation -->
             <div class="rounded-lg border bg-card">
-                <div class="border-b px-6">
-                    <nav class="flex space-x-8 overflow-x-auto">
+                <div class="border-b px-3 sm:px-6">
+                    <nav class="flex space-x-4 sm:space-x-8 overflow-x-auto scrollbar-hide -mx-3 sm:mx-0 px-3 sm:px-0">
                         <button @click="activeTab = 'services'"
-                                :class="['py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap flex items-center gap-2',
+                                :class="['py-3 sm:py-4 px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap flex items-center gap-1.5 sm:gap-2 flex-shrink-0',
                                         activeTab === 'services' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border']">
-                            <Stethoscope class="h-4 w-4" />
+                            <Stethoscope class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             Services
                         </button>
                         <button @click="activeTab = 'staff'"
-                                :class="['py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap flex items-center gap-2',
+                                :class="['py-3 sm:py-4 px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap flex items-center gap-1.5 sm:gap-2 flex-shrink-0',
                                         activeTab === 'staff' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border']">
-                            <Users class="h-4 w-4" />
+                            <Users class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             Staff
                         </button>
                         <button @click="activeTab = 'hours'"
-                                :class="['py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap flex items-center gap-2',
+                                :class="['py-3 sm:py-4 px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap flex items-center gap-1.5 sm:gap-2 flex-shrink-0',
                                         activeTab === 'hours' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border']">
-                            <Clock class="h-4 w-4" />
+                            <Clock class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             Hours
                         </button>
                         <button @click="activeTab = 'photos'"
-                                :class="['py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap flex items-center gap-2',
+                                :class="['py-3 sm:py-4 px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap flex items-center gap-1.5 sm:gap-2 flex-shrink-0',
                                         activeTab === 'photos' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border']">
-                            <Image class="h-4 w-4" />
+                            <Image class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             Photos
                         </button>
                         <button @click="activeTab = 'reviews'"
-                                :class="['py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap flex items-center gap-2',
+                                :class="['py-3 sm:py-4 px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap flex items-center gap-1.5 sm:gap-2 flex-shrink-0',
                                         activeTab === 'reviews' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border']">
-                            <MessageSquare class="h-4 w-4" />
+                            <MessageSquare class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             Reviews
                         </button>
                     </nav>
                 </div>
 
                 <!-- Tab Content -->
-                <div class="p-6">
+                <div class="p-3 sm:p-4 md:p-6">
                     <!-- Services Tab -->
                     <div v-if="activeTab === 'services'">
-                        <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                            <Stethoscope class="h-5 w-5 text-primary" />
+                        <h3 class="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2">
+                            <Stethoscope class="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                             Services Offered
                         </h3>
-                        <div v-if="clinicData.services && clinicData.services.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div v-if="clinicData.services && clinicData.services.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                             <div v-for="service in clinicData.services" :key="service.id || service.name || service"
-                                 class="bg-muted/50 rounded-lg p-4 border hover:border-primary/50 transition-colors">
-                                <div class="flex items-start gap-3">
-                                    <div class="p-2 bg-primary/10 text-primary rounded-lg flex-shrink-0">
-                                        <CheckCircle class="h-5 w-5" />
+                                 class="bg-muted/50 rounded-lg p-3 sm:p-4 border hover:border-primary/50 transition-colors">
+                                <div class="flex items-start gap-2 sm:gap-3">
+                                    <div class="p-1.5 sm:p-2 bg-primary/10 text-primary rounded-lg flex-shrink-0">
+                                        <CheckCircle class="h-4 w-4 sm:h-5 sm:w-5" />
                                     </div>
                                     <div class="flex-1 min-w-0">
-                                        <h4 class="font-semibold mb-1">{{ typeof service === 'object' ? service.name : service }}</h4>
-                                        <p v-if="typeof service === 'object' && service.description" class="text-sm text-muted-foreground mb-2">{{ service.description }}</p>
-                                        <p v-else class="text-sm text-muted-foreground mb-2">Professional {{ (typeof service === 'object' ? service.name : service).toLowerCase() }} services for your pet.</p>
+                                        <h4 class="font-semibold mb-1 text-sm sm:text-base">{{ typeof service === 'object' ? service.name : service }}</h4>
+                                        <p v-if="typeof service === 'object' && service.description" class="text-xs sm:text-sm text-muted-foreground mb-2">{{ service.description }}</p>
+                                        <p v-else class="text-xs sm:text-sm text-muted-foreground mb-2">Professional {{ (typeof service === 'object' ? service.name : service).toLowerCase() }} services for your pet.</p>
                                         <div v-if="typeof service === 'object'" class="flex flex-wrap gap-2 mt-2">
                                             <span v-if="service.category_display" class="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">
                                                 {{ service.category_display }}
@@ -622,19 +622,19 @@ const getDirections = () => {
 
                     <!-- Staff Tab -->
                     <div v-if="activeTab === 'staff'">
-                        <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                            <Users class="h-5 w-5 text-primary" />
+                        <h3 class="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2">
+                            <Users class="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                             Our Team
                         </h3>
-                        <div v-if="formattedStaff.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div v-if="formattedStaff.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                             <div v-for="member in formattedStaff" :key="member.name"
-                                 class="bg-muted/50 rounded-lg p-6 text-center border hover:border-primary/50 transition-colors">
-                                <div class="w-20 h-20 bg-primary/10 text-primary rounded-full mx-auto mb-4 flex items-center justify-center">
-                                    <Users class="h-10 w-10" />
+                                 class="bg-muted/50 rounded-lg p-4 sm:p-6 text-center border hover:border-primary/50 transition-colors">
+                                <div class="w-16 h-16 sm:w-20 sm:h-20 bg-primary/10 text-primary rounded-full mx-auto mb-3 sm:mb-4 flex items-center justify-center">
+                                    <Users class="h-8 w-8 sm:h-10 sm:w-10" />
                                 </div>
-                                <h4 class="font-semibold mb-1">{{ member.name }}</h4>
-                                <p class="text-primary text-sm font-medium mb-2">{{ member.title }}</p>
-                                <p class="text-muted-foreground text-xs mb-3">{{ member.experience }}</p>
+                                <h4 class="font-semibold mb-1 text-sm sm:text-base">{{ member.name }}</h4>
+                                <p class="text-primary text-xs sm:text-sm font-medium mb-2">{{ member.title }}</p>
+                                <p class="text-muted-foreground text-[10px] sm:text-xs mb-2 sm:mb-3">{{ member.experience }}</p>
                                 <div class="flex flex-wrap justify-center gap-1">
                                     <span v-for="specialty in member.specialties" :key="specialty"
                                           class="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">
@@ -651,18 +651,18 @@ const getDirections = () => {
 
                     <!-- Hours Tab -->
                     <div v-if="activeTab === 'hours'">
-                        <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                            <Clock class="h-5 w-5 text-primary" />
+                        <h3 class="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2">
+                            <Clock class="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                             Operating Hours
                         </h3>
-                        <div class="bg-muted/50 rounded-lg p-6 max-w-md border">
+                        <div class="bg-muted/50 rounded-lg p-4 sm:p-6 max-w-md border">
                             <div v-for="(hours, day) in sortedOperatingHours" :key="day" 
-                                 class="flex justify-between items-center py-3 border-b last:border-b-0">
-                                <span class="font-medium">{{ day }}</span>
-                                <span class="text-muted-foreground">{{ hours }}</span>
+                                 class="flex justify-between items-center py-2.5 sm:py-3 border-b last:border-b-0">
+                                <span class="font-medium text-sm sm:text-base">{{ day }}</span>
+                                <span class="text-muted-foreground text-xs sm:text-sm">{{ hours }}</span>
                             </div>
                         </div>
-                        <div v-if="clinicData.current_status" class="mt-6 p-4 bg-muted/50 rounded-lg border">
+                        <div v-if="clinicData.current_status" class="mt-4 sm:mt-6 p-3 sm:p-4 bg-muted/50 rounded-lg border">
                             <div class="flex items-center gap-2">
                                 <Clock class="h-5 w-5" :class="clinicData.current_status.is_open ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'" />
                                 <div>
@@ -679,18 +679,18 @@ const getDirections = () => {
 
                     <!-- Photos Tab -->
                     <div v-if="activeTab === 'photos'">
-                        <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                            <Image class="h-5 w-5 text-primary" />
+                        <h3 class="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2">
+                            <Image class="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                             Clinic Photos
                         </h3>
-                        <div v-if="clinicData.gallery && clinicData.gallery.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div v-if="clinicData.gallery && clinicData.gallery.length > 0" class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
                             <div v-for="(photo, index) in clinicData.gallery" :key="index"
                                  class="bg-muted/50 rounded-lg overflow-hidden border hover:border-primary/50 transition-colors group cursor-pointer"
                                  @click="openPhotoModal(photo, index)">
                                 <div class="aspect-w-16 aspect-h-12 relative">
                                     <img :src="photo" 
                                          :alt="`${clinicData.name} - Photo ${index + 1}`"
-                                         class="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300" />
+                                         class="w-full h-40 sm:h-48 md:h-64 object-cover group-hover:scale-105 transition-transform duration-300" />
                                     <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center">
                                         <div class="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                                             <div class="bg-white/90 backdrop-blur-sm rounded-full p-3">
@@ -727,21 +727,21 @@ const getDirections = () => {
 
                     <!-- Reviews Tab -->
                     <div v-if="activeTab === 'reviews'">
-                        <div class="flex justify-between items-center mb-6">
-                            <h3 class="text-lg font-semibold text-white flex items-center gap-2">
-                                <Star class="h-5 w-5 text-yellow-400 fill-yellow-400" />
+                        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0 mb-4 sm:mb-6">
+                            <h3 class="text-base sm:text-lg font-semibold text-white flex items-center gap-2">
+                                <Star class="h-4 w-4 sm:h-5 sm:w-5 text-yellow-400 fill-yellow-400" />
                                 Customer Reviews
                             </h3>
-                            <div class="flex items-center gap-2 bg-gray-800 px-4 py-2 rounded-lg border border-gray-700">
-                                <Star class="h-5 w-5 text-yellow-400 fill-yellow-400" />
-                                <span class="font-semibold text-white">{{ clinicData.rating }}</span>
-                                <span class="text-gray-300">out of 5</span>
-                                <span class="text-gray-400 text-sm ml-2">({{ clinicData.total_reviews }} reviews)</span>
+                            <div class="flex items-center gap-2 bg-gray-800 px-3 sm:px-4 py-2 rounded-lg border border-gray-700">
+                                <Star class="h-4 w-4 sm:h-5 sm:w-5 text-yellow-400 fill-yellow-400" />
+                                <span class="font-semibold text-white text-sm sm:text-base">{{ clinicData.rating }}</span>
+                                <span class="text-gray-300 text-xs sm:text-sm">out of 5</span>
+                                <span class="text-gray-400 text-xs ml-1 sm:ml-2">({{ clinicData.total_reviews }} reviews)</span>
                             </div>
                         </div>
 
                         <!-- Review Info Message -->
-                        <div class="mb-6 p-4 bg-gray-800 rounded-xl border border-gray-700">
+                        <div class="mb-4 sm:mb-6 p-3 sm:p-4 bg-gray-800 rounded-xl border border-gray-700">
                             <p class="text-gray-400 text-sm">
                                 <span class="text-gray-300 font-medium">💡 Reviews can be submitted after completing an appointment at this clinic.</span>
                             </p>

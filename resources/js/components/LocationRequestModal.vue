@@ -149,7 +149,7 @@ onMounted(() => {
         leave-from-class="opacity-100"
         leave-to-class="opacity-0"
     >
-        <div v-if="show" @click="handleBackdropClick" class="fixed inset-0 bg-black/60 backdrop-blur-sm overflow-y-auto h-full w-full z-[9999] flex items-center justify-center p-4">
+        <div v-if="show" @click="handleBackdropClick" class="fixed inset-0 bg-black/60 backdrop-blur-sm overflow-y-auto h-full w-full z-[9999] flex items-center justify-center p-3 sm:p-4">
             <!-- Modal Container -->
             <Transition
                 enter-active-class="transition-all duration-300 ease-out"
@@ -159,50 +159,49 @@ onMounted(() => {
                 leave-from-class="opacity-100 scale-100 translate-y-0"
                 leave-to-class="opacity-0 scale-95 translate-y-4"
             >
-                <div v-if="show" @click.stop class="relative mx-auto w-full max-w-lg">
+                <div v-if="show" @click.stop class="relative mx-auto w-full max-w-[90vw] sm:max-w-md md:max-w-lg">
                     <!-- Close Button -->
                     <button
                         @click="dismiss"
-                        class="absolute -top-4 -right-4 z-10 p-2 rounded-full bg-gray-800 border border-gray-700 hover:bg-gray-700 transition-colors group"
-                    >
-                        <svg class="w-5 h-5 text-gray-400 group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        class="absolute -top-2 -right-2 sm:-top-4 sm:-right-4 z-10 p-1.5 sm:p-2 rounded-full bg-gray-800 border border-gray-700 hover:bg-gray-700 transition-colors group">
+                        <svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                         </svg>
                     </button>
 
                     <!-- Modal Content -->
-                    <div class="bg-gradient-to-br from-gray-800 via-gray-900 to-gray-800 rounded-2xl shadow-2xl border border-gray-700 overflow-hidden">
+                    <div class="bg-gradient-to-br from-gray-800 via-gray-900 to-gray-800 rounded-xl sm:rounded-2xl shadow-2xl border border-gray-700 overflow-hidden">
                         <!-- Header with animated gradient -->
-                        <div class="relative bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600 bg-[length:200%_100%] animate-gradient p-8 text-center">
+                        <div class="relative bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600 bg-[length:200%_100%] animate-gradient p-4 sm:p-6 md:p-8 text-center">
                             <div class="absolute inset-0 bg-black/10"></div>
                             <div class="relative">
                                 <!-- Animated Icon -->
-                                <div class="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 mb-4 animate-pulse-slow">
-                                    <svg class="h-10 w-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div class="mx-auto flex items-center justify-center h-12 w-12 sm:h-16 sm:w-16 md:h-20 md:w-20 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 mb-2 sm:mb-3 md:mb-4 animate-pulse-slow">
+                                    <svg class="h-6 w-6 sm:h-8 sm:w-8 md:h-10 md:w-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                                     </svg>
                                 </div>
-                                <h3 class="text-2xl font-bold text-white mb-2">
+                                <h3 class="text-base sm:text-xl md:text-2xl font-bold text-white mb-1 sm:mb-2">
                                     Enable Location Access
                                 </h3>
-                                <p class="text-blue-100 text-sm">
+                                <p class="text-blue-100 text-[11px] sm:text-xs md:text-sm">
                                     Help us find the perfect clinic for your pet
                                 </p>
                             </div>
                         </div>
 
                         <!-- Body -->
-                        <div class="p-6 space-y-6">
+                        <div class="p-3 sm:p-4 md:p-6 space-y-3 sm:space-y-4 md:space-y-6">
                             <!-- Description -->
-                            <p class="text-gray-300 text-center leading-relaxed">
+                            <p class="text-gray-300 text-center leading-relaxed text-xs sm:text-sm">
                                 Allow location access to discover nearby veterinary clinics with accurate distances and travel times tailored to your location.
                             </p>
 
                             <!-- Error display -->
-                            <div v-if="error" class="p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
-                                <div class="flex items-start gap-3">
-                                    <svg class="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                            <div v-if="error" class="p-2.5 sm:p-3 md:p-4 bg-red-500/10 border border-red-500/20 rounded-lg sm:rounded-xl">
+                                <div class="flex items-start gap-2 sm:gap-3">
+                                    <svg class="w-4 h-4 sm:w-5 sm:h-5 text-red-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
                                     </svg>
                                     <p class="text-sm text-red-300 flex-1">{{ error }}</p>
@@ -210,55 +209,54 @@ onMounted(() => {
                             </div>
 
                             <!-- Benefits Grid -->
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <div class="bg-gray-800/50 border border-gray-700 rounded-xl p-4 text-center hover:border-blue-500/50 transition-colors">
-                                    <div class="mx-auto w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center mb-3">
-                                        <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div class="grid grid-cols-3 gap-2 sm:gap-3 md:gap-4">
+                                <div class="bg-gray-800/50 border border-gray-700 rounded-lg sm:rounded-xl p-2 sm:p-3 md:p-4 text-center hover:border-blue-500/50 transition-colors">
+                                    <div class="mx-auto w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full bg-blue-500/10 flex items-center justify-center mb-1.5 sm:mb-2 md:mb-3">
+                                        <svg class="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                                         </svg>
                                     </div>
-                                    <h4 class="text-sm font-semibold text-white mb-1">Nearby Clinics</h4>
-                                    <p class="text-xs text-gray-400">Find clinics closest to you</p>
+                                    <h4 class="text-[10px] sm:text-xs md:text-sm font-semibold text-white mb-0.5 sm:mb-1">Nearby Clinics</h4>
+                                    <p class="text-[9px] sm:text-[10px] md:text-xs text-gray-400 hidden sm:block">Find clinics closest to you</p>
                                 </div>
                                 
-                                <div class="bg-gray-800/50 border border-gray-700 rounded-xl p-4 text-center hover:border-purple-500/50 transition-colors">
-                                    <div class="mx-auto w-12 h-12 rounded-full bg-purple-500/10 flex items-center justify-center mb-3">
-                                        <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div class="bg-gray-800/50 border border-gray-700 rounded-lg sm:rounded-xl p-2 sm:p-3 md:p-4 text-center hover:border-purple-500/50 transition-colors">
+                                    <div class="mx-auto w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full bg-purple-500/10 flex items-center justify-center mb-1.5 sm:mb-2 md:mb-3">
+                                        <svg class="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
                                         </svg>
                                     </div>
-                                    <h4 class="text-sm font-semibold text-white mb-1">Real Distances</h4>
-                                    <p class="text-xs text-gray-400">See exact distances</p>
+                                    <h4 class="text-[10px] sm:text-xs md:text-sm font-semibold text-white mb-0.5 sm:mb-1">Real Distances</h4>
+                                    <p class="text-[9px] sm:text-[10px] md:text-xs text-gray-400 hidden sm:block">See exact distances</p>
                                 </div>
                                 
-                                <div class="bg-gray-800/50 border border-gray-700 rounded-xl p-4 text-center hover:border-green-500/50 transition-colors sm:col-span-1 col-span-1">
-                                    <div class="mx-auto w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center mb-3">
-                                        <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div class="bg-gray-800/50 border border-gray-700 rounded-lg sm:rounded-xl p-2 sm:p-3 md:p-4 text-center hover:border-green-500/50 transition-colors">
+                                    <div class="mx-auto w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full bg-green-500/10 flex items-center justify-center mb-1.5 sm:mb-2 md:mb-3">
+                                        <svg class="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                         </svg>
                                     </div>
-                                    <h4 class="text-sm font-semibold text-white mb-1">Travel Time</h4>
-                                    <p class="text-xs text-gray-400">Estimated arrival times</p>
+                                    <h4 class="text-[10px] sm:text-xs md:text-sm font-semibold text-white mb-0.5 sm:mb-1">Travel Time</h4>
+                                    <p class="text-[9px] sm:text-[10px] md:text-xs text-gray-400 hidden sm:block">Estimated arrival times</p>
                                 </div>
                             </div>
 
                             <!-- Actions -->
-                            <div class="space-y-3">
+                            <div class="space-y-2">
                                 <button
                                     @click="requestLocation"
                                     :disabled="isLoading"
-                                    class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3.5 px-6 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                                >
-                                    <span v-if="isLoading" class="flex items-center justify-center gap-2">
-                                        <svg class="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                                    class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-2 sm:py-2.5 md:py-3.5 px-3 sm:px-4 md:px-6 rounded-lg sm:rounded-xl text-xs sm:text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                                    <span v-if="isLoading" class="flex items-center justify-center gap-1.5 sm:gap-2">
+                                        <svg class="animate-spin h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5 text-white" fill="none" viewBox="0 0 24 24">
                                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                         </svg>
                                         <span>Getting Your Location...</span>
                                     </span>
-                                    <span v-else class="flex items-center justify-center gap-2">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <span v-else class="flex items-center justify-center gap-1.5 sm:gap-2">
+                                        <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                         </svg>
                                         <span>Allow Location Access</span>
@@ -267,18 +265,17 @@ onMounted(() => {
                                 
                                 <button
                                     @click="dismiss"
-                                    class="w-full bg-gray-700 hover:bg-gray-600 text-gray-200 font-medium py-3 px-6 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:ring-offset-gray-900 transition-colors"
-                                >
+                                    class="w-full bg-gray-700 hover:bg-gray-600 text-gray-200 font-medium py-2 sm:py-2.5 md:py-3 px-3 sm:px-4 md:px-6 rounded-lg sm:rounded-xl text-xs sm:text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:ring-offset-gray-900 transition-colors">
                                     Continue Without Location
                                 </button>
                             </div>
 
                             <!-- Privacy note -->
-                            <div class="flex items-start gap-2 p-3 bg-gray-800/30 border border-gray-700/50 rounded-lg">
-                                <svg class="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                            <div class="flex items-start gap-1.5 sm:gap-2 p-2 sm:p-2.5 md:p-3 bg-gray-800/30 border border-gray-700/50 rounded-lg">
+                                <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
                                 </svg>
-                                <p class="text-xs text-gray-400 leading-relaxed">
+                                <p class="text-[10px] sm:text-xs text-gray-400 leading-relaxed">
                                     Your location is used only to enhance your experience. We respect your privacy and don't store this data permanently.
                                 </p>
                             </div>

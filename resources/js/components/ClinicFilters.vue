@@ -228,31 +228,31 @@ const labelClasses = "block text-sm font-medium text-foreground mb-2";
 </script>
 
 <template>
-    <div class="bg-card rounded-xl border border-border p-5">
-        <h3 class="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-            <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div class="bg-card rounded-xl border border-border p-4 sticky top-4 max-h-[calc(100vh-2rem)] overflow-y-auto">
+        <h3 class="text-base font-semibold text-foreground mb-4 flex items-center gap-2">
+            <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
             </svg>
             Filters
         </h3>
         
-        <div class="space-y-6 mb-6">
+        <div class="space-y-4 mb-4">
             <!-- Search Filter -->
             <div v-if="showSearch">
-                <label :class="labelClasses">Search</label>
+                <label class="block text-xs font-medium text-foreground mb-1.5">Search</label>
                 <input 
                     v-model="localFilters.search"
                     @input="updateModelValue"
                     type="text" 
                     placeholder="Search clinics..."
-                    :class="inputClasses"
+                    class="w-full px-3 py-2 border border-border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-background text-foreground text-sm"
                 />
             </div>
 
             <!-- Category Filter -->
             <div v-if="showService">
-                <label :class="labelClasses">Category</label>
-                <div class="space-y-2 max-h-48 overflow-y-auto">
+                <label class="block text-xs font-medium text-foreground mb-1.5">Category</label>
+                <div class="space-y-1.5 max-h-40 overflow-y-auto">
                     <label v-for="option in serviceOptions.filter(o => o.value !== '')" :key="option.value" 
                            class="flex items-center space-x-2 cursor-pointer">
                         <input 
@@ -262,15 +262,15 @@ const labelClasses = "block text-sm font-medium text-foreground mb-2";
                             @change="handleServiceChange(option.value, ($event.target as HTMLInputElement).checked)"
                             class="rounded border-border bg-background text-primary focus:ring-primary"
                         />
-                        <span class="text-sm text-foreground">{{ option.label }}</span>
+                        <span class="text-xs text-foreground">{{ option.label }}</span>
                     </label>
                 </div>
             </div>
 
             <!-- Rating Filter -->
             <div v-if="showRating">
-                <label :class="labelClasses">Minimum rating</label>
-                <div class="space-y-2">
+                <label class="block text-xs font-medium text-foreground mb-1.5">Minimum rating</label>
+                <div class="space-y-1.5">
                     <label v-for="option in ratingOptions.filter(o => o.value !== '')" :key="option.value" 
                            class="flex items-center space-x-2 cursor-pointer">
                         <input 
@@ -280,15 +280,19 @@ const labelClasses = "block text-sm font-medium text-foreground mb-2";
                             @change="handleRatingChange(option.value, ($event.target as HTMLInputElement).checked)"
                             class="rounded border-border bg-background text-primary focus:ring-primary"
                         />
-                        <span class="text-sm text-foreground">{{ option.label }}</span>
+                        <span class="text-xs text-foreground">{{ option.label }}</span>
                     </label>
                 </div>
             </div>
 
-            <!-- Distance Filter (Keep as dropdown for single selection) -->
+            <!-- Distance Filter -->
             <div v-if="showDistance">
-                <label :class="labelClasses">Distance</label>
-                <select v-model="localFilters.distance" @change="updateModelValue" :class="inputClasses">
+                <label class="block text-xs font-medium text-foreground mb-1.5">Distance</label>
+                <select 
+                    v-model="localFilters.distance" 
+                    @change="updateModelValue" 
+                    class="w-full px-3 py-2 border border-border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-background text-foreground text-sm"
+                >
                     <option v-for="option in distanceOptions" :key="option.value" :value="option.value">
                         {{ option.label }}
                     </option>
@@ -297,8 +301,8 @@ const labelClasses = "block text-sm font-medium text-foreground mb-2";
 
             <!-- Status Filter -->
             <div v-if="showStatus">
-                <label :class="labelClasses">Status</label>
-                <div class="space-y-2">
+                <label class="block text-xs font-medium text-foreground mb-1.5">Status</label>
+                <div class="space-y-1.5">
                     <label v-for="option in statusOptions.filter(o => o.value !== '')" :key="option.value" 
                            class="flex items-center space-x-2 cursor-pointer">
                         <input 
@@ -308,89 +312,64 @@ const labelClasses = "block text-sm font-medium text-foreground mb-2";
                             @change="handleStatusChange(option.value, ($event.target as HTMLInputElement).checked)"
                             class="rounded border-border bg-background text-primary focus:ring-primary"
                         />
-                        <span class="text-sm text-foreground">{{ option.label }}</span>
+                        <span class="text-xs text-foreground">{{ option.label }}</span>
                     </label>
                 </div>
             </div>
         </div>
 
         <!-- Filter Buttons -->
-        <div class="flex flex-col sm:flex-row gap-2">
-            <div class="flex gap-2 flex-1">
-                <button 
-                    @click="clearFilters" 
-                    class="flex-1 px-4 py-2 text-foreground border border-border rounded-lg hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 text-sm font-medium transition-colors"
-                >
-                    Clear
-                </button>
-            </div>
+        <div class="space-y-2 mb-4">
+            <button 
+                v-if="hasActiveFilters"
+                @click="clearFilters" 
+                class="w-full px-4 py-2 text-foreground border border-border rounded-lg hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary text-sm font-medium transition-colors"
+            >
+                Clear Filters
+            </button>
             
             <!-- View on Map Button -->
             <button 
                 v-if="showViewOnMapButton"
                 @click="handleViewOnMap" 
-                class="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-sm font-medium flex items-center justify-center gap-2 whitespace-nowrap transition-all">
+                class="w-full px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium flex items-center justify-center gap-2 transition-all"
+            >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                 </svg>
-                <span class="hidden sm:inline">View on Map</span>
-                <span class="sm:hidden">Map</span>
+                Map View
             </button>
         </div>
 
         <!-- Result Count -->
-        <div v-if="resultCount !== undefined" class="mt-4 text-sm text-muted-foreground">
-            {{ resultCount }} clinic{{ resultCount !== 1 ? 's' : '' }} found
-            <span v-if="hasActiveFilters" class="text-primary">
-                (filtered)
-            </span>
+        <div v-if="resultCount !== undefined" class="text-xs text-muted-foreground text-center mb-3">
+            {{ resultCount }} result{{ resultCount !== 1 ? 's' : '' }}
+            <span v-if="hasActiveFilters" class="text-primary">(filtered)</span>
         </div>
 
         <!-- Location Status -->
-        <div v-if="showLocationStatus" class="mt-4 p-3 bg-muted rounded-lg border border-border">
-            <div v-if="hasUserLocation" class="flex items-center gap-2 text-sm text-green-400">
-                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+        <div v-if="showLocationStatus" class="p-2.5 bg-muted/50 rounded-lg border border-border">
+            <div v-if="hasUserLocation" class="flex items-center gap-2 text-xs text-green-400">
+                <svg class="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
                 </svg>
-                <span>Location enabled - showing distances and nearby clinics</span>
+                <span>Location enabled</span>
             </div>
-            <div v-else class="flex items-center justify-between">
-                <div class="flex items-center gap-2 text-sm text-muted-foreground">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div v-else>
+                <div class="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                    <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                     </svg>
-                    <span>Enable location for distance calculations</span>
+                    <span>Enable for distance info</span>
                 </div>
                 <button 
                     @click="handleRequestLocation" 
-                    class="px-3 py-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg text-sm hover:from-blue-700 hover:to-purple-700 transition-all"
+                    class="w-full px-3 py-1.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg text-xs hover:from-blue-700 hover:to-purple-700 transition-all"
                 >
                     Enable Location
                 </button>
-            </div>
-        </div>
-
-        <!-- Active Filters Summary -->
-        <div v-if="hasActiveFilters" class="mt-4 p-3 bg-primary/10 rounded-lg border border-primary/20">
-            <h4 class="text-sm font-medium text-primary mb-2">Active Filters:</h4>
-            <div class="flex flex-wrap gap-2">
-                <span v-if="localFilters.search" class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-primary/20 text-primary">
-                    Search: {{ localFilters.search }}
-                </span>
-                <span v-if="localFilters.service && localFilters.service.length > 0" class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-primary/20 text-primary">
-                    Service: {{ localFilters.service.map(s => serviceOptions.find(opt => opt.value === s)?.label).filter(Boolean).join(', ') }}
-                </span>
-                <span v-if="localFilters.rating && localFilters.rating.length > 0" class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-primary/20 text-primary">
-                    Rating: {{ localFilters.rating.map(r => ratingOptions.find(opt => opt.value === r)?.label).filter(Boolean).join(', ') }}
-                </span>
-                <span v-if="localFilters.distance" class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-primary/20 text-primary">
-                    Distance: {{ distanceOptions.find(d => d.value === localFilters.distance)?.label }}
-                </span>
-                <span v-if="localFilters.status && localFilters.status.length > 0" class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-primary/20 text-primary">
-                    Status: {{ localFilters.status.map(s => statusOptions.find(opt => opt.value === s)?.label).filter(Boolean).join(', ') }}
-                </span>
             </div>
         </div>
     </div>

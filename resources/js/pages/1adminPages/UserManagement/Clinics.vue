@@ -4,7 +4,7 @@ import { Head, router } from '@inertiajs/vue3';
 import { adminDashboard } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 import { Building2, Search, MoreVertical, Eye, ShieldOff, ShieldCheck, CheckCircle, XCircle } from 'lucide-vue-next';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -39,9 +39,34 @@ interface Props {
     };
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
 
 const searchQuery = ref('');
+
+// Pagination
+const itemsPerPage = ref(10);
+const currentPage = ref(1);
+
+const paginatedClinics = computed(() => {
+    const start = (currentPage.value - 1) * itemsPerPage.value;
+    const end = start + itemsPerPage.value;
+    return props.clinics.data.slice(start, end);
+});
+
+const totalPages = computed(() => {
+    return Math.ceil(props.clinics.data.length / itemsPerPage.value);
+});
+
+const changePage = (page: number) => {
+    if (page >= 1 && page <= totalPages.value) {
+        currentPage.value = page;
+    }
+};
+
+const changePerPage = (perPage: number) => {
+    itemsPerPage.value = perPage;
+    currentPage.value = 1;
+};
 
 const getPlanBadge = (plan: string) => {
     const badges: Record<string, string> = {
@@ -108,42 +133,78 @@ const viewDetails = (userId: number) => {
     <Head title="Clinic Accounts" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-6 p-6">
+        <div class="flex h-full flex-1 flex-col gap-4 md:gap-6 p-4 md:p-6">
             <div class="flex items-center justify-between">
                 <div>
-                    <h1 class="text-2xl font-semibold flex items-center gap-2">
-                        <Building2 class="h-6 w-6" />
+                    <h1 class="text-xl md:text-2xl font-semibold flex items-center gap-2">
+                        <Building2 class="h-5 w-5 md:h-6 md:w-6" />
                         Clinic Accounts
                     </h1>
-                    <p class="text-muted-foreground">{{ clinics.total }} registered clinics</p>
+                    <p class="text-sm text-muted-foreground">{{ props.clinics.total }} registered clinics</p>
                 </div>
             </div>
 
             <div class="relative">
                 <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <input v-model="searchQuery" type="search" placeholder="Search clinics..." class="form-input pl-10 w-full" />
+                <input v-model="searchQuery" type="search" placeholder="Search clinics..." class="form-input pl-10 w-full text-sm" />
+            </div>
+
+            <!-- Pagination Controls Top -->
+            <div v-if="props.clinics.data.length > 0" class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-3 p-2 sm:p-3 bg-muted/30 rounded-lg border">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">Show:</span>
+                    <select 
+                        v-model="itemsPerPage" 
+                        @change="changePerPage(itemsPerPage)"
+                        class="flex-1 sm:flex-none px-2 sm:px-3 py-1.5 sm:py-1 border rounded-md bg-background text-xs sm:text-sm"
+                    >
+                        <option :value="10">10 per page</option>
+                        <option :value="25">25 per page</option>
+                        <option :value="50">50 per page</option>
+                    </select>
+                </div>
+                
+                <div class="flex items-center justify-between sm:justify-start gap-2">
+                    <button 
+                        @click="changePage(currentPage - 1)"
+                        :disabled="currentPage === 1"
+                        class="flex-1 sm:flex-none px-2 sm:px-3 py-1.5 sm:py-1 border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium"
+                    >
+                        Previous
+                    </button>
+                    <span class="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
+                        Page {{ currentPage }} of {{ totalPages }}
+                    </span>
+                    <button 
+                        @click="changePage(currentPage + 1)"
+                        :disabled="currentPage === totalPages"
+                        class="flex-1 sm:flex-none px-2 sm:px-3 py-1.5 sm:py-1 border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium"
+                    >
+                        Next
+                    </button>
+                </div>
             </div>
 
             <div class="rounded-lg border bg-card">
                 <div class="overflow-x-auto">
-                    <table class="w-full">
+                    <table class="w-full min-w-[800px]">
                         <thead class="border-b">
                             <tr>
-                                <th class="px-6 py-3 text-left text-sm font-medium text-muted-foreground">Clinic Name</th>
-                                <th class="px-6 py-3 text-left text-sm font-medium text-muted-foreground">Email</th>
-                                <th class="px-6 py-3 text-left text-sm font-medium text-muted-foreground">Plan</th>
-                                <th class="px-6 py-3 text-left text-sm font-medium text-muted-foreground">Staff</th>
-                                <th class="px-6 py-3 text-left text-sm font-medium text-muted-foreground">Appointments</th>
-                                <th class="px-6 py-3 text-left text-sm font-medium text-muted-foreground">Status</th>
-                                <th class="px-6 py-3 text-left text-sm font-medium text-muted-foreground">Joined</th>
-                                <th class="px-6 py-3 text-right text-sm font-medium text-muted-foreground">Actions</th>
+                                <th class="px-3 md:px-6 py-2 md:py-3 text-left text-xs md:text-sm font-medium text-muted-foreground">Clinic Name</th>
+                                <th class="px-3 md:px-6 py-2 md:py-3 text-left text-xs md:text-sm font-medium text-muted-foreground">Email</th>
+                                <th class="px-3 md:px-6 py-2 md:py-3 text-left text-xs md:text-sm font-medium text-muted-foreground">Plan</th>
+                                <th class="px-3 md:px-6 py-2 md:py-3 text-left text-xs md:text-sm font-medium text-muted-foreground">Staff</th>
+                                <th class="px-3 md:px-6 py-2 md:py-3 text-left text-xs md:text-sm font-medium text-muted-foreground">Appointments</th>
+                                <th class="px-3 md:px-6 py-2 md:py-3 text-left text-xs md:text-sm font-medium text-muted-foreground">Status</th>
+                                <th class="px-3 md:px-6 py-2 md:py-3 text-left text-xs md:text-sm font-medium text-muted-foreground">Joined</th>
+                                <th class="px-3 md:px-6 py-2 md:py-3 text-right text-xs md:text-sm font-medium text-muted-foreground">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y">
-                            <tr v-for="clinic in clinics.data" :key="clinic.id" class="hover:bg-muted/50">
-                                <td class="px-6 py-4 text-sm font-medium">{{ clinic.clinic_name }}</td>
-                                <td class="px-6 py-4 text-sm text-muted-foreground">{{ clinic.email }}</td>
-                                <td class="px-6 py-4">
+                            <tr v-for="clinic in paginatedClinics" :key="clinic.id" class="hover:bg-muted/50">
+                                <td class="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm font-medium">{{ clinic.clinic_name }}</td>
+                                <td class="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm text-muted-foreground">{{ clinic.email }}</td>
+                                <td class="px-3 md:px-6 py-3 md:py-4">
                                     <span :class="getPlanBadge(clinic.subscription_plan)" class="inline-flex rounded-full px-2 py-1 text-xs font-semibold">
                                         {{ clinic.subscription_plan.replace('_', ' ').toUpperCase() }}
                                     </span>

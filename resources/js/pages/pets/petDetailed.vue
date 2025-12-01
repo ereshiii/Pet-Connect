@@ -145,6 +145,14 @@ const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
 };
 
+const calculateDaysSince = (dateString: string) => {
+    const recordDate = new Date(dateString);
+    const today = new Date();
+    const diffTime = Math.abs(today.getTime() - recordDate.getTime());
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+};
+
 // Kebab menu state
 const showMenu = ref(false);
 const showDeleteConfirm = ref(false);
@@ -609,19 +617,19 @@ const deleteDocument = (docId: number) => {
                     <!-- Visit History Tab -->
                     <div v-if="activeTab === 'history'" class="space-y-4">
                         <!-- Header with total count -->
-                        <div class="flex items-center justify-between">
-                            <h3 class="text-lg font-semibold">Medical History Timeline</h3>
-                            <span class="text-sm text-muted-foreground">{{ medical_records.length }} total records</span>
+                        <div class="flex items-center justify-between gap-2">
+                            <h3 class="text-base sm:text-lg font-semibold">Medical History Timeline</h3>
+                            <span class="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{{ medical_records.length }} total records</span>
                         </div>
 
                         <!-- Pagination Controls -->
-                        <div v-if="medical_records.length > 0" class="flex flex-wrap items-center justify-between gap-3 p-3 bg-muted/30 rounded-lg border">
+                        <div v-if="medical_records.length > 0" class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-3 p-2 sm:p-3 bg-muted/30 rounded-lg border">
                             <div class="flex items-center gap-2">
-                                <span class="text-sm text-muted-foreground">Show:</span>
+                                <span class="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">Show:</span>
                                 <select 
                                     v-model="recordsPerPage" 
                                     @change="changePerPage(recordsPerPage)"
-                                    class="px-3 py-1 border rounded-md bg-background text-sm"
+                                    class="flex-1 sm:flex-none px-2 sm:px-3 py-1.5 sm:py-1 border rounded-md bg-background text-xs sm:text-sm"
                                 >
                                     <option :value="10">10 per page</option>
                                     <option :value="50">50 per page</option>
@@ -629,21 +637,21 @@ const deleteDocument = (docId: number) => {
                                 </select>
                             </div>
                             
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center justify-between sm:justify-start gap-2">
                                 <button 
                                     @click="changePage(currentPage - 1)"
                                     :disabled="currentPage === 1"
-                                    class="px-3 py-1 border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                                    class="flex-1 sm:flex-none px-2 sm:px-3 py-1.5 sm:py-1 border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium"
                                 >
                                     Previous
                                 </button>
-                                <span class="text-sm text-muted-foreground">
+                                <span class="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
                                     Page {{ currentPage }} of {{ totalPages }}
                                 </span>
                                 <button 
                                     @click="changePage(currentPage + 1)"
                                     :disabled="currentPage === totalPages"
-                                    class="px-3 py-1 border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                                    class="flex-1 sm:flex-none px-2 sm:px-3 py-1.5 sm:py-1 border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium"
                                 >
                                     Next
                                 </button>
@@ -651,37 +659,37 @@ const deleteDocument = (docId: number) => {
                         </div>
                         
                         <!-- Timeline -->
-                        <div v-if="medical_records.length > 0" class="relative space-y-4">
+                        <div v-if="medical_records.length > 0" class="relative space-y-3 sm:space-y-4">
                             <!-- Timeline line -->
-                            <div class="absolute left-6 top-0 bottom-0 w-0.5 bg-border"></div>
+                            <div class="absolute left-3 sm:left-6 top-0 bottom-0 w-0.5 bg-border"></div>
                             
                             <!-- Records -->
-                            <div v-for="record in paginatedRecords" :key="record.id" class="relative pl-16">
+                            <div v-for="record in paginatedRecords" :key="record.id" class="relative pl-8 sm:pl-16">
                                 <!-- Timeline dot -->
-                                <div class="absolute left-4 top-6 w-4 h-4 bg-primary rounded-full border-4 border-background ring-2 ring-border"></div>
+                                <div class="absolute left-1.5 sm:left-4 top-4 sm:top-6 w-3 h-3 sm:w-4 sm:h-4 bg-primary rounded-full border-2 sm:border-4 border-background ring-1 sm:ring-2 ring-border"></div>
                                 
                                 <!-- Record card -->
                                 <div class="bg-card border rounded-lg shadow-sm hover:shadow-md transition-shadow">
                                     <!-- Card header - always visible -->
                                     <div 
+                                        class="p-2.5 sm:p-4 cursor-pointer hover:bg-muted/30 transition-colors"
                                         @click="toggleRecordExpansion(record.id)"
-                                        class="p-4 cursor-pointer hover:bg-muted/30 transition-colors"
                                     >
-                                        <div class="flex items-start justify-between mb-2">
-                                            <div class="flex-1">
-                                                <div class="flex items-center gap-2 mb-1">
-                                                    <h4 class="font-semibold text-base">{{ formatDate(record.date) }}</h4>
-                                                    <span class="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">
+                                        <div class="flex items-start justify-between gap-2 mb-2">
+                                            <div class="flex-1 min-w-0">
+                                                <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-1">
+                                                    <h4 class="font-semibold text-sm sm:text-base">{{ formatDate(record.date) }}</h4>
+                                                    <span class="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 bg-primary/10 text-primary rounded-full whitespace-nowrap w-fit">
                                                         Medical Record #{{ record.id }}
                                                     </span>
                                                 </div>
-                                                <p class="text-sm text-muted-foreground">
-                                                    {{ record.days_since_visit }} days ago
+                                                <p class="text-xs sm:text-sm text-muted-foreground">
+                                                    {{ calculateDaysSince(record.date) }} days ago
                                                 </p>
                                             </div>
-                                            <button class="text-muted-foreground hover:text-foreground">
+                                            <div class="text-muted-foreground hover:text-foreground flex-shrink-0">
                                                 <svg 
-                                                    class="w-5 h-5 transition-transform" 
+                                                    class="w-4 h-4 sm:w-5 sm:h-5 transition-transform" 
                                                     :class="{ 'rotate-180': expandedRecords.has(record.id) }"
                                                     fill="none" 
                                                     stroke="currentColor" 
@@ -689,13 +697,13 @@ const deleteDocument = (docId: number) => {
                                                 >
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                                                 </svg>
-                                            </button>
+                                            </div>
                                         </div>
                                         
                                         <!-- Preview - Diagnosis snippet -->
-                                        <div class="flex items-start gap-2 mt-2">
-                                            <span class="text-sm font-medium text-muted-foreground">Diagnosis:</span>
-                                            <p class="text-sm line-clamp-1 flex-1">
+                                        <div class="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2 mt-2">
+                                            <span class="text-xs sm:text-sm font-medium text-muted-foreground whitespace-nowrap">Diagnosis:</span>
+                                            <p class="text-xs sm:text-sm line-clamp-1 flex-1">
                                                 {{ record.diagnosis || 'Not specified' }}
                                             </p>
                                         </div>
@@ -704,53 +712,53 @@ const deleteDocument = (docId: number) => {
                                     <!-- Expanded content -->
                                     <div 
                                         v-if="expandedRecords.has(record.id)"
-                                        class="px-4 pb-4 space-y-4 border-t bg-muted/10"
+                                        class="px-2.5 sm:px-4 pb-2.5 sm:pb-4 space-y-3 sm:space-y-4 border-t bg-muted/10"
                                     >
                                         <!-- Diagnosis -->
-                                        <div v-if="record.diagnosis" class="pt-4">
-                                            <h5 class="font-medium text-sm mb-2 flex items-center gap-2">
-                                                <span class="text-lg">🩺</span>
+                                        <div v-if="record.diagnosis" class="pt-3 sm:pt-4">
+                                            <h5 class="font-medium text-xs sm:text-sm mb-1.5 sm:mb-2 flex items-center gap-1.5 sm:gap-2">
+                                                <span class="text-base sm:text-lg">🩺</span>
                                                 Diagnosis
                                             </h5>
-                                            <p class="text-sm leading-relaxed bg-background p-3 rounded-md border">{{ record.diagnosis }}</p>
+                                            <p class="text-xs sm:text-sm leading-relaxed bg-background p-2 sm:p-3 rounded-md border">{{ record.diagnosis }}</p>
                                         </div>
                                         
                                         <!-- Findings -->
                                         <div v-if="record.findings">
-                                            <h5 class="font-medium text-sm mb-2 flex items-center gap-2">
-                                                <span class="text-lg">🔍</span>
+                                            <h5 class="font-medium text-xs sm:text-sm mb-1.5 sm:mb-2 flex items-center gap-1.5 sm:gap-2">
+                                                <span class="text-base sm:text-lg">🔍</span>
                                                 Findings
                                             </h5>
-                                            <p class="text-sm leading-relaxed bg-background p-3 rounded-md border whitespace-pre-wrap">{{ record.findings }}</p>
+                                            <p class="text-xs sm:text-sm leading-relaxed bg-background p-2 sm:p-3 rounded-md border whitespace-pre-wrap">{{ record.findings }}</p>
                                         </div>
                                         
                                         <!-- Treatment Given -->
                                         <div v-if="record.treatment_given">
-                                            <h5 class="font-medium text-sm mb-2 flex items-center gap-2">
-                                                <span class="text-lg">💊</span>
+                                            <h5 class="font-medium text-xs sm:text-sm mb-1.5 sm:mb-2 flex items-center gap-1.5 sm:gap-2">
+                                                <span class="text-base sm:text-lg">💊</span>
                                                 Treatment Given
                                             </h5>
-                                            <p class="text-sm leading-relaxed bg-background p-3 rounded-md border whitespace-pre-wrap">{{ record.treatment_given }}</p>
+                                            <p class="text-xs sm:text-sm leading-relaxed bg-background p-2 sm:p-3 rounded-md border whitespace-pre-wrap">{{ record.treatment_given }}</p>
                                         </div>
                                         
                                         <!-- Prescriptions -->
                                         <div v-if="record.prescriptions">
-                                            <h5 class="font-medium text-sm mb-2 flex items-center gap-2">
-                                                <span class="text-lg">📋</span>
+                                            <h5 class="font-medium text-xs sm:text-sm mb-1.5 sm:mb-2 flex items-center gap-1.5 sm:gap-2">
+                                                <span class="text-base sm:text-lg">📋</span>
                                                 Prescriptions
                                             </h5>
-                                            <p class="text-sm leading-relaxed bg-background p-3 rounded-md border whitespace-pre-wrap">{{ record.prescriptions }}</p>
+                                            <p class="text-xs sm:text-sm leading-relaxed bg-background p-2 sm:p-3 rounded-md border whitespace-pre-wrap">{{ record.prescriptions }}</p>
                                         </div>
                                         
                                         <!-- Metadata footer -->
-                                        <div class="flex items-center gap-4 text-xs text-muted-foreground pt-3 border-t">
-                                            <div v-if="record.veterinarian_name" class="flex items-center gap-2">
-                                                <User class="w-4 h-4" />
-                                                <span>{{ record.veterinarian_name }}</span>
+                                        <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-[10px] sm:text-xs text-muted-foreground pt-2 sm:pt-3 border-t">
+                                            <div v-if="record.veterinarian_name" class="flex items-center gap-1.5 sm:gap-2">
+                                                <User class="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                                                <span class="truncate">{{ record.veterinarian_name }}</span>
                                             </div>
-                                            <div v-if="record.clinic_name" class="flex items-center gap-2">
-                                                <Building2 class="w-4 h-4" />
-                                                <span>{{ record.clinic_name }}</span>
+                                            <div v-if="record.clinic_name" class="flex items-center gap-1.5 sm:gap-2">
+                                                <Building2 class="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                                                <span class="truncate">{{ record.clinic_name }}</span>
                                             </div>
                                         </div>
                                     </div>

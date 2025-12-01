@@ -113,40 +113,40 @@ const serviceBookingsChartData = computed(() => ({
             </div>
 
             <!-- Key Metrics -->
-            <div class="grid gap-2 sm:gap-4 grid-cols-1 sm:grid-cols-3">
+            <div class="grid gap-2 md:gap-4 grid-cols-3 md:grid-cols-3">
                 <Card class="bg-card border-border">
-                    <CardHeader class="flex flex-row items-center justify-between pb-1 sm:pb-2 space-y-0 p-3 sm:p-6">
-                        <CardTitle class="text-xs sm:text-base font-medium text-foreground">Total Bookings</CardTitle>
-                        <Users class="h-3.5 w-3.5 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                    <CardHeader class="flex flex-row items-center justify-between pb-0 space-y-0 p-2.5 md:p-4">
+                        <CardTitle class="text-xs md:text-sm font-medium text-foreground">Total Bookings</CardTitle>
+                        <Users class="hidden md:block h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
                     </CardHeader>
-                    <CardContent class="p-3 pt-0 sm:p-6 sm:pt-0">
-                        <div class="text-lg sm:text-2xl font-bold text-foreground">{{ service_stats.total_bookings.toLocaleString() }}</div>
-                        <div class="flex items-center gap-1 text-[10px] sm:text-sm mt-0.5 sm:mt-1" :class="getGrowthColor(service_stats.booking_growth)">
-                            <component :is="service_stats.booking_growth >= 0 ? ArrowUpRight : ArrowDownRight" class="h-2.5 w-2.5 sm:h-4 sm:w-4" />
+                    <CardContent class="p-2.5 pt-0 md:p-4 md:pt-0">
+                        <div class="text-base md:text-2xl font-bold text-foreground">{{ service_stats.total_bookings.toLocaleString() }}</div>
+                        <div class="flex items-center gap-1 text-[10px] md:text-xs mt-0.5" :class="getGrowthColor(service_stats.booking_growth)">
+                            <component :is="service_stats.booking_growth >= 0 ? ArrowUpRight : ArrowDownRight" class="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                             <span>{{ Math.abs(service_stats.booking_growth).toFixed(1) }}%</span>
                         </div>
                     </CardContent>
                 </Card>
 
                 <Card class="bg-card border-border">
-                    <CardHeader class="flex flex-row items-center justify-between pb-1 sm:pb-2 space-y-0 p-3 sm:p-6">
-                        <CardTitle class="text-xs sm:text-base font-medium text-foreground">Avg Duration</CardTitle>
-                        <Activity class="h-3.5 w-3.5 sm:h-5 sm:w-5 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+                    <CardHeader class="flex flex-row items-center justify-between pb-0 space-y-0 p-2.5 md:p-4">
+                        <CardTitle class="text-xs md:text-sm font-medium text-foreground">Avg Duration</CardTitle>
+                        <Activity class="hidden md:block h-5 w-5 text-purple-600 dark:text-purple-400 flex-shrink-0" />
                     </CardHeader>
-                    <CardContent class="p-3 pt-0 sm:p-6 sm:pt-0">
-                        <div class="text-lg sm:text-2xl font-bold text-foreground">{{ service_stats.average_service_duration }} min</div>
-                        <p class="text-[10px] sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">Per appointment</p>
+                    <CardContent class="p-2.5 pt-0 md:p-4 md:pt-0">
+                        <div class="text-base md:text-2xl font-bold text-foreground">{{ service_stats.average_duration }} min</div>
+                        <p class="text-[10px] md:text-xs text-muted-foreground mt-0.5">Per appointment</p>
                     </CardContent>
                 </Card>
 
                 <Card class="bg-card border-border">
-                    <CardHeader class="flex flex-row items-center justify-between pb-1 sm:pb-2 space-y-0 p-3 sm:p-6">
-                        <CardTitle class="text-xs sm:text-base font-medium text-foreground">Total Services</CardTitle>
-                        <Stethoscope class="h-3.5 w-3.5 sm:h-5 sm:w-5 text-orange-600 dark:text-orange-400 flex-shrink-0" />
+                    <CardHeader class="flex flex-row items-center justify-between pb-0 space-y-0 p-2.5 md:p-4">
+                        <CardTitle class="text-xs md:text-sm font-medium text-foreground">Total Services</CardTitle>
+                        <Stethoscope class="hidden md:block h-5 w-5 text-orange-600 dark:text-orange-400 flex-shrink-0" />
                     </CardHeader>
-                    <CardContent class="p-3 pt-0 sm:p-6 sm:pt-0">
-                        <div class="text-lg sm:text-2xl font-bold text-foreground">{{ service_stats.total_services }}</div>
-                        <p class="text-[10px] sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">Services offered</p>
+                    <CardContent class="p-2.5 pt-0 md:p-4 md:pt-0">
+                        <div class="text-base md:text-2xl font-bold text-foreground">{{ service_stats.total_services }}</div>
+                        <p class="text-[10px] md:text-xs text-muted-foreground mt-0.5">Services offered</p>
                     </CardContent>
                 </Card>
             </div>

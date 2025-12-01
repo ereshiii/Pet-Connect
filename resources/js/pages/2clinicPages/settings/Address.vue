@@ -173,12 +173,14 @@ const submit = () => {
 
                     <!-- Pin Location on Map -->
                     <div class="pt-6 border-t">
-                        <PinAddressLocation
-                            :latitude="form.latitude"
-                            :longitude="form.longitude"
-                            :address="`${form.street_address || ''}, ${form.barangay}, ${form.city}, ${form.province}`"
-                            @location-update="handleLocationUpdate"
-                        />
+                        <div class="relative z-0 overflow-hidden rounded-lg">
+                            <PinAddressLocation
+                                :latitude="form.latitude"
+                                :longitude="form.longitude"
+                                :address="`${form.street_address || ''}, ${form.barangay}, ${form.city}, ${form.province}`"
+                                @location-update="handleLocationUpdate"
+                            />
+                        </div>
                         <InputError :message="form.errors.latitude || form.errors.longitude" />
                     </div>
 

@@ -504,6 +504,37 @@ const rateAppointment = (appointment: Appointment) => {
                         </div>
                     </div>
 
+                    <!-- Pagination -->
+                    <div v-if="categoryCounts.all > 0" class="mb-4 sm:mb-6">
+                        <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-3 p-2 sm:p-3 bg-muted/30 rounded-lg border">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
+                                    Showing {{ filteredAppointments.length }} of {{ categoryCounts.all }} appointments
+                                </span>
+                            </div>
+                            
+                            <div class="flex items-center justify-between sm:justify-start gap-2">
+                                <button 
+                                    @click="previousPage"
+                                    :disabled="appointments.current_page === 1"
+                                    class="flex-1 sm:flex-none px-2 sm:px-3 py-1.5 sm:py-1 border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium"
+                                >
+                                    Previous
+                                </button>
+                                <span class="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
+                                    Page {{ appointments.current_page }} of {{ appointments.last_page }}
+                                </span>
+                                <button 
+                                    @click="nextPage"
+                                    :disabled="appointments.current_page === appointments.last_page"
+                                    class="flex-1 sm:flex-none px-2 sm:px-3 py-1.5 sm:py-1 border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium"
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Appointments List -->
                     <div class="space-y-2 sm:space-y-3">
                         <div 
@@ -588,35 +619,6 @@ const rateAppointment = (appointment: Appointment) => {
                             <p class="text-xs sm:text-sm text-muted-foreground">
                                 {{ categoryCounts.all === 0 ? 'Your booking history will appear here' : 'Try adjusting your search or filters' }}
                             </p>
-                        </div>
-                    </div>
-                    
-                    <!-- Pagination -->
-                    <div v-if="categoryCounts.all > 0" class="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t">
-                        <div class="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
-                            <p class="text-xs sm:text-sm text-muted-foreground">
-                                Showing <span class="font-medium text-foreground">{{ filteredAppointments.length > 0 ? 1 : 0 }}</span> to 
-                                <span class="font-medium text-foreground">{{ filteredAppointments.length }}</span> of 
-                                <span class="font-medium text-foreground">{{ categoryCounts.all }}</span> appointments
-                            </p>
-                            <div class="flex items-center gap-2">
-                                <button 
-                                    v-if="appointments.current_page > 1"
-                                    @click="previousPage"
-                                    class="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 sm:py-2 border rounded-md hover:bg-muted transition-colors text-xs sm:text-sm"
-                                >
-                                    <ChevronLeft class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                                    Previous
-                                </button>
-                                <button 
-                                    v-if="appointments.current_page < appointments.last_page"
-                                    @click="nextPage"
-                                    class="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 sm:py-2 border rounded-md hover:bg-muted transition-colors text-xs sm:text-sm"
-                                >
-                                    Next
-                                    <ChevronRight class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                                </button>
-                            </div>
                         </div>
                     </div>
                 </div>

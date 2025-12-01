@@ -104,17 +104,17 @@ const getRatingColor = (rating: number) => {
     <Head title="Overview" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto p-6">
+        <div class="flex h-full flex-1 flex-col gap-2 md:gap-4 overflow-x-auto p-2 md:p-4">
             <!-- Page Header -->
-            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div class="flex flex-col gap-2 md:gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h1 class="text-3xl font-bold tracking-tight">Overview</h1>
-                    <p class="text-muted-foreground mt-1">Key metrics and performance indicators</p>
+                    <h1 class="text-xl md:text-3xl font-bold tracking-tight">Overview</h1>
+                    <p class="text-muted-foreground mt-0.5 md:mt-1 text-xs md:text-sm">Key metrics and performance indicators</p>
                 </div>
                 <select 
                     v-model="selectedDateRange" 
                     @change="updateDateRange" 
-                    class="px-4 py-2 border rounded-lg bg-white dark:bg-slate-900 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-primary w-fit"
+                    class="px-2 md:px-4 py-1.5 md:py-2 border rounded-lg bg-white dark:bg-slate-900 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-primary w-full sm:w-fit text-xs md:text-sm"
                 >
                     <option value="1">Last 24 hours</option>
                     <option value="7">Last 7 days</option>
@@ -127,35 +127,36 @@ const getRatingColor = (rating: number) => {
 
             <!-- Patient Metrics -->
             <div>
-                <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                    <Users class="h-5 w-5 text-blue-600" />
+                <h2 class="text-sm md:text-base font-semibold mb-2 md:mb-3 flex items-center gap-1.5 md:gap-2">
+                    <Users class="h-3.5 w-3.5 md:h-5 md:w-5 text-blue-600" />
                     Patient Metrics
                 </h2>
-                <div class="grid gap-4 md:grid-cols-2">
+                <div class="grid gap-2 md:gap-4 grid-cols-1 md:grid-cols-2">
                     <Card>
-                        <CardHeader class="flex flex-row items-center justify-between pb-2">
-                            <CardTitle class="text-sm font-medium">Total Patients</CardTitle>
-                            <Users class="h-4 w-4 text-muted-foreground" />
+                        <CardHeader class="flex flex-row items-center justify-between pb-0 p-2.5 md:p-4">
+                            <CardTitle class="text-xs md:text-sm font-medium">Total Patients</CardTitle>
+                            <Users class="hidden md:block h-5 w-5 text-muted-foreground" />
                         </CardHeader>
-                        <CardContent>
-                            <div class="text-2xl font-bold">{{ overview_stats.total_patients.toLocaleString() }}</div>
-                            <div class="flex items-center gap-1 text-xs mt-1" :class="getGrowthColor(overview_stats.patient_growth)">
-                                <component :is="overview_stats.patient_growth >= 0 ? ArrowUpRight : ArrowDownRight" class="h-3 w-3" />
-                                <span>{{ Math.abs(overview_stats.patient_growth).toFixed(1) }}% from last period</span>
+                        <CardContent class="p-2.5 pt-0 md:p-4 md:pt-0">
+                            <div class="text-base md:text-2xl font-bold">{{ overview_stats.total_patients.toLocaleString() }}</div>
+                            <div class="flex items-center gap-0.5 text-[10px] md:text-xs mt-0.5" :class="getGrowthColor(overview_stats.patient_growth)">
+                                <component :is="overview_stats.patient_growth >= 0 ? ArrowUpRight : ArrowDownRight" class="h-2.5 w-2.5 md:h-3.5 md:w-3.5" />
+                                <span class="hidden md:inline">{{ Math.abs(overview_stats.patient_growth).toFixed(1) }}% from last period</span>
+                                <span class="md:hidden">{{ Math.abs(overview_stats.patient_growth).toFixed(1) }}%</span>
                             </div>
                         </CardContent>
                     </Card>
 
                     <Card>
-                        <CardHeader class="flex flex-row items-center justify-between pb-2">
-                            <CardTitle class="text-sm font-medium">Average Rating</CardTitle>
-                            <Star class="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                        <CardHeader class="flex flex-row items-center justify-between pb-0 p-2.5 md:p-4">
+                            <CardTitle class="text-xs md:text-sm font-medium">Avg Rating</CardTitle>
+                            <Star class="hidden md:block h-5 w-5 fill-yellow-400 text-yellow-400" />
                         </CardHeader>
-                        <CardContent>
-                            <div class="text-2xl font-bold" :class="getRatingColor(overview_stats.average_rating)">
+                        <CardContent class="p-2.5 pt-0 md:p-4 md:pt-0">
+                            <div class="text-base md:text-2xl font-bold" :class="getRatingColor(overview_stats.average_rating)">
                                 {{ overview_stats.average_rating.toFixed(1) }}
                             </div>
-                            <p class="text-xs text-muted-foreground mt-1">{{ overview_stats.total_reviews }} total reviews</p>
+                            <p class="text-[10px] md:text-xs text-muted-foreground mt-0.5">{{ overview_stats.total_reviews }} reviews</p>
                         </CardContent>
                     </Card>
                 </div>
@@ -163,33 +164,34 @@ const getRatingColor = (rating: number) => {
 
             <!-- Appointment Metrics -->
             <div>
-                <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                    <CalendarCheck class="h-5 w-5 text-green-600" />
+                <h2 class="text-sm md:text-base font-semibold mb-2 md:mb-3 flex items-center gap-1.5 md:gap-2">
+                    <CalendarCheck class="h-3.5 w-3.5 md:h-5 md:w-5 text-green-600" />
                     Appointment Metrics
                 </h2>
-                <div class="grid gap-4 md:grid-cols-2">
+                <div class="grid gap-2 md:gap-4 grid-cols-1 md:grid-cols-2">
                     <Card>
-                        <CardHeader class="flex flex-row items-center justify-between pb-2">
-                            <CardTitle class="text-sm font-medium">Total Appointments</CardTitle>
-                            <CalendarCheck class="h-4 w-4 text-muted-foreground" />
+                        <CardHeader class="flex flex-row items-center justify-between pb-0 p-2.5 md:p-4">
+                            <CardTitle class="text-xs md:text-sm font-medium">Total Appointments</CardTitle>
+                            <CalendarCheck class="hidden md:block h-5 w-5 text-muted-foreground" />
                         </CardHeader>
-                        <CardContent>
-                            <div class="text-2xl font-bold">{{ overview_stats.total_appointments.toLocaleString() }}</div>
-                            <div class="flex items-center gap-1 text-xs mt-1" :class="getGrowthColor(overview_stats.appointment_growth)">
-                                <component :is="overview_stats.appointment_growth >= 0 ? ArrowUpRight : ArrowDownRight" class="h-3 w-3" />
-                                <span>{{ Math.abs(overview_stats.appointment_growth).toFixed(1) }}% from last period</span>
+                        <CardContent class="p-2.5 pt-0 md:p-4 md:pt-0">
+                            <div class="text-base md:text-2xl font-bold">{{ overview_stats.total_appointments.toLocaleString() }}</div>
+                            <div class="flex items-center gap-0.5 text-[10px] md:text-xs mt-0.5" :class="getGrowthColor(overview_stats.appointment_growth)">
+                                <component :is="overview_stats.appointment_growth >= 0 ? ArrowUpRight : ArrowDownRight" class="h-2.5 w-2.5 md:h-3.5 md:w-3.5" />
+                                <span class="hidden md:inline">{{ Math.abs(overview_stats.appointment_growth).toFixed(1) }}% from last period</span>
+                                <span class="md:hidden">{{ Math.abs(overview_stats.appointment_growth).toFixed(1) }}%</span>
                             </div>
                         </CardContent>
                     </Card>
 
                     <Card>
-                        <CardHeader class="flex flex-row items-center justify-between pb-2">
-                            <CardTitle class="text-sm font-medium">Completion Rate</CardTitle>
-                            <Activity class="h-4 w-4 text-muted-foreground" />
+                        <CardHeader class="flex flex-row items-center justify-between pb-0 p-2.5 md:p-4">
+                            <CardTitle class="text-xs md:text-sm font-medium">Completion Rate</CardTitle>
+                            <Activity class="hidden md:block h-5 w-5 text-muted-foreground" />
                         </CardHeader>
-                        <CardContent>
-                            <div class="text-2xl font-bold">{{ formatPercentage(overview_stats.completion_rate) }}</div>
-                            <p class="text-xs text-muted-foreground mt-1">{{ overview_stats.completed_appointments }} completed</p>
+                        <CardContent class="p-2.5 pt-0 md:p-4 md:pt-0">
+                            <div class="text-base md:text-2xl font-bold">{{ formatPercentage(overview_stats.completion_rate) }}</div>
+                            <p class="text-[10px] md:text-xs text-muted-foreground mt-0.5">{{ overview_stats.completed_appointments }} completed</p>
                         </CardContent>
                     </Card>
                 </div>
@@ -199,30 +201,30 @@ const getRatingColor = (rating: number) => {
 
             <!-- Service Metrics -->
             <div>
-                <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                    <Stethoscope class="h-5 w-5 text-purple-600" />
+                <h2 class="text-sm md:text-base font-semibold mb-2 md:mb-3 flex items-center gap-1.5 md:gap-2">
+                    <Stethoscope class="h-3.5 w-3.5 md:h-5 md:w-5 text-purple-600" />
                     Service Metrics
                 </h2>
-                <div class="grid gap-4 md:grid-cols-2">
+                <div class="grid gap-2 md:gap-4 grid-cols-1 md:grid-cols-2">
                     <Card>
-                        <CardHeader class="flex flex-row items-center justify-between pb-2">
-                            <CardTitle class="text-sm font-medium">Active Services</CardTitle>
-                            <Stethoscope class="h-4 w-4 text-muted-foreground" />
+                        <CardHeader class="flex flex-row items-center justify-between pb-0 p-2.5 md:p-4">
+                            <CardTitle class="text-xs md:text-sm font-medium">Active Services</CardTitle>
+                            <Stethoscope class="hidden md:block h-5 w-5 text-muted-foreground" />
                         </CardHeader>
-                        <CardContent>
-                            <div class="text-2xl font-bold">{{ overview_stats.active_services }}</div>
-                            <p class="text-xs text-muted-foreground mt-1">Services offered</p>
+                        <CardContent class="p-2.5 pt-0 md:p-4 md:pt-0">
+                            <div class="text-base md:text-2xl font-bold">{{ overview_stats.active_services }}</div>
+                            <p class="text-[10px] md:text-xs text-muted-foreground mt-0.5">Services offered</p>
                         </CardContent>
                     </Card>
 
                     <Card>
-                        <CardHeader class="flex flex-row items-center justify-between pb-2">
-                            <CardTitle class="text-sm font-medium">Top Service</CardTitle>
-                            <Activity class="h-4 w-4 text-green-600" />
+                        <CardHeader class="flex flex-row items-center justify-between pb-0 p-2.5 md:p-4">
+                            <CardTitle class="text-xs md:text-sm font-medium">Top Service</CardTitle>
+                            <Activity class="hidden md:block h-5 w-5 text-green-600" />
                         </CardHeader>
-                        <CardContent>
-                            <div class="text-xl font-bold truncate">{{ overview_stats.top_service }}</div>
-                            <p class="text-xs text-muted-foreground mt-1">Most booked service</p>
+                        <CardContent class="p-2.5 pt-0 md:p-4 md:pt-0">
+                            <div class="text-base md:text-2xl font-bold truncate">{{ overview_stats.top_service }}</div>
+                            <p class="text-[10px] md:text-xs text-muted-foreground mt-0.5\">Most booked</p>
                         </CardContent>
                     </Card>
                 </div>
@@ -230,33 +232,33 @@ const getRatingColor = (rating: number) => {
 
             <!-- Quick Links -->
             <div>
-                <h2 class="text-lg font-semibold mb-4">Detailed Reports</h2>
-                <div class="grid gap-3 md:grid-cols-3">
+                <h2 class="text-sm md:text-lg font-semibold mb-2 md:mb-4">Detailed Reports</h2>
+                <div class="grid gap-2 md:gap-3 grid-cols-1 sm:grid-cols-3">
                     <button
                         @click="router.visit('/clinic/reports/patients')"
-                        class="p-4 border rounded-lg hover:bg-muted/50 transition-colors text-left group"
+                        class="p-2 md:p-4 border rounded-lg hover:bg-muted/50 transition-colors text-left group"
                     >
-                        <Users class="h-5 w-5 text-blue-600 mb-2 group-hover:scale-110 transition-transform" />
-                        <h3 class="font-semibold">Patient Analytics</h3>
-                        <p class="text-xs text-muted-foreground">View detailed patient data</p>
+                        <Users class="h-4 w-4 md:h-5 md:w-5 text-blue-600 mb-1 md:mb-2 group-hover:scale-110 transition-transform" />
+                        <h3 class="font-semibold text-xs md:text-base">Patient Analytics</h3>
+                        <p class="text-[10px] md:text-xs text-muted-foreground hidden sm:block">View detailed patient data</p>
                     </button>
 
                     <button
                         @click="router.visit('/clinic/reports/services')"
-                        class="p-4 border rounded-lg hover:bg-muted/50 transition-colors text-left group"
+                        class="p-2 md:p-4 border rounded-lg hover:bg-muted/50 transition-colors text-left group"
                     >
-                        <Stethoscope class="h-5 w-5 text-purple-600 mb-2 group-hover:scale-110 transition-transform" />
-                        <h3 class="font-semibold">Services Analytics</h3>
-                        <p class="text-xs text-muted-foreground">Track service performance</p>
+                        <Stethoscope class="h-4 w-4 md:h-5 md:w-5 text-purple-600 mb-1 md:mb-2 group-hover:scale-110 transition-transform" />
+                        <h3 class="font-semibold text-xs md:text-base">Services Analytics</h3>
+                        <p class="text-[10px] md:text-xs text-muted-foreground hidden sm:block">Track service performance</p>
                     </button>
 
                     <button
                         @click="router.visit('/clinic/reports/reviews')"
-                        class="p-4 border rounded-lg hover:bg-muted/50 transition-colors text-left group"
+                        class="p-2 md:p-4 border rounded-lg hover:bg-muted/50 transition-colors text-left group"
                     >
-                        <MessageSquare class="h-5 w-5 text-yellow-600 mb-2 group-hover:scale-110 transition-transform" />
-                        <h3 class="font-semibold">Clinic Reviews</h3>
-                        <p class="text-xs text-muted-foreground">Read patient feedback</p>
+                        <MessageSquare class="h-4 w-4 md:h-5 md:w-5 text-yellow-600 mb-1 md:mb-2 group-hover:scale-110 transition-transform" />
+                        <h3 class="font-semibold text-xs md:text-base">Clinic Reviews</h3>
+                        <p class="text-[10px] md:text-xs text-muted-foreground hidden sm:block">Read patient feedback</p>
                     </button>
                 </div>
             </div>

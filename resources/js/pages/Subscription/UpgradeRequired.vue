@@ -26,7 +26,7 @@ const breadcrumbs = [
     <Head title="Upgrade Required" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col items-center justify-center p-6">
+        <div class="flex h-full flex-1 flex-col items-center justify-center p-3 md:p-6">
             <UpgradePrompt 
                 :feature="feature"
                 :required-plan="requiredPlan"

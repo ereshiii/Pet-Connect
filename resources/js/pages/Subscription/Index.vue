@@ -110,23 +110,23 @@ const getFeatureLabel = (feature: string) => {
     <Head title="Subscription Plans" />
 
     <AppLayout>
-        <div class="flex h-full flex-1 flex-col gap-6 rounded-xl p-6">
+        <div class="flex h-full flex-1 flex-col gap-4 md:gap-6 rounded-xl p-3 md:p-6">
             <!-- Header -->
-            <div class="text-center space-y-4">
-                <div class="flex items-center justify-center gap-2">
-                    <Sparkles class="h-8 w-8 text-primary" />
-                    <h1 class="text-3xl font-bold">Choose Your Plan</h1>
+            <div class="text-center space-y-3 md:space-y-4">
+                <div class="flex items-center justify-center gap-1.5 md:gap-2">
+                    <Sparkles class="h-6 w-6 md:h-8 md:w-8 text-primary" />
+                    <h1 class="text-xl md:text-3xl font-bold">Choose Your Plan</h1>
                 </div>
-                <p class="text-muted-foreground max-w-2xl mx-auto">
+                <p class="text-xs md:text-sm text-muted-foreground max-w-2xl mx-auto px-4">
                     Unlock powerful features to grow your veterinary practice
                 </p>
 
                 <!-- Billing Toggle -->
-                <div class="flex items-center justify-center gap-3 mt-6">
+                <div class="flex items-center justify-center gap-2 md:gap-3 mt-4 md:mt-6">
                     <button 
                         @click="isAnnual = false"
                         :class="[
-                            'transition-colors text-sm',
+                            'transition-colors text-xs md:text-sm',
                             !isAnnual ? 'font-semibold text-foreground' : 'text-muted-foreground hover:text-foreground'
                         ]"
                     >
@@ -136,24 +136,24 @@ const getFeatureLabel = (feature: string) => {
                     <button 
                         @click="isAnnual = true"
                         :class="[
-                            'transition-colors text-sm',
+                            'transition-colors text-xs md:text-sm',
                             isAnnual ? 'font-semibold text-foreground' : 'text-muted-foreground hover:text-foreground'
                         ]"
                     >
                         Annual
                     </button>
-                    <Badge v-if="isAnnual" variant="secondary" class="ml-2">
+                    <Badge v-if="isAnnual" variant="secondary" class="ml-1 md:ml-2 text-[10px] md:text-xs">
                         Save up to 20%
                     </Badge>
                 </div>
             </div>
 
             <!-- Plans Grid -->
-            <div class="grid md:grid-cols-3 gap-6 max-w-7xl mx-auto w-full mt-8">
+            <div class="grid md:grid-cols-3 gap-4 md:gap-6 max-w-7xl mx-auto w-full mt-4 md:mt-8">
                 <div 
                     v-for="plan in plans" 
                     :key="plan.id"
-                    class="relative rounded-xl border bg-card p-8 shadow-sm transition-all hover:shadow-lg flex flex-col"
+                    class="relative rounded-xl border bg-card p-4 md:p-8 shadow-sm transition-all hover:shadow-lg flex flex-col"
                     :class="{
                         'ring-2 ring-primary': isCurrentPlan(plan),
                         'border-primary': plan.slug === 'pro-plus',
@@ -162,7 +162,7 @@ const getFeatureLabel = (feature: string) => {
                     <!-- Current Plan Badge -->
                     <Badge 
                         v-if="isCurrentPlan(plan)" 
-                        class="absolute -top-3 right-6"
+                        class="absolute -top-2 md:-top-3 right-4 md:right-6 text-[10px] md:text-xs"
                         variant="default"
                     >
                         Current Plan
@@ -171,50 +171,50 @@ const getFeatureLabel = (feature: string) => {
                     <!-- Popular Badge -->
                     <Badge 
                         v-if="plan.slug === 'pro-plus'" 
-                        class="absolute -top-3 left-6"
+                        class="absolute -top-2 md:-top-3 left-4 md:left-6 text-[10px] md:text-xs"
                         variant="secondary"
                     >
-                        <Zap class="h-3 w-3 mr-1" />
+                        <Zap class="h-2 w-2 md:h-3 md:w-3 mr-1" />
                         Most Popular
                     </Badge>
 
                     <!-- Plan Header -->
-                    <div class="space-y-2 mb-6">
-                        <h3 class="text-2xl font-bold">{{ plan.name }}</h3>
-                        <p class="text-muted-foreground text-sm">{{ plan.description }}</p>
+                    <div class="space-y-1.5 md:space-y-2 mb-4 md:mb-6">
+                        <h3 class="text-lg md:text-2xl font-bold">{{ plan.name }}</h3>
+                        <p class="text-muted-foreground text-xs md:text-sm">{{ plan.description }}</p>
                     </div>
 
                     <!-- Pricing -->
-                    <div class="mb-6">
+                    <div class="mb-4 md:mb-6">
                         <div class="flex items-baseline gap-1">
-                            <span class="text-4xl font-bold">{{ formatCurrency(getPlanPrice(plan)) }}</span>
-                            <span class="text-muted-foreground">/ {{ isAnnual ? 'year' : 'month' }}</span>
+                            <span class="text-2xl md:text-4xl font-bold">{{ formatCurrency(getPlanPrice(plan)) }}</span>
+                            <span class="text-xs md:text-sm text-muted-foreground">/ {{ isAnnual ? 'year' : 'month' }}</span>
                         </div>
-                        <p v-if="isAnnual && plan.annual_price > 0" class="text-sm text-green-600 dark:text-green-400 mt-1">
+                        <p v-if="isAnnual && plan.annual_price > 0" class="text-xs md:text-sm text-green-600 dark:text-green-400 mt-1">
                             Save {{ formatCurrency(getSavings(plan)) }} per year
                         </p>
-                        <p v-if="plan.trial_days > 0" class="text-sm text-primary mt-1">
+                        <p v-if="plan.trial_days > 0" class="text-xs md:text-sm text-primary mt-1">
                             {{ plan.trial_days }}-day free trial
                         </p>
                     </div>
 
                     <!-- Features -->
-                    <div class="space-y-3 mb-8 flex-grow">
-                        <p class="text-sm font-medium">Features included:</p>
-                        <ul class="space-y-2">
+                    <div class="space-y-2 md:space-y-3 mb-6 md:mb-8 flex-grow">
+                        <p class="text-xs md:text-sm font-medium">Features included:</p>
+                        <ul class="space-y-1.5 md:space-y-2">
                             <li 
                                 v-for="feature in plan.features" 
                                 :key="feature"
-                                class="flex items-start gap-2 text-sm"
+                                class="flex items-start gap-1.5 md:gap-2 text-xs md:text-sm"
                             >
-                                <Check class="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                                <Check class="h-3 w-3 md:h-4 md:w-4 text-primary mt-0.5 flex-shrink-0" />
                                 <span>{{ getFeatureLabel(feature) }}</span>
                             </li>
                         </ul>
                     </div>
 
                     <!-- Limits -->
-                    <div v-if="plan.limits" class="space-y-2 mb-8 text-sm text-muted-foreground">
+                    <div v-if="plan.limits" class="space-y-1.5 md:space-y-2 mb-6 md:mb-8 text-xs md:text-sm text-muted-foreground">
                         <p v-if="typeof plan.limits === 'object' && plan.limits.max_staff_accounts !== undefined">
                             <span v-if="plan.limits.max_staff_accounts !== -1">
                                 {{ plan.limits.max_staff_accounts }} staff account{{ plan.limits.max_staff_accounts > 1 ? 's' : '' }}
