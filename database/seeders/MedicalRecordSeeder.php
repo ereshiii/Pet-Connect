@@ -131,7 +131,6 @@ class MedicalRecordSeeder extends Seeder
             'findings' => $findings[array_rand($findings)],
             'treatment_given' => $treatments[array_rand($treatments)],
             'prescriptions' => rand(0, 10) < 3 ? 'Multivitamin supplement recommended - 1 tablet daily with food' : null,
-            'follow_up_date' => now()->addMonths(6)->format('Y-m-d'),
         ];
     }
 
@@ -157,7 +156,6 @@ class MedicalRecordSeeder extends Seeder
             'findings' => "Vaccine: {$vaccine}\nBatch Number: {$batch}\nAdministration Site: " . ['Left shoulder', 'Right shoulder', 'Left hip', 'Right hip'][array_rand(['Left shoulder', 'Right shoulder', 'Left hip', 'Right hip'])] . "\nReaction: " . (rand(0, 10) < 2 ? 'Mild lethargy for 24 hours' : 'None observed'),
             'treatment_given' => "Vaccination administered successfully. {$petName} tolerated procedure well.",
             'prescriptions' => null,
-            'follow_up_date' => now()->addMonths($nextDue)->format('Y-m-d'),
         ];
     }
 
@@ -180,7 +178,6 @@ class MedicalRecordSeeder extends Seeder
             'findings' => "Procedure Details:\n- Surgery Type: {$surgery}\n- Anesthesia: Isoflurane gas anesthesia\n- Duration: " . rand(30, 90) . " minutes\n- Complications: " . (rand(0, 10) < 1 ? 'Minor bleeding controlled' : 'None') . "\n- Recovery: Smooth, vital signs stable",
             'treatment_given' => "Surgery completed successfully. Post-operative care instructions provided to owner.",
             'prescriptions' => "1. Carprofen (Rimadyl) 25mg - 1 tablet twice daily for 5 days (pain management)\n2. Amoxicillin 250mg - 1 capsule twice daily for 7 days (antibiotic)\n3. E-collar to be worn for 10-14 days",
-            'follow_up_date' => now()->addDays(12)->format('Y-m-d'),
         ];
     }
 
@@ -203,7 +200,6 @@ class MedicalRecordSeeder extends Seeder
             'findings' => "Presenting Complaint: {$emergency['complaint']}\nTriage Level: " . ['Critical', 'Urgent', 'Semi-urgent'][rand(0, 2)] . "\nVital Signs on Arrival: Assessed and monitored\nStabilization: {$emergency['treatment']}",
             'treatment_given' => "{$emergency['treatment']}. " . (rand(0, 10) < 8 ? 'Discharged to home care with monitoring instructions.' : 'Admitted for overnight observation.'),
             'prescriptions' => rand(0, 10) < 7 ? "Medications prescribed for home care. Instructions provided to owner." : "No medications required at this time.",
-            'follow_up_date' => now()->addDays(rand(2, 5))->format('Y-m-d'),
         ];
     }
 
@@ -216,7 +212,6 @@ class MedicalRecordSeeder extends Seeder
             'findings' => "Dental Examination:\n- Tartar buildup: " . ['Minimal', 'Moderate', 'Significant'][rand(0, 2)] . "\n- Gum inflammation: " . ['None', 'Mild', 'Moderate'][rand(0, 2)] . "\n- Tooth extractions: " . (rand(0, 10) < 2 ? '1 damaged tooth removed' : 'None required') . "\n- Procedures: Scaling, polishing, fluoride treatment",
             'treatment_given' => "Complete dental prophylaxis performed under anesthesia. " . (rand(0, 10) < 3 ? 'Antibiotics prescribed for gum infection.' : 'No additional treatment needed.'),
             'prescriptions' => rand(0, 10) < 3 ? "Clindamycin 150mg - 1 capsule twice daily for 10 days" : "Dental chews recommended for home care",
-            'follow_up_date' => now()->addMonths(12)->format('Y-m-d'),
         ];
     }
 
@@ -229,7 +224,6 @@ class MedicalRecordSeeder extends Seeder
             'findings' => "Grooming Services Performed:\n- Bath with medicated/regular shampoo\n- Blow dry and brush out\n- Nail trimming\n- Ear cleaning\n- Anal gland expression\n- " . (rand(0, 10) < 5 ? 'Full coat trim/styling' : 'Sanitary trim'),
             'treatment_given' => "Grooming completed. {$petName} tolerated all procedures well. " . (rand(0, 10) < 2 ? 'Minor skin irritation noted - monitoring recommended.' : 'No concerns noted.'),
             'prescriptions' => null,
-            'follow_up_date' => now()->addWeeks(rand(6, 8))->format('Y-m-d'),
         ];
     }
 
@@ -254,7 +248,6 @@ class MedicalRecordSeeder extends Seeder
             'findings' => "Chief Complaint: {$concern}\nHistory: Owner reports symptoms for " . rand(2, 14) . " days\nPhysical Exam: Relevant findings documented\nAssessment: Treatment plan discussed with owner",
             'treatment_given' => "Treatment recommendations provided and discussed. Owner educated on condition management and monitoring.",
             'prescriptions' => rand(0, 10) < 6 ? "Medication prescribed as needed. Dosage and administration instructions provided." : "No medication required. Home care recommendations given.",
-            'follow_up_date' => rand(0, 10) < 7 ? now()->addWeeks(rand(1, 3))->format('Y-m-d') : null,
         ];
     }
 }
