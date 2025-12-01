@@ -73,6 +73,7 @@ const form = useForm({
         saturday: { open: '', close: '' },
         sunday: { open: '', close: '' }
     },
+    is_24_hours: false,
     is_emergency_clinic: false,
     
     // Step 4: Services
@@ -114,6 +115,7 @@ onMounted(() => {
         form.latitude = reg.latitude || null;
         form.longitude = reg.longitude || null;
         form.operating_hours = reg.operating_hours || form.operating_hours;
+        form.is_24_hours = reg.is_24_hours || false;
         
         // Load services but remove deprecated fields
         if (reg.services && Array.isArray(reg.services)) {
@@ -449,7 +451,12 @@ const submit = () => {
                 }
             });
         } else if (value !== null && value !== undefined && typeof value !== 'function') {
-            formData.append(key, value);
+            // Convert booleans to 1 or 0 for Laravel validation
+            if (typeof value === 'boolean') {
+                formData.append(key, value ? '1' : '0');
+            } else {
+                formData.append(key, value);
+            }
         }
     });
     
@@ -1089,6 +1096,40 @@ const closeSuccessModal = () => {
                             </div>
                         </div>
                         
+                        <!-- 24/7 Emergency Clinic Toggle -->
+                        <div class="bg-gradient-to-r from-red-50 to-orange-50 dark:from-gray-900 dark:to-black border-2 border-red-200 dark:border-gray-700 rounded-xl p-5 shadow-sm mb-6">
+                            <div class="flex items-start gap-4">
+                                <div class="flex-shrink-0">
+                                    <div class="p-2.5 bg-gradient-to-br from-red-500 to-orange-500 dark:from-red-600 dark:to-orange-600 rounded-lg">
+                                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-1.964-1.333-2.732 0L3.082 16c-.77 1.333.192 3 1.732 3z" />
+                                        </svg>
+                                    </div>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="flex items-center justify-between gap-4">
+                                        <div>
+                                            <h4 class="text-base font-bold text-red-800 dark:text-red-300 mb-1">24/7 Emergency Clinic</h4>
+                                            <p class="text-sm text-red-700 dark:text-red-400 leading-relaxed">
+                                                Check this if your clinic operates 24 hours a day for emergency services
+                                            </p>
+                                        </div>
+                                        <div class="flex items-center gap-3">
+                                            <input
+                                                type="checkbox"
+                                                id="is_24_hours"
+                                                v-model="form.is_24_hours"
+                                                class="h-5 w-5 rounded border-red-300 dark:border-red-600 text-red-600 focus:ring-red-500 cursor-pointer"
+                                            />
+                                            <label for="is_24_hours" class="text-sm font-semibold text-red-800 dark:text-red-300 cursor-pointer">
+                                                {{ form.is_24_hours ? 'Enabled' : 'Disabled' }}
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Daily Hours -->
                         <div class="space-y-5">
                             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2">

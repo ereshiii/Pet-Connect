@@ -6,6 +6,7 @@ use App\Http\Controllers\FeatureController;
 use App\Http\Controllers\Api\DeviceTokenController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\PushSubscriptionController;
+use App\Http\Controllers\NotificationPollingController;
 
 /*
 |--------------------------------------------------------------------------
@@ -44,6 +45,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/notifications/history', [NotificationController::class, 'history']);
     Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markAsRead']);
     Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
+    
+    // Notification Polling
+    Route::get('/notifications/poll', [NotificationPollingController::class, 'getUnreadCount']);
+    Route::get('/notifications/check-new', [NotificationPollingController::class, 'checkNew']);
 });
 
 // Push Subscriptions

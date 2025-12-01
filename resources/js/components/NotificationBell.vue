@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted } from 'vue';
 import { Bell, Check, CheckCheck, Trash2, Calendar, Clock } from 'lucide-vue-next';
 import {
     DropdownMenu,
@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { router } from '@inertiajs/vue3';
 import axios from 'axios';
+import { useNotificationPolling } from '@/composables/useNotificationPolling';
 
 interface Notification {
     id: number;
@@ -25,15 +26,20 @@ interface Notification {
     created_at: string;
 }
 
+// Use the polling composable (checks every 30 seconds)
+const { unreadCount, latestNotifications, refresh } = useNotificationPolling();
+
 const notifications = ref<Notification[]>([]);
-const unreadCount = ref(0);
 const isOpen = ref(false);
 
 const fetchNotifications = async () => {
     try {
         const response = await axios.get('/notifications/recent');
         notifications.value = response.data.notifications;
-        unreadCount.value = response.data.unread_count;
+        // Don't override unreadCount from polling, just update full list
+        if (response.data.unread_count !== undefined && !latestNotifications.value.length) {
+            unreadCount.value = response.data.unread_count;
+        }
     } catch (error) {
         console.error('Failed to fetch notifications:', error);
     }
@@ -47,6 +53,7 @@ const markAsRead = async (notification: Notification) => {
         notification.is_read = true;
         notification.read_at = new Date().toISOString();
         unreadCount.value = Math.max(0, unreadCount.value - 1);
+        await refresh(); // Refresh polling data
     } catch (error) {
         console.error('Failed to mark as read:', error);
     }
@@ -60,6 +67,7 @@ const markAllAsRead = async () => {
             n.read_at = new Date().toISOString();
         });
         unreadCount.value = 0;
+        await refresh(); // Refresh polling data
     } catch (error) {
         console.error('Failed to mark all as read:', error);
     }
@@ -72,6 +80,7 @@ const deleteNotification = async (notification: Notification) => {
         if (!notification.is_read) {
             unreadCount.value = Math.max(0, unreadCount.value - 1);
         }
+        await refresh(); // Refresh polling data
     } catch (error) {
         console.error('Failed to delete notification:', error);
     }
@@ -117,12 +126,7 @@ const formatTimeAgo = (dateString: string) => {
 
 onMounted(() => {
     fetchNotifications();
-    
-    // Refresh notifications every 30 seconds
-    const interval = setInterval(fetchNotifications, 30000);
-    
-    // Cleanup on unmount
-    return () => clearInterval(interval);
+    // Polling composable handles automatic 30-second updates
 });
 </script>
 

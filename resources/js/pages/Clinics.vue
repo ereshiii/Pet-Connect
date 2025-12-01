@@ -84,6 +84,65 @@ const filters = ref({
     status: [] as string[],
 });
 
+// Computed filtered clinics
+const filteredFeaturedClinics = computed(() => filterClinics(props.featured_clinics));
+const filteredNearbyClinics = computed(() => filterClinics(props.nearby_clinics));
+const filteredOtherClinics = computed(() => filterClinics(props.clinics));
+
+const filterClinics = (clinics: Clinic[]) => {
+    return clinics.filter(clinic => {
+        // Search filter - search in name, description, and address
+        if (filters.value.search) {
+            const search = filters.value.search.toLowerCase();
+            const matchesSearch = 
+                clinic.name?.toLowerCase().includes(search) ||
+                clinic.description?.toLowerCase().includes(search) ||
+                clinic.address?.toLowerCase().includes(search);
+            
+            if (!matchesSearch) return false;
+        }
+        
+        // Service/Category filter
+        if (filters.value.service && filters.value.service.length > 0) {
+            const hasService = filters.value.service.some(service => 
+                clinic.services?.some(s => 
+                    s.toLowerCase().includes(service.toLowerCase())
+                )
+            );
+            if (!hasService) return false;
+        }
+        
+        // Rating filter
+        if (filters.value.rating && filters.value.rating.length > 0) {
+            const minRating = Math.min(...filters.value.rating.map(r => parseInt(r)));
+            if (clinic.rating < minRating) return false;
+        }
+        
+        // Distance filter
+        if (filters.value.distance && clinic.distance_km) {
+            const maxDistance = parseFloat(filters.value.distance);
+            if (clinic.distance_km > maxDistance) return false;
+        }
+        
+        // Status filter
+        if (filters.value.status && filters.value.status.length > 0) {
+            for (const status of filters.value.status) {
+                if (status === 'open' && !clinic.is_open) return false;
+                if (status === 'emergency' && !clinic.is_open_24_7) return false;
+            }
+        }
+        
+        return true;
+    });
+};
+
+// Total filtered count
+const totalFilteredCount = computed(() => 
+    filteredFeaturedClinics.value.length + 
+    filteredNearbyClinics.value.length + 
+    filteredOtherClinics.value.length
+);
+
 // Location state
 const showLocationModal = ref(false);
 const userLocation = ref<{latitude: number, longitude: number} | null>(null);
@@ -219,105 +278,44 @@ const maxServicesToShow = computed(() => {
 
 // Get featured clinics - only show clinics with active paid subscriptions
 const featuredClinics = computed(() => {
-    // Only return clinics explicitly marked as featured (with active paid subscriptions)
-    return props.featured_clinics;
+    // Apply filters to featured clinics
+    return filteredFeaturedClinics.value;
 });
 
-// Filter clinics based on search and filters
-const filteredClinics = computed(() => {
-    let filtered = props.clinics;
-
-    // Search by name or address
-    if (filters.value.search) {
-        const query = filters.value.search.toLowerCase();
-        filtered = filtered.filter(clinic => 
-            clinic.name.toLowerCase().includes(query) ||
-            clinic.address.toLowerCase().includes(query)
-        );
-    }
-
-    // Filter by service (now handles multiple selections)
-    if (filters.value.service.length > 0) {
-        filtered = filtered.filter(clinic => 
-            filters.value.service.some(selectedService =>
-                clinic.services.some(service => 
-                    service.toLowerCase().includes(selectedService.toLowerCase())
-                )
-            )
-        );
-    }
-
-    // Filter by rating (now handles multiple selections)
-    if (filters.value.rating.length > 0) {
-        filtered = filtered.filter(clinic => {
-            const clinicRating = Number(clinic.rating || 0);
-            return filters.value.rating.some(selectedRating => {
-                const minRating = parseFloat(selectedRating);
-                return clinicRating >= minRating;
-            });
-        });
-    }
-
-    // Filter by distance (only if user has location)
-    if (filters.value.distance && userLocation.value) {
-        const maxDistance = parseFloat(filters.value.distance);
-        filtered = filtered.filter(clinic => {
-            const clinicDistance = getDistanceValue(clinic);
-            return clinicDistance <= maxDistance;
-        });
-    }
-
-    // Filter by status (now handles multiple selections)
-    if (filters.value.status.length > 0) {
-        filtered = filtered.filter(clinic => {
-            return filters.value.status.some(selectedStatus => {
-                switch (selectedStatus) {
-                    case 'open':
-                        return clinic.operating_status?.is_open || clinic.is_open;
-                    case 'emergency':
-                        return clinic.is_emergency_clinic === true;
-                    default:
-                        return true;
-                }
-            });
-        });
-    }
-
-    return filtered;
-});
-
-// Computed properties for different clinic sections
+// Favorited clinics
 const favoritedClinics = computed(() => {
     return props.favorited_clinics || [];
 });
 
+// Nearby clinics with filters applied
 const nearbyClinics = computed(() => {
-    // If user has location and we have nearby clinics from backend, use those
-    if (userLocation.value && props.nearby_clinics && props.nearby_clinics.length > 0) {
-        return props.nearby_clinics;
-    }
-    // Otherwise, return clinics sorted by distance if available
-    if (userLocation.value) {
-        return [...props.clinics]
-            .filter(clinic => clinic.distance_km !== undefined && clinic.distance_km < 10)
-            .sort((a, b) => (a.distance_km || 0) - (b.distance_km || 0))
-            .slice(0, 6);
-    }
-    return [];
+    // Apply filters to nearby clinics
+    return filteredNearbyClinics.value;
 });
 
+// Other clinics with filters applied (excluding featured and nearby)
 const otherClinics = computed(() => {
-    // Get IDs of featured, favorited, and nearby clinics
-    const featuredIds = new Set(featuredClinics.value.map(c => c.id));
-    const favoritedIds = new Set(favoritedClinics.value.map(c => c.id));
-    const nearbyIds = new Set(nearbyClinics.value.map(c => c.id));
+    // Get IDs of featured and nearby clinics to exclude them
+    const featuredIds = new Set(props.featured_clinics.map(c => c.id));
+    const nearbyIds = new Set(props.nearby_clinics.map(c => c.id));
     
     // Filter out clinics that are already in other sections
-    return filteredClinics.value.filter(clinic => 
-        !featuredIds.has(clinic.id) && 
-        !favoritedIds.has(clinic.id) && 
-        !nearbyIds.has(clinic.id)
+    return filteredOtherClinics.value.filter(clinic => 
+        !featuredIds.has(clinic.id) && !nearbyIds.has(clinic.id)
     );
+});
+
+// All filtered clinics (for overall count)
+const filteredClinics = computed(() => {
+    return [
+        ...filteredFeaturedClinics.value,
+        ...filteredNearbyClinics.value,
+        ...filteredOtherClinics.value.filter(c => {
+            const featuredIds = new Set(props.featured_clinics.map(fc => fc.id));
+            const nearbyIds = new Set(props.nearby_clinics.map(nc => nc.id));
+            return !featuredIds.has(c.id) && !nearbyIds.has(c.id);
+        })
+    ];
 });
 
 // Navigation function

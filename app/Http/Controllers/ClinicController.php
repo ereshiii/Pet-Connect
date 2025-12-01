@@ -94,8 +94,8 @@ class ClinicController extends Controller
                     'longitude' => $clinic->longitude,
                     'is_featured' => $hasActiveSubscription, // Only featured if has active paid subscription
                     'subscription_type' => $subscriptionType, // Include subscription info for debugging
-                    'is_open_24_7' => (bool) $clinic->is_open_24_7,
-                    'is_emergency_clinic' => (bool) $clinic->is_emergency_clinic,
+                    'is_open_24_7' => (bool) $clinic->is_24_hours,
+                    'is_emergency_clinic' => (bool) $clinic->is_24_hours,
                     'created_at' => $clinic->created_at,
                     
                     // Media
