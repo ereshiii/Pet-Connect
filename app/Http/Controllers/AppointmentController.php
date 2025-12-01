@@ -667,8 +667,8 @@ class AppointmentController extends Controller
                 ];
             });
 
-        // Load medical record if exists
-        $medicalRecord = $appointment->medicalRecord;
+        // Load medical record if exists with veterinarian relationship
+        $medicalRecord = $appointment->medicalRecord()->with('veterinarian')->first();
 
         // Determine user role for conditional props
         $userRole = 'user'; // default
@@ -797,47 +797,28 @@ class AppointmentController extends Controller
                 ],
                 'medicalRecord' => $medicalRecord ? [
                     'id' => $medicalRecord->id,
-                    'record_type' => $medicalRecord->record_type,
                     'title' => $medicalRecord->title,
                     'description' => $medicalRecord->description,
                     'diagnosis' => $medicalRecord->diagnosis,
-                    'treatment' => $medicalRecord->treatment,
-                    'medications' => $medicalRecord->medications,
-                    'clinical_notes' => $medicalRecord->clinical_notes,
-                    'physical_exam' => $medicalRecord->physical_exam,
-                    'vital_signs' => $medicalRecord->vital_signs,
-                    'vaccine_name' => $medicalRecord->vaccine_name,
-                    'vaccine_batch' => $medicalRecord->vaccine_batch,
-                    'administration_site' => $medicalRecord->administration_site,
-                    'next_due_date' => $medicalRecord->next_due_date,
-                    'adverse_reactions' => $medicalRecord->adverse_reactions,
-                    'procedures_performed' => $medicalRecord->procedures_performed,
-                    'treatment_response' => $medicalRecord->treatment_response,
-                    'surgery_type' => $medicalRecord->surgery_type,
-                    'procedure_details' => $medicalRecord->procedure_details,
-                    'anesthesia_used' => $medicalRecord->anesthesia_used,
-                    'complications' => $medicalRecord->complications,
-                    'post_op_instructions' => $medicalRecord->post_op_instructions,
-                    'presenting_complaint' => $medicalRecord->presenting_complaint,
-                    'triage_level' => $medicalRecord->triage_level,
-                    'emergency_treatment' => $medicalRecord->emergency_treatment,
-                    'stabilization_measures' => $medicalRecord->stabilization_measures,
-                    'disposition' => $medicalRecord->disposition,
-                    'follow_up_date' => $medicalRecord->follow_up_date,
+                    'treatment' => $medicalRecord->treatment_given,
+                    'medication' => $medicalRecord->prescriptions,
+                    'findings' => $medicalRecord->findings,
+                    'follow_up_date' => $medicalRecord->follow_up_date ? $medicalRecord->follow_up_date->format('M j, Y') : null,
                     'veterinarian' => $medicalRecord->veterinarian ? $medicalRecord->veterinarian->name : 'Unknown',
                     'date' => $medicalRecord->date->format('M j, Y'),
+                    'notes' => $medicalRecord->findings,
                 ] : null,
             ],
             'medicalRecord' => $medicalRecord ? [
                 'id' => $medicalRecord->id,
                 'title' => $medicalRecord->title,
                 'description' => $medicalRecord->description,
-                'treatment' => $medicalRecord->treatment,
-                'medication' => $medicalRecord->medications,
+                'treatment' => $medicalRecord->treatment_given,
+                'medication' => $medicalRecord->prescriptions,
                 'veterinarian' => $medicalRecord->veterinarian ? $medicalRecord->veterinarian->name : 'Unknown',
                 'date' => $medicalRecord->date->format('M j, Y'),
                 'follow_up_date' => $medicalRecord->follow_up_date ? $medicalRecord->follow_up_date->format('M j, Y') : null,
-                'notes' => $medicalRecord->clinical_notes,
+                'notes' => $medicalRecord->findings,
             ] : null,
             'visitHistory' => $visitHistory,
             'availableVeterinarians' => $availableVeterinarians,

@@ -195,54 +195,6 @@ const calculateAge = (birthDate: string) => {
                 </div>
             </div>
 
-            <!-- Medical Information -->
-            <div class="rounded-lg border bg-card p-6">
-                <h2 class="text-lg font-semibold mb-4">Medical Information</h2>
-                <div class="grid gap-6 md:grid-cols-2">
-                    <div>
-                        <p class="text-sm text-muted-foreground mb-2">Vaccination Status</p>
-                        <span 
-                            :class="{
-                                'bg-green-100 text-green-800': patient.vaccination_status === 'up-to-date',
-                                'bg-red-100 text-red-800': patient.vaccination_status === 'overdue',
-                                'bg-gray-100 text-gray-800': patient.vaccination_status === 'unknown'
-                            }"
-                            class="px-3 py-1 rounded-full text-sm font-medium"
-                        >
-                            {{ patient.vaccination_status }}
-                        </span>
-                    </div>
-                    
-                    <div v-if="patient.microchip_id">
-                        <p class="text-sm text-muted-foreground">Microchip ID</p>
-                        <p class="font-medium">{{ patient.microchip_id }}</p>
-                    </div>
-                    
-                    <div v-if="patient.medical_conditions?.length" class="md:col-span-2">
-                        <p class="text-sm text-muted-foreground mb-2">Medical Conditions</p>
-                        <div class="flex flex-wrap gap-2">
-                            <span 
-                                v-for="condition in patient.medical_conditions" 
-                                :key="condition"
-                                class="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm"
-                            >
-                                {{ condition }}
-                            </span>
-                        </div>
-                    </div>
-                    
-                    <div v-if="patient.allergies" class="md:col-span-2">
-                        <p class="text-sm text-muted-foreground">Allergies</p>
-                        <p class="font-medium">{{ patient.allergies }}</p>
-                    </div>
-                    
-                    <div v-if="patient.notes" class="md:col-span-2">
-                        <p class="text-sm text-muted-foreground">Medical Notes</p>
-                        <p class="font-medium">{{ patient.notes }}</p>
-                    </div>
-                </div>
-            </div>
-
             <!-- Owner Information -->
             <div class="rounded-lg border bg-card p-6">
                 <h2 class="text-lg font-semibold mb-4">Owner Information</h2>
@@ -395,25 +347,6 @@ const calculateAge = (birthDate: string) => {
                                 {{ vaccination.is_own_clinic ? '✓ ' + clinic.name : '🏥 ' + vaccination.clinic_name }}
                             </span>
                         </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Info Message about Cross-Clinic Records -->
-            <div v-if="(medical_records && medical_records.length > 0) || (vaccination_records && vaccination_records.length > 0)" 
-                 class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                <div class="flex items-start gap-3">
-                    <svg class="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <div>
-                        <p class="text-sm text-blue-900 dark:text-blue-100 font-medium mb-1">
-                            Complete Medical History
-                        </p>
-                        <p class="text-xs text-blue-700 dark:text-blue-300">
-                            This view includes medical records and vaccinations from all clinics for continuity of care. 
-                            Records from {{ clinic.name }} are marked with a green checkmark (✓).
-                        </p>
                     </div>
                 </div>
             </div>

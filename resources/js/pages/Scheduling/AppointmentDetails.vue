@@ -293,11 +293,6 @@ const tabs = computed(() => {
         { id: 'medical', name: 'Medical Record', icon: Stethoscope },
     ];
     
-    // Documents tab always visible for clinics, visible for pet owners if documents exist
-    if (isClinic.value || (isPetOwner.value && props.documents && props.documents.length > 0)) {
-        baseTabs.push({ id: 'documents', name: 'Documents', icon: File });
-    }
-    
     return baseTabs;
 });
 
@@ -1697,35 +1692,6 @@ const getStatusColor = (status?: string) => {
                                     </button>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-
-
-
-                    <!-- Documents Tab -->
-                    <div v-if="activeTab === 'documents'" class="space-y-4">
-                        <h3 class="text-lg font-semibold">Related Documents</h3>
-                        <div v-if="documents && documents.length > 0" class="space-y-3">
-                            <div v-for="doc in documents" :key="doc.name"
-                                 class="flex items-center justify-between bg-muted/50 rounded-lg p-4 border">
-                                <div class="flex items-center gap-3">
-                                    <File class="h-8 w-8 text-muted-foreground" />
-                                    <div>
-                                        <h4 class="font-medium">{{ doc.name }}</h4>
-                                        <p class="text-sm text-muted-foreground">{{ doc.type }} • {{ doc.date }} • {{ doc.size }}</p>
-                                    </div>
-                                </div>
-                                <button @click="downloadDocument(doc)"
-                                        class="px-3 py-1 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 text-sm flex items-center gap-2">
-                                    <Download class="h-4 w-4" />
-                                    Download
-                                </button>
-                            </div>
-                        </div>
-                        <div v-else class="text-center py-8 text-muted-foreground">
-                            <File class="h-16 w-16 mx-auto mb-4 opacity-30" />
-                            <p class="text-lg font-medium mb-1">No Documents Available</p>
-                            <p class="text-sm">Documents from this appointment will appear here once available.</p>
                         </div>
                     </div>
                 </div>

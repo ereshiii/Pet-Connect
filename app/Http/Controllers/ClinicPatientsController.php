@@ -412,6 +412,7 @@ class ClinicPatientsController extends Controller
                     'emergency_contact' => $pet->owner->profile ? $pet->owner->profile->emergency_contact : null,
                 ] : null,
                 'created_at' => $pet->created_at,
+                'updated_at' => $pet->updated_at,
             ],
             'appointments' => $appointments,
             'medical_records' => $medicalRecords,
