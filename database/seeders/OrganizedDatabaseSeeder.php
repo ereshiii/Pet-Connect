@@ -26,6 +26,7 @@ class OrganizedDatabaseSeeder extends Seeder
             // ClinicSubscriptionSeeder::class,
             
             // Step 3: Pet breeds and types
+            PetTypeSeeder::class,
             PetBreedSeeder::class,
             
             // Step 4: Pets (requires users)
