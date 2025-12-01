@@ -38,6 +38,15 @@ class Appointment extends Model
         'checked_in_at',
         'checked_out_at',
         'created_by',
+        // New fields for emergency walk-in and follow-ups
+        'appointment_type',
+        'confirmation_window_ends_at',
+        'confirmed_at',
+        'reschedule_reason',
+        'cancel_reason',
+        'suggested_follow_up_date',
+        'parent_appointment_id',
+        'is_follow_up',
     ];
 
     protected $casts = [
@@ -51,6 +60,11 @@ class Appointment extends Model
         'estimated_cost' => 'decimal:2',
         'actual_cost' => 'decimal:2',
         'duration_minutes' => 'integer',
+        // New casts
+        'confirmation_window_ends_at' => 'datetime',
+        'confirmed_at' => 'datetime',
+        'suggested_follow_up_date' => 'datetime',
+        'is_follow_up' => 'boolean',
     ];
 
     /**
@@ -251,6 +265,83 @@ class Appointment extends Model
         }
 
         return (int) now()->diffInHours($this->dispute_window_ends_at);
+    }
+
+    /**
+     * Get the parent appointment (for follow-ups).
+     */
+    public function parentAppointment(): BelongsTo
+    {
+        return $this->belongsTo(Appointment::class, 'parent_appointment_id');
+    }
+
+    /**
+     * Get the follow-up appointment (child).
+     */
+    public function followUpAppointment(): HasOne
+    {
+        return $this->hasOne(Appointment::class, 'parent_appointment_id');
+    }
+
+    /**
+     * Scope to get walk-in appointments.
+     */
+    public function scopeWalkIn($query)
+    {
+        return $query->where('appointment_type', 'walk-in');
+    }
+
+    /**
+     * Scope to get scheduled appointments.
+     */
+    public function scopeScheduled($query)
+    {
+        return $query->where('appointment_type', 'scheduled');
+    }
+
+    /**
+     * Check if this is a walk-in appointment.
+     */
+    public function isWalkIn(): bool
+    {
+        return $this->appointment_type === 'walk-in';
+    }
+
+    /**
+     * Check if pet owner can still reschedule/cancel (within 24 hours of confirmation).
+     */
+    public function canOwnerRescheduleOrCancel(): bool
+    {
+        if (!$this->confirmed_at || !$this->confirmation_window_ends_at) {
+            return false;
+        }
+        
+        return now()->isBefore($this->confirmation_window_ends_at) && 
+               in_array($this->status, ['pending', 'confirmed', 'scheduled']);
+    }
+
+    /**
+     * Check if clinic can reschedule (only pending appointments).
+     */
+    public function canClinicReschedule(): bool
+    {
+        return $this->status === 'pending';
+    }
+
+    /**
+     * Check if clinic can cancel (only pending appointments).
+     */
+    public function canClinicCancel(): bool
+    {
+        return $this->status === 'pending';
+    }
+
+    /**
+     * Check if follow-up can be created (only for completed appointments without existing follow-up).
+     */
+    public function canCreateFollowUp(): bool
+    {
+        return $this->status === 'completed' && !$this->followUpAppointment()->exists();
     }
 
     /**

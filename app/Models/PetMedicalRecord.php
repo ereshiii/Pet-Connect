@@ -15,48 +15,22 @@ class PetMedicalRecord extends Model
         'veterinarian_id',
         'clinic_id',
         'appointment_id',
-        'record_type',
         'title',
         'description',
         'date',
         'cost',
         'follow_up_date',
         'attachments',
-        // Common fields for all record types
+        // Simplified core fields only
         'diagnosis',
-        'treatment',
-        'medications',
-        'clinical_notes',
-        // Checkup-specific
-        'physical_exam',
-        'vital_signs',
-        // Vaccination-specific
-        'vaccine_name',
-        'vaccine_batch',
-        'administration_site',
-        'next_due_date',
-        'adverse_reactions',
-        // Treatment-specific
-        'procedures_performed',
-        'treatment_response',
-        // Surgery-specific
-        'surgery_type',
-        'procedure_details',
-        'anesthesia_used',
-        'complications',
-        'post_op_instructions',
-        // Emergency-specific
-        'presenting_complaint',
-        'triage_level',
-        'emergency_treatment',
-        'stabilization_measures',
-        'disposition',
+        'findings',
+        'treatment_given',
+        'prescriptions',
     ];
 
     protected $casts = [
         'date' => 'date',
         'follow_up_date' => 'date',
-        'next_due_date' => 'date',
         'cost' => 'decimal:2',
         'attachments' => 'array',
     ];
@@ -104,22 +78,6 @@ class PetMedicalRecord extends Model
     }
 
     /**
-     * Get the record type display name.
-     */
-    public function getRecordTypeDisplayAttribute(): string
-    {
-        return match($this->record_type) {
-            'vaccination' => 'Vaccination',
-            'treatment' => 'Treatment',
-            'surgery' => 'Surgery',
-            'checkup' => 'Checkup',
-            'emergency' => 'Emergency',
-            'other' => 'Other',
-            default => ucfirst($this->record_type)
-        };
-    }
-
-    /**
      * Get days since record date.
      */
     public function getDaysSinceRecordAttribute(): int
@@ -161,14 +119,6 @@ class PetMedicalRecord extends Model
     public function getCostFormattedAttribute(): string
     {
         return $this->cost ? '₱' . number_format($this->cost, 2) : 'N/A';
-    }
-
-    /**
-     * Scope to get records by type.
-     */
-    public function scopeByType($query, string $type)
-    {
-        return $query->where('record_type', $type);
     }
 
     /**

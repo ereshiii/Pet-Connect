@@ -231,29 +231,28 @@ const scrollToSection = (sectionId: string) => {
                         <Link
                             v-if="$page.props.auth.user"
                             :href="dashboard()"
-                            class="bg-blue-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                            class="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 text-sm rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all"
                         >
                             Dashboard
                         </Link>
                         <template v-else>
                             <Link
                                 :href="login()"
-                                class="hidden sm:inline-block text-sm font-medium text-gray-700 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400 transition-colors"
+                                class="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 text-sm rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all whitespace-nowrap"
                             >
                                 Log in
                             </Link>
                             <Link
                                 v-if="canRegister"
                                 :href="register()"
-                                class="bg-blue-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 text-sm rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
+                                class="hidden sm:inline-block bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 text-sm rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all whitespace-nowrap"
                             >
-                                <span class="hidden sm:inline">Get Started</span>
-                                <span class="sm:hidden">Sign Up</span>
+                                Get Started
                             </Link>
                         </template>
 
-                        <!-- Theme Toggle (for both desktop and mobile) -->
-                        <div class="relative">
+                        <!-- Theme Toggle (desktop) -->
+                        <div class="relative hidden sm:block">
                             <button 
                                 @click="showThemeDropdown = !showThemeDropdown"
                                 class="p-2 text-gray-700 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400 transition-colors"
@@ -261,7 +260,6 @@ const scrollToSection = (sectionId: string) => {
                             >
                                 <component :is="getCurrentThemeIcon()" class="h-5 w-5" />
                             </button>
-                            
                             <!-- Dropdown Menu -->
                             <div 
                                 v-if="showThemeDropdown"
@@ -313,7 +311,8 @@ const scrollToSection = (sectionId: string) => {
                             </Link>
                             <button
                                 @click="scrollToSection('features')"
-                                class="border-2 border-blue-600 text-blue-600 px-6 sm:px-8 py-3 sm:py-4 rounded-lg text-base sm:text-lg font-semibold hover:bg-blue-600 hover:text-white transition-all text-center dark:border-blue-400 dark:text-blue-400 dark:hover:bg-blue-600 dark:hover:text-white"
+                                class="border-2 border-transparent bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-border text-transparent bg-clip-text px-6 sm:px-8 py-3 sm:py-4 rounded-lg text-base sm:text-lg font-semibold hover:bg-gradient-to-r hover:from-blue-600 hover:to-purple-600 hover:text-white transition-all text-center"
+                                style="border-image: linear-gradient(to right, rgb(37, 99, 235), rgb(147, 51, 234)) 1;"
                             >
                                 Learn More
                             </button>
@@ -410,7 +409,7 @@ const scrollToSection = (sectionId: string) => {
                     >
                         <!-- Badge -->
                         <div v-if="plan.badge" class="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                            <span class="bg-blue-600 text-white px-4 py-1 rounded-full text-sm font-semibold">
+                            <span class="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-1 rounded-full text-sm font-semibold">
                                 {{ plan.badge }}
                             </span>
                         </div>
@@ -552,15 +551,15 @@ const scrollToSection = (sectionId: string) => {
                             
                             <div class="space-y-4">
                                 <div class="flex items-center">
-                                    <div class="w-3 h-3 bg-blue-600 rounded-full mr-3"></div>
+                                    <div class="w-3 h-3 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full mr-3"></div>
                                     <span class="text-gray-700 dark:text-gray-300">Accessible veterinary care for all</span>
                                 </div>
                                 <div class="flex items-center">
-                                    <div class="w-3 h-3 bg-blue-600 rounded-full mr-3"></div>
+                                    <div class="w-3 h-3 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full mr-3"></div>
                                     <span class="text-gray-700 dark:text-gray-300">Empowering informed pet care decisions</span>
                                 </div>
                                 <div class="flex items-center">
-                                    <div class="w-3 h-3 bg-blue-600 rounded-full mr-3"></div>
+                                    <div class="w-3 h-3 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full mr-3"></div>
                                     <span class="text-gray-700 dark:text-gray-300">Building stronger pet-owner relationships</span>
                                 </div>
                             </div>
@@ -664,13 +663,14 @@ const scrollToSection = (sectionId: string) => {
                             <Link
                                 v-if="canRegister"
                                 :href="register()"
-                                class="w-full bg-blue-600 text-white py-4 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-center block"
+                                class="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 px-6 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all text-center block"
                             >
                                 Create Free Account
                             </Link>
                             <Link
                                 :href="login()"
-                                class="w-full border border-blue-600 text-blue-600 py-4 px-6 rounded-lg font-semibold hover:bg-blue-600 hover:text-white transition-colors text-center block dark:border-blue-400 dark:text-blue-400"
+                                class="w-full border-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent py-4 px-6 rounded-lg font-semibold hover:bg-gradient-to-r hover:from-blue-600 hover:to-purple-600 hover:text-white transition-all text-center block"
+                                style="border-image: linear-gradient(to right, rgb(37, 99, 235), rgb(147, 51, 234)) 1;"
                             >
                                 Sign In
                             </Link>
@@ -697,7 +697,7 @@ const scrollToSection = (sectionId: string) => {
                     <!-- Company Info -->
                     <div class="sm:col-span-2 lg:col-span-1">
                         <div class="flex items-center gap-2 mb-4">
-                            <img src="/paw.svg" alt="PetConnect Logo" class="h-8 w-8" />
+                            <img src="/favicon.svg" alt="PetConnect Logo" class="h-8 w-8" />
                             <div class="text-xl sm:text-2xl font-bold text-blue-400">
                                 PetConnect
                             </div>
@@ -705,18 +705,15 @@ const scrollToSection = (sectionId: string) => {
                         <p class="text-gray-400 mb-4">
                             Complete pet care management platform connecting pet owners with trusted veterinary clinics across the Philippines.
                         </p>
-                        <div class="flex space-x-4">
-                            <a href="https://www.facebook.com/profile.php?id=61584259898036" class="text-gray-400 hover:text-white transition-colors">
-                                <span class="sr-only">Facebook</span>
-                                📘
+                        <div class="flex flex-wrap gap-x-4 gap-y-2 items-center">
+                            <a href="https://www.facebook.com/profile.php?id=61584259898036" class="hover:opacity-80 transition-opacity" target="_blank" rel="noopener" title="Facebook">
+                                <img src="/facebook.svg" alt="Facebook" class="h-6 w-6" />
                             </a>
-                            <a href="https://x.com/PetConnectBusi" class="text-gray-400 hover:text-white transition-colors">
-                                <span class="sr-only">Twitter</span>
-                                🐦
+                            <a href="https://www.instagram.com/petconnectbus/" class="hover:opacity-80 transition-opacity" target="_blank" rel="noopener" title="Instagram">
+                                <img src="/instagram.svg" alt="Instagram" class="h-6 w-6" />
                             </a>
-                            <a href="https://www.instagram.com/petconnectbus/" class="text-gray-400 hover:text-white transition-colors">
-                                <span class="sr-only">Instagram</span>
-                                📷
+                            <a href="https://x.com/PetConnectBusi" class="hover:opacity-80 transition-opacity" target="_blank" rel="noopener" title="Twitter">
+                                <img src="/twitter.svg" alt="Twitter" class="h-6 w-6" />
                             </a>
                         </div>
                     </div>
@@ -725,10 +722,10 @@ const scrollToSection = (sectionId: string) => {
                     <div>
                         <h3 class="text-lg font-semibold mb-4">Quick Links</h3>
                         <ul class="space-y-2">
-                            <li><button @click="scrollToSection('features')" class="text-gray-400 hover:text-white transition-colors">Features</button></li>
-                            <li><button @click="scrollToSection('pricing')" class="text-gray-400 hover:text-white transition-colors">Pricing</button></li>
-                            <li><button @click="scrollToSection('about')" class="text-gray-400 hover:text-white transition-colors">About Us</button></li>
-                            <li><button @click="scrollToSection('contact')" class="text-gray-400 hover:text-white transition-colors">Contact</button></li>
+                            <li><button @click="scrollToSection('features')" class="text-blue-500 hover:text-white transition-colors">Features</button></li>
+                            <li><button @click="scrollToSection('pricing')" class="text-blue-500 hover:text-white transition-colors">Pricing</button></li>
+                            <li><button @click="scrollToSection('about')" class="text-blue-500 hover:text-white transition-colors">About Us</button></li>
+                            <li><button @click="scrollToSection('contact')" class="text-blue-500 hover:text-white transition-colors">Contact</button></li>
                         </ul>
                     </div>
 
@@ -736,10 +733,10 @@ const scrollToSection = (sectionId: string) => {
                     <div>
                         <h3 class="text-lg font-semibold mb-4">For Pet Owners</h3>
                         <ul class="space-y-2">
-                            <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Find Clinics</a></li>
-                            <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Book Appointments</a></li>
-                            <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Health Records</a></li>
-                            <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Emergency Care</a></li>
+                            <li><a href="#" class="text-blue-500 hover:text-white transition-colors">Find Clinics</a></li>
+                            <li><a href="#" class="text-blue-500 hover:text-white transition-colors">Book Appointments</a></li>
+                            <li><a href="#" class="text-blue-500 hover:text-white transition-colors">Health Records</a></li>
+                            <li><a href="#" class="text-blue-500 hover:text-white transition-colors">Emergency Care</a></li>
                         </ul>
                     </div>
 
@@ -747,10 +744,10 @@ const scrollToSection = (sectionId: string) => {
                     <div>
                         <h3 class="text-lg font-semibold mb-4">For Veterinarians</h3>
                         <ul class="space-y-2">
-                            <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Join Network</a></li>
-                            <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Clinic Management</a></li>
-                            <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Patient Records</a></li>
-                            <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Analytics</a></li>
+                            <li><a href="#" class="text-blue-500 hover:text-white transition-colors">Join Network</a></li>
+                            <li><a href="#" class="text-blue-500 hover:text-white transition-colors">Clinic Management</a></li>
+                            <li><a href="#" class="text-blue-500 hover:text-white transition-colors">Patient Records</a></li>
+                            <li><a href="#" class="text-blue-500 hover:text-white transition-colors">Analytics</a></li>
                         </ul>
                     </div>
                 </div>
@@ -762,6 +759,33 @@ const scrollToSection = (sectionId: string) => {
                 </div>
             </div>
         </footer>
+    </div>
+    
+    <!-- Theme Toggle Floating Button (mobile only) -->
+    <div class="fixed bottom-4 right-4 z-50 sm:hidden">
+        <button 
+            @click="showThemeDropdown = !showThemeDropdown"
+            class="bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg rounded-full p-2.5 flex items-center justify-center transition-all hover:from-blue-600 hover:to-purple-700 hover:scale-110"
+            title="Change theme"
+        >
+            <component :is="getCurrentThemeIcon()" class="h-5 w-5 text-white" />
+        </button>
+        <!-- Dropdown Menu (icons only) -->
+        <div 
+            v-if="showThemeDropdown"
+            @click.stop
+            class="absolute bottom-16 right-0 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-2 w-14"
+        >
+            <button
+                v-for="option in themeOptions"
+                :key="option.value"
+                @click="updateAppearance(option.value); showThemeDropdown = false"
+                class="flex items-center justify-center px-2 py-3 w-full hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 dark:hover:from-blue-900/50 dark:hover:to-purple-900/50 transition-all rounded"
+                :title="option.label"
+            >
+                <component :is="option.Icon" class="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            </button>
+        </div>
     </div>
 </template>
 

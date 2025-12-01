@@ -47,18 +47,18 @@ const handleCancel = () => {
     <Head title="Add New Pet" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4 md:p-6">
+        <div class="flex h-full flex-1 flex-col gap-4 sm:gap-6 overflow-x-auto rounded-xl p-3 sm:p-4 md:p-6">
             <!-- Header with gradient -->
-            <div class="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-2xl p-8 shadow-lg">
-                <div class="flex items-center gap-4 mb-3">
-                    <div class="p-3 bg-white/20 backdrop-blur-sm rounded-xl">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div class="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-2xl p-4 sm:p-6 md:p-8 shadow-lg">
+                <div class="flex items-center gap-2 sm:gap-3 md:gap-4 mb-2 sm:mb-3">
+                    <div class="p-2 sm:p-3 bg-white/20 backdrop-blur-sm rounded-xl">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 sm:h-8 sm:w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                         </svg>
                     </div>
                     <div>
-                        <h1 class="text-3xl font-bold mb-1">Register New Pet</h1>
-                        <p class="text-blue-100">
+                        <h1 class="text-xl sm:text-2xl md:text-3xl font-bold mb-1">Register New Pet</h1>
+                        <p class="text-xs sm:text-sm md:text-base text-blue-100">
                             Add your beloved companion to your pet family
                         </p>
                     </div>

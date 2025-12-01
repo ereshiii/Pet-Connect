@@ -1,0 +1,1441 @@
+DATABASE SCHEMA
+========================================================================================================================
+
+TABLE: analytics_events
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+event_name                     | varchar              | YES        | NULL            | NO                  
+user_id                        | INTEGER              | NO         | NULL            | NO                  
+session_id                     | varchar              | NO         | NULL            | NO                  
+properties                     | TEXT                 | NO         | NULL            | NO                  
+ip_address                     | varchar              | NO         | NULL            | NO                  
+user_agent                     | TEXT                 | NO         | NULL            | NO                  
+page_url                       | varchar              | NO         | NULL            | NO                  
+referrer                       | varchar              | NO         | NULL            | NO                  
+created_at                     | datetime             | YES        | NULL            | NO                  
+
+  Foreign Keys:
+    user_id -> users(id)
+
+  Indexes:
+    analytics_events_user_id_created_at_index (NON-UNIQUE) on columns: user_id, created_at
+    analytics_events_event_name_created_at_index (NON-UNIQUE) on columns: event_name, created_at
+
+========================================================================================================================
+
+TABLE: announcements
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+author_id                      | INTEGER              | YES        | NULL            | NO                  
+title                          | varchar              | YES        | NULL            | NO                  
+content                        | TEXT                 | YES        | NULL            | NO                  
+type                           | varchar              | YES        | NULL            | NO                  
+target_audience                | TEXT                 | NO         | NULL            | NO                  
+published_at                   | datetime             | NO         | NULL            | NO                  
+expires_at                     | datetime             | NO         | NULL            | NO                  
+is_active                      | tinyint(1)           | YES        | '1'             | NO                  
+is_pinned                      | tinyint(1)           | YES        | '0'             | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+
+  Foreign Keys:
+    author_id -> users(id)
+
+  Indexes:
+    announcements_type_index (NON-UNIQUE) on columns: type
+    announcements_is_active_published_at_index (NON-UNIQUE) on columns: is_active, published_at
+
+========================================================================================================================
+
+TABLE: appointment_follow_ups
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+appointment_id                 | INTEGER              | YES        | NULL            | NO                  
+pet_id                         | INTEGER              | YES        | NULL            | NO                  
+type                           | varchar              | YES        | NULL            | NO                  
+due_date                       | date                 | YES        | NULL            | NO                  
+instructions                   | TEXT                 | NO         | NULL            | NO                  
+status                         | varchar              | YES        | NULL            | NO                  
+follow_up_appointment_id       | INTEGER              | NO         | NULL            | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+
+  Foreign Keys:
+    follow_up_appointment_id -> appointments(id)
+    pet_id -> pets(id)
+    appointment_id -> appointments(id)
+
+  Indexes:
+    appointment_follow_ups_pet_id_index (NON-UNIQUE) on columns: pet_id
+    appointment_follow_ups_due_date_status_index (NON-UNIQUE) on columns: due_date, status
+
+========================================================================================================================
+
+TABLE: appointment_reminders
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+appointment_id                 | INTEGER              | YES        | NULL            | NO                  
+type                           | varchar              | YES        | NULL            | NO                  
+scheduled_for                  | datetime             | YES        | NULL            | NO                  
+sent_at                        | datetime             | NO         | NULL            | NO                  
+status                         | varchar              | YES        | NULL            | NO                  
+message                        | TEXT                 | NO         | NULL            | NO                  
+metadata                       | TEXT                 | NO         | NULL            | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+
+  Foreign Keys:
+    appointment_id -> appointments(id)
+
+  Indexes:
+    appointment_reminders_scheduled_for_status_index (NON-UNIQUE) on columns: scheduled_for, status
+
+========================================================================================================================
+
+TABLE: appointment_time_slots
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+clinic_id                      | INTEGER              | YES        | NULL            | NO                  
+veterinarian_id                | INTEGER              | NO         | NULL            | NO                  
+date                           | date                 | YES        | NULL            | NO                  
+start_time                     | time                 | YES        | NULL            | NO                  
+end_time                       | time                 | YES        | NULL            | NO                  
+max_appointments               | INTEGER              | YES        | '1'             | NO                  
+booked_appointments            | INTEGER              | YES        | '0'             | NO                  
+is_available                   | tinyint(1)           | YES        | '1'             | NO                  
+slot_type                      | varchar              | YES        | NULL            | NO                  
+notes                          | TEXT                 | NO         | NULL            | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+
+  Foreign Keys:
+    clinic_id -> clinic_registrations(id)
+    veterinarian_id -> users(id)
+
+  Indexes:
+    appointment_time_slots_date_is_available_index (NON-UNIQUE) on columns: date, is_available
+    appointment_time_slots_clinic_id_date_veterinarian_id_index (NON-UNIQUE) on columns: clinic_id, date, veterinarian_id
+
+========================================================================================================================
+
+TABLE: appointment_waiting_list
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+pet_id                         | INTEGER              | YES        | NULL            | NO                  
+owner_id                       | INTEGER              | YES        | NULL            | NO                  
+clinic_id                      | INTEGER              | YES        | NULL            | NO                  
+preferred_veterinarian_id      | INTEGER              | NO         | NULL            | NO                  
+service_id                     | INTEGER              | NO         | NULL            | NO                  
+preferred_date_start           | date                 | YES        | NULL            | NO                  
+preferred_date_end             | date                 | YES        | NULL            | NO                  
+preferred_times                | TEXT                 | NO         | NULL            | NO                  
+priority                       | varchar              | YES        | NULL            | NO                  
+reason                         | TEXT                 | NO         | NULL            | NO                  
+notes                          | TEXT                 | NO         | NULL            | NO                  
+status                         | varchar              | YES        | NULL            | NO                  
+expires_at                     | datetime             | NO         | NULL            | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+
+  Foreign Keys:
+    clinic_id -> clinic_registrations(id)
+    pet_id -> pets(id)
+    owner_id -> users(id)
+    preferred_veterinarian_id -> users(id)
+    service_id -> clinic_services(id)
+
+  Indexes:
+    appointment_waiting_list_preferred_date_start_index (NON-UNIQUE) on columns: preferred_date_start
+    appointment_waiting_list_clinic_id_status_priority_index (NON-UNIQUE) on columns: clinic_id, status, priority
+
+========================================================================================================================
+
+TABLE: appointments
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+appointment_number             | varchar              | YES        | NULL            | NO                  
+pet_id                         | INTEGER              | NO         | NULL            | NO                  
+owner_id                       | INTEGER              | YES        | NULL            | NO                  
+clinic_id                      | INTEGER              | YES        | NULL            | NO                  
+service_id                     | INTEGER              | NO         | NULL            | NO                  
+scheduled_at                   | datetime             | NO         | NULL            | NO                  
+duration_minutes               | INTEGER              | YES        | '30'            | NO                  
+type                           | varchar              | YES        | NULL            | NO                  
+priority                       | varchar              | YES        | NULL            | NO                  
+status                         | varchar              | YES        | NULL            | NO                  
+reason                         | TEXT                 | NO         | NULL            | NO                  
+notes                          | TEXT                 | NO         | NULL            | NO                  
+special_instructions           | TEXT                 | NO         | NULL            | NO                  
+estimated_cost                 | numeric              | NO         | NULL            | NO                  
+actual_cost                    | numeric              | NO         | NULL            | NO                  
+checked_in_at                  | datetime             | NO         | NULL            | NO                  
+checked_out_at                 | datetime             | NO         | NULL            | NO                  
+created_by                     | INTEGER              | NO         | NULL            | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+clinic_staff_id                | INTEGER              | NO         | NULL            | NO                  
+dispute_window_ends_at         | datetime             | NO         | NULL            | NO                  
+is_disputed                    | tinyint(1)           | YES        | '0'             | NO                  
+dispute_reason                 | TEXT                 | NO         | NULL            | NO                  
+disputed_at                    | datetime             | NO         | NULL            | NO                  
+is_priority                    | tinyint(1)           | YES        | '0'             | NO                  
+priority_reason                | varchar              | NO         | NULL            | NO                  
+
+  Foreign Keys:
+    clinic_staff_id -> clinic_staff(id)
+    created_by -> users(id)
+    service_id -> clinic_services(id)
+    owner_id -> users(id)
+    pet_id -> pets(id)
+    clinic_id -> clinic_registrations(id)
+
+  Indexes:
+    appointments_clinic_id_is_priority_scheduled_at_index (NON-UNIQUE) on columns: clinic_id, is_priority, scheduled_at
+    appointments_status_index (NON-UNIQUE) on columns: status
+    appointments_pet_id_status_index (NON-UNIQUE) on columns: pet_id, status
+    appointments_owner_status_index (NON-UNIQUE) on columns: owner_id, status
+    appointments_owner_scheduled_index (NON-UNIQUE) on columns: owner_id, scheduled_at
+    appointments_clinic_staff_id_scheduled_at_index (NON-UNIQUE) on columns: clinic_staff_id, scheduled_at
+    appointments_clinic_id_scheduled_at_index (NON-UNIQUE) on columns: clinic_id, scheduled_at
+    appointments_appointment_number_unique (UNIQUE) on columns: appointment_number
+
+========================================================================================================================
+
+TABLE: audit_logs
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+user_id                        | INTEGER              | NO         | NULL            | NO                  
+action                         | varchar              | YES        | NULL            | NO                  
+model_type                     | varchar              | NO         | NULL            | NO                  
+model_id                       | INTEGER              | NO         | NULL            | NO                  
+old_values                     | TEXT                 | NO         | NULL            | NO                  
+new_values                     | TEXT                 | NO         | NULL            | NO                  
+ip_address                     | varchar              | NO         | NULL            | NO                  
+user_agent                     | TEXT                 | NO         | NULL            | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+
+  Foreign Keys:
+    user_id -> users(id)
+
+  Indexes:
+    audit_logs_action_index (NON-UNIQUE) on columns: action
+    audit_logs_model_type_model_id_index (NON-UNIQUE) on columns: model_type, model_id
+    audit_logs_user_id_created_at_index (NON-UNIQUE) on columns: user_id, created_at
+
+========================================================================================================================
+
+TABLE: blocked_ips
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+ip_address                     | varchar              | YES        | NULL            | NO                  
+reason                         | varchar              | YES        | NULL            | NO                  
+attempts_count                 | INTEGER              | YES        | '0'             | NO                  
+blocked_at                     | datetime             | YES        | NULL            | NO                  
+expires_at                     | datetime             | NO         | NULL            | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+
+  Indexes:
+    blocked_ips_ip_address_unique (UNIQUE) on columns: ip_address
+    blocked_ips_expires_at_index (NON-UNIQUE) on columns: expires_at
+    blocked_ips_blocked_at_index (NON-UNIQUE) on columns: blocked_at
+
+========================================================================================================================
+
+TABLE: cache
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+key                            | varchar              | YES        | NULL            | YES                 
+value                          | TEXT                 | YES        | NULL            | NO                  
+expiration                     | INTEGER              | YES        | NULL            | NO                  
+
+  Indexes:
+    sqlite_autoindex_cache_1 (UNIQUE) on columns: key
+
+========================================================================================================================
+
+TABLE: cache_locks
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+key                            | varchar              | YES        | NULL            | YES                 
+owner                          | varchar              | YES        | NULL            | NO                  
+expiration                     | INTEGER              | YES        | NULL            | NO                  
+
+  Indexes:
+    sqlite_autoindex_cache_locks_1 (UNIQUE) on columns: key
+
+========================================================================================================================
+
+TABLE: clinic_operating_hours
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+clinic_id                      | INTEGER              | YES        | NULL            | NO                  
+day_of_week                    | varchar              | YES        | NULL            | NO                  
+opening_time                   | time                 | NO         | NULL            | NO                  
+closing_time                   | time                 | NO         | NULL            | NO                  
+is_closed                      | tinyint(1)           | YES        | '0'             | NO                  
+notes                          | TEXT                 | NO         | NULL            | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+break_start_time               | time                 | NO         | NULL            | NO                  
+break_end_time                 | time                 | NO         | NULL            | NO                  
+
+  Foreign Keys:
+    clinic_id -> clinic_registrations(id)
+
+  Indexes:
+    clinic_operating_hours_clinic_id_day_of_week_unique (UNIQUE) on columns: clinic_id, day_of_week
+
+========================================================================================================================
+
+TABLE: clinic_registrations
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+user_id                        | INTEGER              | YES        | NULL            | NO                  
+clinic_name                    | varchar              | NO         | NULL            | NO                  
+clinic_description             | TEXT                 | NO         | NULL            | NO                  
+website                        | varchar              | NO         | NULL            | NO                  
+email                          | varchar              | NO         | NULL            | NO                  
+phone                          | varchar              | NO         | NULL            | NO                  
+country                        | varchar              | YES        | 'Philippines'   | NO                  
+region                         | varchar              | NO         | NULL            | NO                  
+province                       | varchar              | NO         | NULL            | NO                  
+city                           | varchar              | NO         | NULL            | NO                  
+barangay                       | varchar              | NO         | NULL            | NO                  
+street_address                 | varchar              | NO         | NULL            | NO                  
+postal_code                    | varchar              | NO         | NULL            | NO                  
+operating_hours                | TEXT                 | NO         | NULL            | NO                  
+is_24_hours                    | tinyint(1)           | YES        | '0'             | NO                  
+services                       | TEXT                 | NO         | NULL            | NO                  
+other_services                 | TEXT                 | NO         | NULL            | NO                  
+veterinarians                  | TEXT                 | NO         | NULL            | NO                  
+certification_proofs           | TEXT                 | NO         | NULL            | NO                  
+additional_info                | TEXT                 | NO         | NULL            | NO                  
+status                         | varchar              | YES        | 'incomplete'    | NO                  
+rejection_reason               | TEXT                 | NO         | NULL            | NO                  
+submitted_at                   | datetime             | NO         | NULL            | NO                  
+approved_at                    | datetime             | NO         | NULL            | NO                  
+approved_by                    | INTEGER              | NO         | NULL            | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+latitude                       | numeric              | NO         | NULL            | NO                  
+longitude                      | numeric              | NO         | NULL            | NO                  
+rating                         | numeric              | YES        | '0'             | NO                  
+total_reviews                  | INTEGER              | YES        | '0'             | NO                  
+is_featured                    | tinyint(1)           | YES        | '0'             | NO                  
+is_open_24_7                   | tinyint(1)           | YES        | '0'             | NO                  
+clinic_photo                   | varchar              | NO         | NULL            | NO                  
+gallery                        | TEXT                 | NO         | NULL            | NO                  
+is_emergency_clinic            | tinyint(1)           | YES        | '0'             | NO                  
+
+  Foreign Keys:
+    user_id -> users(id)
+    approved_by -> users(id)
+
+========================================================================================================================
+
+TABLE: clinic_reviews
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+clinic_registration_id         | INTEGER              | NO         | NULL            | NO                  
+user_id                        | INTEGER              | YES        | NULL            | NO                  
+appointment_id                 | INTEGER              | YES        | NULL            | NO                  
+rating                         | INTEGER              | YES        | '5'             | NO                  
+comment                        | TEXT                 | NO         | NULL            | NO                  
+response                       | TEXT                 | NO         | NULL            | NO                  
+response_date                  | datetime             | NO         | NULL            | NO                  
+responded_by                   | INTEGER              | NO         | NULL            | NO                  
+is_verified                    | tinyint(1)           | YES        | '0'             | NO                  
+is_featured                    | tinyint(1)           | YES        | '0'             | NO                  
+helpful_votes                  | TEXT                 | NO         | NULL            | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+
+  Foreign Keys:
+    clinic_registration_id -> clinic_registrations(id)
+    user_id -> users(id)
+    appointment_id -> appointments(id)
+    responded_by -> users(id)
+
+  Indexes:
+    reviews_appointment_unique (UNIQUE) on columns: appointment_id
+    clinic_reviews_new_user_id_created_at_index (NON-UNIQUE) on columns: user_id, created_at
+    clinic_reviews_new_clinic_registration_id_rating_index (NON-UNIQUE) on columns: clinic_registration_id, rating
+    clinic_reviews_new_clinic_registration_id_created_at_index (NON-UNIQUE) on columns: clinic_registration_id, created_at
+
+========================================================================================================================
+
+TABLE: clinic_services
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+clinic_id                      | INTEGER              | YES        | NULL            | NO                  
+name                           | varchar              | YES        | NULL            | NO                  
+description                    | TEXT                 | NO         | NULL            | NO                  
+category                       | varchar              | YES        | NULL            | NO                  
+duration_minutes               | INTEGER              | NO         | NULL            | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+
+  Foreign Keys:
+    clinic_id -> clinic_registrations(id)
+
+========================================================================================================================
+
+TABLE: clinic_staff
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+clinic_id                      | INTEGER              | YES        | NULL            | NO                  
+user_id                        | INTEGER              | NO         | NULL            | NO                  
+role                           | varchar              | YES        | NULL            | NO                  
+license_number                 | varchar              | YES        | NULL            | NO                  
+specializations                | TEXT                 | NO         | NULL            | NO                  
+start_date                     | date                 | NO         | NULL            | NO                  
+end_date                       | date                 | NO         | NULL            | NO                  
+is_active                      | tinyint(1)           | YES        | '1'             | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+name                           | varchar              | YES        | NULL            | NO                  
+email                          | varchar              | NO         | NULL            | NO                  
+phone                          | varchar              | NO         | NULL            | NO                  
+
+  Foreign Keys:
+    user_id -> users(id)
+    clinic_id -> clinic_registrations(id)
+
+  Indexes:
+    clinic_staff_clinic_id_role_is_active_index (NON-UNIQUE) on columns: clinic_id, role, is_active
+
+========================================================================================================================
+
+TABLE: device_tokens
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+user_id                        | INTEGER              | YES        | NULL            | NO                  
+token                          | varchar              | YES        | NULL            | NO                  
+device_type                    | varchar              | YES        | 'web'           | NO                  
+device_name                    | varchar              | NO         | NULL            | NO                  
+browser                        | varchar              | NO         | NULL            | NO                  
+platform                       | varchar              | NO         | NULL            | NO                  
+capabilities                   | TEXT                 | NO         | NULL            | NO                  
+is_active                      | tinyint(1)           | YES        | '1'             | NO                  
+last_used_at                   | datetime             | NO         | NULL            | NO                  
+notification_preferences       | TEXT                 | NO         | NULL            | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+
+  Foreign Keys:
+    user_id -> users(id)
+
+  Indexes:
+    device_tokens_token_unique (UNIQUE) on columns: token
+    device_tokens_last_used_at_index (NON-UNIQUE) on columns: last_used_at
+    device_tokens_device_type_is_active_index (NON-UNIQUE) on columns: device_type, is_active
+    device_tokens_user_id_is_active_index (NON-UNIQUE) on columns: user_id, is_active
+
+========================================================================================================================
+
+TABLE: failed_jobs
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+uuid                           | varchar              | YES        | NULL            | NO                  
+connection                     | TEXT                 | YES        | NULL            | NO                  
+queue                          | TEXT                 | YES        | NULL            | NO                  
+payload                        | TEXT                 | YES        | NULL            | NO                  
+exception                      | TEXT                 | YES        | NULL            | NO                  
+failed_at                      | datetime             | YES        | CURRENT_TIMESTAMP | NO                  
+
+  Indexes:
+    failed_jobs_uuid_unique (UNIQUE) on columns: uuid
+
+========================================================================================================================
+
+TABLE: failed_login_attempts
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+email                          | varchar              | YES        | NULL            | NO                  
+ip_address                     | varchar              | YES        | NULL            | NO                  
+user_agent                     | TEXT                 | NO         | NULL            | NO                  
+reason                         | varchar              | NO         | NULL            | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+
+  Indexes:
+    failed_login_attempts_ip_address_index (NON-UNIQUE) on columns: ip_address
+    failed_login_attempts_email_index (NON-UNIQUE) on columns: email
+    failed_login_attempts_created_at_index (NON-UNIQUE) on columns: created_at
+
+========================================================================================================================
+
+TABLE: features
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+name                           | varchar              | YES        | NULL            | NO                  
+scope                          | varchar              | YES        | NULL            | NO                  
+value                          | TEXT                 | YES        | NULL            | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+
+  Indexes:
+    features_name_scope_unique (UNIQUE) on columns: name, scope
+
+========================================================================================================================
+
+TABLE: invoice_items
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+invoice_id                     | INTEGER              | YES        | NULL            | NO                  
+service_id                     | INTEGER              | NO         | NULL            | NO                  
+item_type                      | varchar              | YES        | 'service'       | NO                  
+name                           | varchar              | YES        | NULL            | NO                  
+description                    | TEXT                 | NO         | NULL            | NO                  
+quantity                       | INTEGER              | YES        | '1'             | NO                  
+unit_price                     | numeric              | YES        | NULL            | NO                  
+discount_amount                | numeric              | YES        | '0'             | NO                  
+line_total                     | numeric              | YES        | NULL            | NO                  
+metadata                       | TEXT                 | NO         | NULL            | NO                  
+sort_order                     | INTEGER              | YES        | '0'             | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+
+  Foreign Keys:
+    service_id -> clinic_services(id)
+    invoice_id -> invoices(id)
+
+  Indexes:
+    invoice_items_service_id_index (NON-UNIQUE) on columns: service_id
+    invoice_items_invoice_id_index (NON-UNIQUE) on columns: invoice_id
+
+========================================================================================================================
+
+TABLE: invoices
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+invoice_number                 | varchar              | YES        | NULL            | NO                  
+clinic_id                      | INTEGER              | YES        | NULL            | NO                  
+appointment_id                 | INTEGER              | NO         | NULL            | NO                  
+patient_id                     | INTEGER              | NO         | NULL            | NO                  
+owner_id                       | INTEGER              | NO         | NULL            | NO                  
+invoice_date                   | date                 | YES        | NULL            | NO                  
+due_date                       | date                 | YES        | NULL            | NO                  
+status                         | varchar              | YES        | 'draft'         | NO                  
+subtotal                       | numeric              | YES        | '0'             | NO                  
+tax_rate                       | numeric              | YES        | '0'             | NO                  
+tax_amount                     | numeric              | YES        | '0'             | NO                  
+discount_amount                | numeric              | YES        | '0'             | NO                  
+total_amount                   | numeric              | YES        | NULL            | NO                  
+paid_amount                    | numeric              | YES        | '0'             | NO                  
+balance_due                    | numeric              | YES        | '0'             | NO                  
+notes                          | TEXT                 | NO         | NULL            | NO                  
+terms                          | TEXT                 | NO         | NULL            | NO                  
+services_summary               | TEXT                 | NO         | NULL            | NO                  
+sent_at                        | datetime             | NO         | NULL            | NO                  
+paid_at                        | datetime             | NO         | NULL            | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+
+  Foreign Keys:
+    clinic_id -> clinic_registrations(id)
+    appointment_id -> appointments(id)
+    patient_id -> pets(id)
+    owner_id -> users(id)
+
+  Indexes:
+    invoices_patient_id_index (NON-UNIQUE) on columns: patient_id
+    invoices_owner_id_index (NON-UNIQUE) on columns: owner_id
+    invoices_invoice_number_unique (UNIQUE) on columns: invoice_number
+    invoices_clinic_id_status_index (NON-UNIQUE) on columns: clinic_id, status
+    invoices_clinic_id_invoice_date_index (NON-UNIQUE) on columns: clinic_id, invoice_date
+
+========================================================================================================================
+
+TABLE: job_batches
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | varchar              | YES        | NULL            | YES                 
+name                           | varchar              | YES        | NULL            | NO                  
+total_jobs                     | INTEGER              | YES        | NULL            | NO                  
+pending_jobs                   | INTEGER              | YES        | NULL            | NO                  
+failed_jobs                    | INTEGER              | YES        | NULL            | NO                  
+failed_job_ids                 | TEXT                 | YES        | NULL            | NO                  
+options                        | TEXT                 | NO         | NULL            | NO                  
+cancelled_at                   | INTEGER              | NO         | NULL            | NO                  
+created_at                     | INTEGER              | YES        | NULL            | NO                  
+finished_at                    | INTEGER              | NO         | NULL            | NO                  
+
+  Indexes:
+    sqlite_autoindex_job_batches_1 (UNIQUE) on columns: id
+
+========================================================================================================================
+
+TABLE: jobs
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+queue                          | varchar              | YES        | NULL            | NO                  
+payload                        | TEXT                 | YES        | NULL            | NO                  
+attempts                       | INTEGER              | YES        | NULL            | NO                  
+reserved_at                    | INTEGER              | NO         | NULL            | NO                  
+available_at                   | INTEGER              | YES        | NULL            | NO                  
+created_at                     | INTEGER              | YES        | NULL            | NO                  
+
+  Indexes:
+    jobs_queue_index (NON-UNIQUE) on columns: queue
+
+========================================================================================================================
+
+TABLE: maintenance_logs
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+performed_by                   | INTEGER              | NO         | NULL            | NO                  
+type                           | varchar              | YES        | NULL            | NO                  
+title                          | varchar              | YES        | NULL            | NO                  
+description                    | TEXT                 | NO         | NULL            | NO                  
+started_at                     | datetime             | YES        | NULL            | NO                  
+completed_at                   | datetime             | NO         | NULL            | NO                  
+status                         | varchar              | YES        | NULL            | NO                  
+result_message                 | TEXT                 | NO         | NULL            | NO                  
+metadata                       | TEXT                 | NO         | NULL            | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+
+  Foreign Keys:
+    performed_by -> users(id)
+
+  Indexes:
+    maintenance_logs_started_at_index (NON-UNIQUE) on columns: started_at
+    maintenance_logs_type_status_index (NON-UNIQUE) on columns: type, status
+
+========================================================================================================================
+
+TABLE: migrations
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+migration                      | varchar              | YES        | NULL            | NO                  
+batch                          | INTEGER              | YES        | NULL            | NO                  
+
+========================================================================================================================
+
+TABLE: mock_payment_cards
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+card_id                        | varchar              | YES        | NULL            | NO                  
+card_number                    | varchar              | YES        | NULL            | NO                  
+card_holder                    | varchar              | YES        | NULL            | NO                  
+expiry                         | varchar              | YES        | NULL            | NO                  
+cvv                            | varchar              | YES        | NULL            | NO                  
+balance                        | numeric              | YES        | '0'             | NO                  
+bank                           | varchar              | YES        | NULL            | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+
+  Indexes:
+    mock_payment_cards_card_id_unique (UNIQUE) on columns: card_id
+
+========================================================================================================================
+
+TABLE: notifications
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+user_id                        | INTEGER              | YES        | NULL            | NO                  
+type                           | varchar              | YES        | NULL            | NO                  
+title                          | varchar              | YES        | NULL            | NO                  
+message                        | TEXT                 | YES        | NULL            | NO                  
+data                           | TEXT                 | NO         | NULL            | NO                  
+priority                       | varchar              | YES        | NULL            | NO                  
+read_at                        | datetime             | NO         | NULL            | NO                  
+expires_at                     | datetime             | NO         | NULL            | NO                  
+is_system                      | tinyint(1)           | YES        | '0'             | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+is_read                        | tinyint(1)           | YES        | '0'             | NO                  
+
+  Foreign Keys:
+    user_id -> users(id)
+
+  Indexes:
+    notifications_type_created_at_index (NON-UNIQUE) on columns: type, created_at
+    notifications_user_id_read_at_index (NON-UNIQUE) on columns: user_id, read_at
+
+========================================================================================================================
+
+TABLE: password_reset_tokens
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+email                          | varchar              | YES        | NULL            | YES                 
+token                          | varchar              | YES        | NULL            | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+
+  Indexes:
+    sqlite_autoindex_password_reset_tokens_1 (UNIQUE) on columns: email
+
+========================================================================================================================
+
+TABLE: patient_edit_logs
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+patient_id                     | INTEGER              | NO         | NULL            | NO                  
+user_id                        | INTEGER              | YES        | NULL            | NO                  
+clinic_id                      | INTEGER              | YES        | NULL            | NO                  
+action                         | varchar              | YES        | NULL            | NO                  
+old_values                     | TEXT                 | NO         | NULL            | NO                  
+new_values                     | TEXT                 | NO         | NULL            | NO                  
+changed_fields                 | TEXT                 | NO         | NULL            | NO                  
+notes                          | TEXT                 | NO         | NULL            | NO                  
+ip_address                     | varchar              | NO         | NULL            | NO                  
+user_agent                     | TEXT                 | NO         | NULL            | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+
+  Foreign Keys:
+    patient_id -> pets(id)
+    user_id -> users(id)
+    clinic_id -> clinic_registrations(id)
+
+  Indexes:
+    patient_edit_logs_user_id_created_at_index (NON-UNIQUE) on columns: user_id, created_at
+    patient_edit_logs_patient_id_created_at_index (NON-UNIQUE) on columns: patient_id, created_at
+    patient_edit_logs_clinic_id_created_at_index (NON-UNIQUE) on columns: clinic_id, created_at
+
+========================================================================================================================
+
+TABLE: payment_methods
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+user_id                        | INTEGER              | YES        | NULL            | NO                  
+type                           | varchar              | YES        | NULL            | NO                  
+provider_id                    | varchar              | NO         | NULL            | NO                  
+last_four                      | varchar              | NO         | NULL            | NO                  
+brand                          | varchar              | NO         | NULL            | NO                  
+exp_month                      | varchar              | NO         | NULL            | NO                  
+exp_year                       | varchar              | NO         | NULL            | NO                  
+is_default                     | tinyint(1)           | YES        | '0'             | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+
+  Foreign Keys:
+    user_id -> users(id)
+
+  Indexes:
+    payment_methods_user_id_is_default_index (NON-UNIQUE) on columns: user_id, is_default
+
+========================================================================================================================
+
+TABLE: payments
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+invoice_id                     | INTEGER              | NO         | NULL            | NO                  
+clinic_id                      | INTEGER              | YES        | NULL            | NO                  
+payment_number                 | varchar              | YES        | NULL            | NO                  
+amount                         | numeric              | YES        | NULL            | NO                  
+method                         | varchar              | YES        | NULL            | NO                  
+status                         | varchar              | YES        | 'completed'     | NO                  
+payment_date                   | datetime             | NO         | CURRENT_TIMESTAMP | NO                  
+reference_number               | varchar              | NO         | NULL            | NO                  
+processed_by                   | varchar              | NO         | NULL            | NO                  
+notes                          | TEXT                 | NO         | NULL            | NO                  
+metadata                       | TEXT                 | NO         | NULL            | NO                  
+refunded_amount                | numeric              | YES        | '0'             | NO                  
+refunded_at                    | datetime             | NO         | NULL            | NO                  
+refund_reason                  | TEXT                 | NO         | NULL            | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+
+  Foreign Keys:
+    invoice_id -> invoices(id)
+    clinic_id -> clinic_registrations(id)
+
+  Indexes:
+    payments_status_index (NON-UNIQUE) on columns: status
+    payments_payment_number_unique (UNIQUE) on columns: payment_number
+    payments_method_index (NON-UNIQUE) on columns: method
+    payments_invoice_id_index (NON-UNIQUE) on columns: invoice_id
+    payments_clinic_id_payment_date_index (NON-UNIQUE) on columns: clinic_id, payment_date
+
+========================================================================================================================
+
+TABLE: pet_breeds
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+name                           | varchar              | YES        | NULL            | NO                  
+species                        | varchar              | YES        | NULL            | NO                  
+description                    | TEXT                 | NO         | NULL            | NO                  
+characteristics                | TEXT                 | NO         | NULL            | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+
+  Indexes:
+    pet_breeds_species_name_index (NON-UNIQUE) on columns: species, name
+
+========================================================================================================================
+
+TABLE: pet_health_conditions
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+pet_id                         | INTEGER              | YES        | NULL            | NO                  
+type                           | varchar              | YES        | NULL            | NO                  
+name                           | varchar              | YES        | NULL            | NO                  
+description                    | TEXT                 | NO         | NULL            | NO                  
+severity                       | varchar              | YES        | NULL            | NO                  
+diagnosed_date                 | date                 | NO         | NULL            | NO                  
+treatment                      | TEXT                 | NO         | NULL            | NO                  
+is_active                      | tinyint(1)           | YES        | '1'             | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+clinic_id                      | INTEGER              | NO         | NULL            | NO                  
+
+  Foreign Keys:
+    clinic_id -> clinic_registrations(id)
+    pet_id -> pets(id)
+
+  Indexes:
+    pet_health_conditions_pet_active_index (NON-UNIQUE) on columns: pet_id, is_active
+    pet_health_conditions_pet_id_type_index (NON-UNIQUE) on columns: pet_id, type
+    pet_health_conditions_is_active_index (NON-UNIQUE) on columns: is_active
+
+========================================================================================================================
+
+TABLE: pet_medical_records
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+pet_id                         | INTEGER              | YES        | NULL            | NO                  
+veterinarian_id                | INTEGER              | NO         | NULL            | NO                  
+clinic_id                      | INTEGER              | NO         | NULL            | NO                  
+record_type                    | varchar              | YES        | NULL            | NO                  
+title                          | varchar              | YES        | NULL            | NO                  
+description                    | TEXT                 | YES        | NULL            | NO                  
+date                           | date                 | YES        | NULL            | NO                  
+cost                           | numeric              | NO         | NULL            | NO                  
+medication                     | varchar              | NO         | NULL            | NO                  
+instructions                   | TEXT                 | NO         | NULL            | NO                  
+follow_up_date                 | date                 | NO         | NULL            | NO                  
+attachments                    | TEXT                 | NO         | NULL            | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+appointment_id                 | INTEGER              | NO         | NULL            | NO                  
+diagnosis                      | TEXT                 | NO         | NULL            | NO                  
+treatment                      | TEXT                 | NO         | NULL            | NO                  
+medications                    | TEXT                 | NO         | NULL            | NO                  
+clinical_notes                 | TEXT                 | NO         | NULL            | NO                  
+physical_exam                  | TEXT                 | NO         | NULL            | NO                  
+vital_signs                    | TEXT                 | NO         | NULL            | NO                  
+vaccine_name                   | varchar              | NO         | NULL            | NO                  
+vaccine_batch                  | varchar              | NO         | NULL            | NO                  
+administration_site            | varchar              | NO         | NULL            | NO                  
+next_due_date                  | date                 | NO         | NULL            | NO                  
+adverse_reactions              | TEXT                 | NO         | NULL            | NO                  
+procedures_performed           | TEXT                 | NO         | NULL            | NO                  
+treatment_response             | TEXT                 | NO         | NULL            | NO                  
+surgery_type                   | varchar              | NO         | NULL            | NO                  
+procedure_details              | TEXT                 | NO         | NULL            | NO                  
+anesthesia_used                | varchar              | NO         | NULL            | NO                  
+complications                  | TEXT                 | NO         | NULL            | NO                  
+post_op_instructions           | TEXT                 | NO         | NULL            | NO                  
+presenting_complaint           | TEXT                 | NO         | NULL            | NO                  
+triage_level                   | varchar              | NO         | NULL            | NO                  
+emergency_treatment            | TEXT                 | NO         | NULL            | NO                  
+stabilization_measures         | TEXT                 | NO         | NULL            | NO                  
+disposition                    | varchar              | NO         | NULL            | NO                  
+
+  Foreign Keys:
+    appointment_id -> appointments(id)
+    pet_id -> pets(id)
+    veterinarian_id -> users(id)
+    clinic_id -> clinic_registrations(id)
+
+  Indexes:
+    pet_medical_records_next_due_date_index (NON-UNIQUE) on columns: next_due_date
+    pet_medical_records_triage_level_index (NON-UNIQUE) on columns: triage_level
+    pet_medical_records_appointment_id_index (NON-UNIQUE) on columns: appointment_id
+    pet_medical_records_record_type_index (NON-UNIQUE) on columns: record_type
+    pet_medical_records_pet_type_date_index (NON-UNIQUE) on columns: pet_id, record_type, date
+    pet_medical_records_pet_id_date_index (NON-UNIQUE) on columns: pet_id, date
+    pet_medical_records_clinic_type_index (NON-UNIQUE) on columns: clinic_id, record_type
+    pet_medical_records_clinic_date_index (NON-UNIQUE) on columns: clinic_id, date
+
+========================================================================================================================
+
+TABLE: pet_types
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+name                           | varchar              | YES        | NULL            | NO                  
+species                        | varchar              | YES        | NULL            | NO                  
+description                    | TEXT                 | NO         | NULL            | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+
+  Indexes:
+    pet_types_species_index (NON-UNIQUE) on columns: species
+
+========================================================================================================================
+
+TABLE: pet_vaccinations
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+pet_id                         | INTEGER              | YES        | NULL            | NO                  
+vaccine_name                   | varchar              | YES        | NULL            | NO                  
+administered_date              | date                 | YES        | NULL            | NO                  
+expiry_date                    | date                 | NO         | NULL            | NO                  
+veterinarian_id                | INTEGER              | NO         | NULL            | NO                  
+clinic_id                      | INTEGER              | NO         | NULL            | NO                  
+notes                          | TEXT                 | NO         | NULL            | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+
+  Foreign Keys:
+    clinic_id -> clinic_registrations(id)
+    veterinarian_id -> users(id)
+    pet_id -> pets(id)
+
+  Indexes:
+    pet_vaccinations_pet_expiry_index (NON-UNIQUE) on columns: pet_id, expiry_date
+    pet_vaccinations_clinic_date_index (NON-UNIQUE) on columns: clinic_id, administered_date
+    pet_vaccinations_expiry_date_index (NON-UNIQUE) on columns: expiry_date
+    pet_vaccinations_pet_id_vaccine_name_index (NON-UNIQUE) on columns: pet_id, vaccine_name
+
+========================================================================================================================
+
+TABLE: pets
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+owner_id                       | INTEGER              | YES        | NULL            | NO                  
+name                           | varchar              | YES        | NULL            | NO                  
+species                        | varchar              | YES        | NULL            | NO                  
+breed_id                       | INTEGER              | NO         | NULL            | NO                  
+type_id                        | INTEGER              | NO         | NULL            | NO                  
+gender                         | varchar              | YES        | NULL            | NO                  
+birth_date                     | date                 | NO         | NULL            | NO                  
+weight                         | numeric              | NO         | NULL            | NO                  
+size                           | varchar              | NO         | NULL            | NO                  
+color                          | varchar              | NO         | NULL            | NO                  
+markings                       | TEXT                 | NO         | NULL            | NO                  
+microchip_number               | varchar              | NO         | NULL            | NO                  
+is_neutered                    | tinyint(1)           | YES        | '0'             | NO                  
+special_needs                  | TEXT                 | NO         | NULL            | NO                  
+notes                          | TEXT                 | NO         | NULL            | NO                  
+profile_image                  | varchar              | NO         | NULL            | NO                  
+images                         | TEXT                 | NO         | NULL            | NO                  
+is_active                      | tinyint(1)           | YES        | '1'             | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+breed                          | varchar              | NO         | NULL            | NO                  
+age                            | numeric              | NO         | NULL            | NO                  
+microchip_id                   | varchar              | NO         | NULL            | NO                  
+allergies                      | TEXT                 | NO         | NULL            | NO                  
+current_medications            | TEXT                 | NO         | NULL            | NO                  
+medical_conditions             | TEXT                 | NO         | NULL            | NO                  
+
+  Foreign Keys:
+    type_id -> pet_types(id)
+    breed_id -> pet_breeds(id)
+    owner_id -> users(id)
+
+  Indexes:
+    pets_microchip_number_unique (UNIQUE) on columns: microchip_number
+    pets_species_index (NON-UNIQUE) on columns: species
+    pets_owner_id_is_active_index (NON-UNIQUE) on columns: owner_id, is_active
+
+========================================================================================================================
+
+TABLE: push_notifications
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+uuid                           | varchar              | YES        | NULL            | NO                  
+user_id                        | INTEGER              | NO         | NULL            | NO                  
+title                          | varchar              | YES        | NULL            | NO                  
+body                           | TEXT                 | YES        | NULL            | NO                  
+channel                        | varchar              | YES        | 'general'       | NO                  
+type                           | varchar              | YES        | 'general'       | NO                  
+data                           | TEXT                 | NO         | NULL            | NO                  
+click_action                   | varchar              | NO         | NULL            | NO                  
+icon                           | varchar              | NO         | NULL            | NO                  
+image                          | varchar              | NO         | NULL            | NO                  
+priority                       | varchar              | YES        | 'normal'        | NO                  
+requires_interaction           | tinyint(1)           | YES        | '0'             | NO                  
+scheduled_at                   | datetime             | NO         | NULL            | NO                  
+sent_at                        | datetime             | NO         | NULL            | NO                  
+recipient_count                | INTEGER              | YES        | '0'             | NO                  
+success_count                  | INTEGER              | YES        | '0'             | NO                  
+failure_count                  | INTEGER              | YES        | '0'             | NO                  
+failure_reasons                | TEXT                 | NO         | NULL            | NO                  
+status                         | varchar              | YES        | 'draft'         | NO                  
+created_by                     | INTEGER              | NO         | NULL            | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+
+  Foreign Keys:
+    created_by -> users(id)
+    user_id -> users(id)
+
+  Indexes:
+    push_notifications_uuid_unique (UNIQUE) on columns: uuid
+    push_notifications_sent_at_index (NON-UNIQUE) on columns: sent_at
+    push_notifications_scheduled_at_status_index (NON-UNIQUE) on columns: scheduled_at, status
+    push_notifications_type_status_index (NON-UNIQUE) on columns: type, status
+    push_notifications_user_id_channel_index (NON-UNIQUE) on columns: user_id, channel
+
+========================================================================================================================
+
+TABLE: security_events
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+type                           | varchar              | YES        | NULL            | NO                  
+description                    | TEXT                 | YES        | NULL            | NO                  
+severity                       | varchar              | YES        | 'low'           | NO                  
+ip_address                     | varchar              | NO         | NULL            | NO                  
+user_id                        | INTEGER              | NO         | NULL            | NO                  
+metadata                       | TEXT                 | NO         | NULL            | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+
+  Foreign Keys:
+    user_id -> users(id)
+
+  Indexes:
+    security_events_ip_address_index (NON-UNIQUE) on columns: ip_address
+    security_events_created_at_index (NON-UNIQUE) on columns: created_at
+    security_events_type_severity_index (NON-UNIQUE) on columns: type, severity
+
+========================================================================================================================
+
+TABLE: sessions
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | varchar              | YES        | NULL            | YES                 
+user_id                        | INTEGER              | NO         | NULL            | NO                  
+ip_address                     | varchar              | NO         | NULL            | NO                  
+user_agent                     | TEXT                 | NO         | NULL            | NO                  
+payload                        | TEXT                 | YES        | NULL            | NO                  
+last_activity                  | INTEGER              | YES        | NULL            | NO                  
+
+  Indexes:
+    sessions_last_activity_index (NON-UNIQUE) on columns: last_activity
+    sessions_user_id_index (NON-UNIQUE) on columns: user_id
+    sqlite_autoindex_sessions_1 (UNIQUE) on columns: id
+
+========================================================================================================================
+
+TABLE: slow_queries
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+query                          | TEXT                 | YES        | NULL            | NO                  
+bindings                       | TEXT                 | NO         | NULL            | NO                  
+time_ms                        | INTEGER              | YES        | NULL            | NO                  
+file                           | varchar              | NO         | NULL            | NO                  
+line                           | INTEGER              | NO         | NULL            | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+
+  Indexes:
+    slow_queries_time_ms_created_at_index (NON-UNIQUE) on columns: time_ms, created_at
+
+========================================================================================================================
+
+TABLE: subscription_billing_history
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+subscription_id                | INTEGER              | YES        | NULL            | NO                  
+user_id                        | INTEGER              | YES        | NULL            | NO                  
+amount                         | numeric              | YES        | NULL            | NO                  
+billing_period                 | varchar              | YES        | NULL            | NO                  
+billing_date                   | date                 | YES        | NULL            | NO                  
+period_start                   | date                 | YES        | NULL            | NO                  
+period_end                     | date                 | YES        | NULL            | NO                  
+status                         | varchar              | YES        | 'paid'          | NO                  
+payment_method                 | varchar              | NO         | NULL            | NO                  
+transaction_id                 | varchar              | NO         | NULL            | NO                  
+mock_card_id                   | INTEGER              | NO         | NULL            | NO                  
+notes                          | TEXT                 | NO         | NULL            | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+
+  Foreign Keys:
+    mock_card_id -> mock_payment_cards(id)
+    user_id -> users(id)
+    subscription_id -> subscriptions(id)
+
+  Indexes:
+    subscription_billing_history_user_id_index (NON-UNIQUE) on columns: user_id
+    subscription_billing_history_subscription_id_billing_date_index (NON-UNIQUE) on columns: subscription_id, billing_date
+
+========================================================================================================================
+
+TABLE: subscription_items
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+subscription_id                | INTEGER              | YES        | NULL            | NO                  
+stripe_id                      | varchar              | YES        | NULL            | NO                  
+stripe_product                 | varchar              | YES        | NULL            | NO                  
+stripe_price                   | varchar              | YES        | NULL            | NO                  
+quantity                       | INTEGER              | NO         | NULL            | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+meter_id                       | varchar              | NO         | NULL            | NO                  
+meter_event_name               | varchar              | NO         | NULL            | NO                  
+
+  Indexes:
+    subscription_items_stripe_id_unique (UNIQUE) on columns: stripe_id
+    subscription_items_subscription_id_stripe_price_index (NON-UNIQUE) on columns: subscription_id, stripe_price
+
+========================================================================================================================
+
+TABLE: subscription_plans
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+name                           | varchar              | YES        | NULL            | NO                  
+slug                           | varchar              | YES        | NULL            | NO                  
+type                           | varchar              | YES        | NULL            | NO                  
+description                    | TEXT                 | NO         | NULL            | NO                  
+price                          | numeric              | YES        | NULL            | NO                  
+annual_price                   | numeric              | NO         | NULL            | NO                  
+stripe_price_id                | varchar              | NO         | NULL            | NO                  
+stripe_annual_price_id         | varchar              | NO         | NULL            | NO                  
+features                       | TEXT                 | YES        | NULL            | NO                  
+limits                         | TEXT                 | YES        | NULL            | NO                  
+is_active                      | tinyint(1)           | YES        | '1'             | NO                  
+trial_days                     | INTEGER              | YES        | '0'             | NO                  
+transaction_fee_percentage     | numeric              | NO         | NULL            | NO                  
+transaction_fee_fixed          | numeric              | NO         | NULL            | NO                  
+sort_order                     | INTEGER              | YES        | '0'             | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+
+  Indexes:
+    subscription_plans_slug_unique (UNIQUE) on columns: slug
+
+========================================================================================================================
+
+TABLE: subscriptions
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+user_id                        | INTEGER              | YES        | NULL            | NO                  
+type                           | varchar              | YES        | NULL            | NO                  
+stripe_id                      | varchar              | YES        | NULL            | NO                  
+stripe_status                  | varchar              | YES        | NULL            | NO                  
+stripe_price                   | varchar              | NO         | NULL            | NO                  
+quantity                       | INTEGER              | NO         | NULL            | NO                  
+trial_ends_at                  | datetime             | NO         | NULL            | NO                  
+ends_at                        | datetime             | NO         | NULL            | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+payment_provider               | varchar              | NO         | NULL            | NO                  
+payment_provider_metadata      | TEXT                 | NO         | NULL            | NO                  
+
+  Indexes:
+    subscriptions_stripe_id_unique (UNIQUE) on columns: stripe_id
+    subscriptions_user_id_stripe_status_index (NON-UNIQUE) on columns: user_id, stripe_status
+
+========================================================================================================================
+
+TABLE: support_ticket_responses
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+ticket_id                      | INTEGER              | YES        | NULL            | NO                  
+user_id                        | INTEGER              | YES        | NULL            | NO                  
+message                        | TEXT                 | YES        | NULL            | NO                  
+attachments                    | TEXT                 | NO         | NULL            | NO                  
+is_internal                    | tinyint(1)           | YES        | '0'             | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+
+  Foreign Keys:
+    user_id -> users(id)
+    ticket_id -> support_tickets(id)
+
+  Indexes:
+    support_ticket_responses_ticket_id_created_at_index (NON-UNIQUE) on columns: ticket_id, created_at
+
+========================================================================================================================
+
+TABLE: support_tickets
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+ticket_number                  | varchar              | YES        | NULL            | NO                  
+user_id                        | INTEGER              | YES        | NULL            | NO                  
+assigned_to                    | INTEGER              | NO         | NULL            | NO                  
+subject                        | varchar              | YES        | NULL            | NO                  
+description                    | TEXT                 | YES        | NULL            | NO                  
+category                       | varchar              | YES        | NULL            | NO                  
+priority                       | varchar              | YES        | NULL            | NO                  
+status                         | varchar              | YES        | NULL            | NO                  
+attachments                    | TEXT                 | NO         | NULL            | NO                  
+resolved_at                    | datetime             | NO         | NULL            | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+
+  Foreign Keys:
+    assigned_to -> users(id)
+    user_id -> users(id)
+
+  Indexes:
+    support_tickets_ticket_number_unique (UNIQUE) on columns: ticket_number
+    support_tickets_assigned_to_status_index (NON-UNIQUE) on columns: assigned_to, status
+    support_tickets_status_priority_index (NON-UNIQUE) on columns: status, priority
+
+========================================================================================================================
+
+TABLE: system_settings
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+key                            | varchar              | YES        | NULL            | NO                  
+value                          | TEXT                 | NO         | NULL            | NO                  
+type                           | varchar              | YES        | 'string'        | NO                  
+description                    | TEXT                 | NO         | NULL            | NO                  
+group                          | varchar              | NO         | NULL            | NO                  
+is_public                      | tinyint(1)           | YES        | '0'             | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+
+  Indexes:
+    system_settings_key_unique (UNIQUE) on columns: key
+    system_settings_group_index (NON-UNIQUE) on columns: group
+
+========================================================================================================================
+
+TABLE: user_addresses
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+user_id                        | INTEGER              | YES        | NULL            | NO                  
+type                           | varchar              | YES        | 'home'          | NO                  
+address_line_1                 | varchar              | YES        | NULL            | NO                  
+address_line_2                 | varchar              | NO         | NULL            | NO                  
+city                           | varchar              | YES        | NULL            | NO                  
+state                          | varchar              | NO         | NULL            | NO                  
+postal_code                    | varchar              | NO         | NULL            | NO                  
+country                        | varchar              | YES        | 'Philippines'   | NO                  
+latitude                       | numeric              | NO         | NULL            | NO                  
+longitude                      | numeric              | NO         | NULL            | NO                  
+is_primary                     | tinyint(1)           | YES        | '0'             | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+
+  Foreign Keys:
+    user_id -> users(id)
+
+  Indexes:
+    user_addresses_user_id_type_index (NON-UNIQUE) on columns: user_id, type
+    user_addresses_user_id_is_primary_index (NON-UNIQUE) on columns: user_id, is_primary
+
+========================================================================================================================
+
+TABLE: user_clinic_favorites
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+user_id                        | INTEGER              | YES        | NULL            | NO                  
+clinic_registration_id         | INTEGER              | YES        | NULL            | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+
+  Foreign Keys:
+    clinic_registration_id -> clinic_registrations(id)
+    user_id -> users(id)
+
+  Indexes:
+    user_clinic_favorites_clinic_registration_id_index (NON-UNIQUE) on columns: clinic_registration_id
+    user_clinic_favorites_user_id_created_at_index (NON-UNIQUE) on columns: user_id, created_at
+    user_clinic_favorites_user_id_clinic_registration_id_unique (UNIQUE) on columns: user_id, clinic_registration_id
+
+========================================================================================================================
+
+TABLE: user_emergency_contacts
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+user_id                        | INTEGER              | YES        | NULL            | NO                  
+name                           | varchar              | YES        | NULL            | NO                  
+relationship                   | varchar              | YES        | NULL            | NO                  
+phone                          | varchar              | YES        | NULL            | NO                  
+email                          | varchar              | NO         | NULL            | NO                  
+is_primary                     | tinyint(1)           | YES        | '0'             | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+
+  Foreign Keys:
+    user_id -> users(id)
+
+  Indexes:
+    user_emergency_contacts_user_id_is_primary_index (NON-UNIQUE) on columns: user_id, is_primary
+
+========================================================================================================================
+
+TABLE: user_profiles
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+user_id                        | INTEGER              | YES        | NULL            | NO                  
+first_name                     | varchar              | NO         | NULL            | NO                  
+last_name                      | varchar              | NO         | NULL            | NO                  
+middle_name                    | varchar              | NO         | NULL            | NO                  
+phone                          | varchar              | NO         | NULL            | NO                  
+date_of_birth                  | date                 | NO         | NULL            | NO                  
+gender                         | varchar              | NO         | NULL            | NO                  
+occupation                     | varchar              | NO         | NULL            | NO                  
+bio                            | TEXT                 | NO         | NULL            | NO                  
+profile_image                  | varchar              | NO         | NULL            | NO                  
+preferred_language             | varchar              | YES        | 'en'            | NO                  
+timezone                       | varchar              | YES        | 'Asia/Manila'   | NO                  
+preferences                    | TEXT                 | NO         | NULL            | NO                  
+emergency_contact_name         | varchar              | NO         | NULL            | NO                  
+emergency_contact_phone        | varchar              | NO         | NULL            | NO                  
+emergency_contact_relationship | varchar              | NO         | NULL            | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+address                        | varchar              | NO         | NULL            | NO                  
+city                           | varchar              | NO         | NULL            | NO                  
+province                       | varchar              | NO         | NULL            | NO                  
+zip_code                       | varchar              | NO         | NULL            | NO                  
+profile_completed_at           | datetime             | NO         | NULL            | NO                  
+region                         | varchar              | NO         | NULL            | NO                  
+barangay                       | varchar              | NO         | NULL            | NO                  
+latitude                       | numeric              | NO         | NULL            | NO                  
+longitude                      | numeric              | NO         | NULL            | NO                  
+
+  Foreign Keys:
+    user_id -> users(id)
+
+  Indexes:
+    user_profiles_first_name_last_name_index (NON-UNIQUE) on columns: first_name, last_name
+    user_profiles_user_id_index (NON-UNIQUE) on columns: user_id
+
+========================================================================================================================
+
+TABLE: users
+------------------------------------------------------------------------------------------------------------------------
+COLUMN NAME                    | TYPE                 | NOT NULL   | DEFAULT         | PRIMARY KEY         
+------------------------------------------------------------------------------------------------------------------------
+id                             | INTEGER              | YES        | NULL            | YES                 
+email                          | varchar              | YES        | NULL            | NO                  
+email_verified_at              | datetime             | NO         | NULL            | NO                  
+password                       | varchar              | YES        | NULL            | NO                  
+account_type                   | varchar              | YES        | 'user'          | NO                  
+is_admin                       | tinyint(1)           | YES        | '0'             | NO                  
+is_verified                    | tinyint(1)           | YES        | '0'             | NO                  
+verification_token             | varchar              | NO         | NULL            | NO                  
+last_login_at                  | datetime             | NO         | NULL            | NO                  
+two_factor_secret              | varchar              | NO         | NULL            | NO                  
+two_factor_recovery_codes      | TEXT                 | NO         | NULL            | NO                  
+two_factor_confirmed_at        | datetime             | NO         | NULL            | NO                  
+remember_token                 | varchar              | NO         | NULL            | NO                  
+created_at                     | datetime             | NO         | NULL            | NO                  
+updated_at                     | datetime             | NO         | NULL            | NO                  
+banned_at                      | datetime             | NO         | NULL            | NO                  
+ban_reason                     | TEXT                 | NO         | NULL            | NO                  
+ban_duration                   | varchar              | NO         | NULL            | NO                  
+ban_expires_at                 | datetime             | NO         | NULL            | NO                  
+ban_notes                      | TEXT                 | NO         | NULL            | NO                  
+stripe_id                      | varchar              | NO         | NULL            | NO                  
+pm_type                        | varchar              | NO         | NULL            | NO                  
+pm_last_four                   | varchar              | NO         | NULL            | NO                  
+trial_ends_at                  | datetime             | NO         | NULL            | NO                  
+payment_provider               | varchar              | NO         | NULL            | NO                  
+payment_provider_metadata      | TEXT                 | NO         | NULL            | NO                  
+
+  Indexes:
+    users_stripe_id_index (NON-UNIQUE) on columns: stripe_id
+    users_email_unique (UNIQUE) on columns: email
+    users_is_admin_index (NON-UNIQUE) on columns: is_admin
+    users_account_type_index (NON-UNIQUE) on columns: account_type
+    users_email_index (NON-UNIQUE) on columns: email
+
+========================================================================================================================
+
+
+Total tables: 54

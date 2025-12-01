@@ -178,73 +178,73 @@ const quickBooking = (type: string) => {
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div
-            class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4"
+            class="flex h-full flex-1 flex-col gap-3 sm:gap-4 overflow-x-auto rounded-xl p-3 sm:p-4"
         >
             <!-- Comprehensive Schedule Overview -->
             <div class="bg-white dark:bg-gray-800 rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                <div class="p-6">
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                        <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Schedule Overview</h2>
+                <div class="p-3 sm:p-4 md:p-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
+                        <h2 class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100">Schedule Overview</h2>
                         <div class="flex flex-col sm:flex-row gap-2">
                             <button @click="bookNewAppointment" 
-                                    class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium">
+                                    class="w-full sm:w-auto px-3 sm:px-4 py-2 sm:py-2.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-xs sm:text-sm font-medium">
                                 Book New Appointment
                             </button>
                             <button @click="viewCalendar" 
-                                    class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm font-medium dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
+                                    class="w-full sm:w-auto px-3 sm:px-4 py-2 sm:py-2.5 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-xs sm:text-sm font-medium dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
                                 📅 Calendar View
                             </button>
                         </div>
                     </div>
                     
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
                         <!-- Current Appointment -->
                         <div class="lg:col-span-1">
-                            <div v-if="todaysAppointment" class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
-                                <div class="flex items-center justify-between mb-3">
-                                    <h3 class="font-semibold text-blue-900 dark:text-blue-100">Today's Appointment</h3>
+                            <div v-if="todaysAppointment" class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 sm:p-4 border border-blue-200 dark:border-blue-800">
+                                <div class="flex items-center justify-between mb-2 sm:mb-3">m:mb-3">
+                                    <h3 class="text-sm sm:text-base font-semibold text-blue-900 dark:text-blue-100">Today's Appointment</h3>
                                     <span :class="['px-2 py-1 text-xs font-medium rounded-full', getStatusDisplay(todaysAppointment.status).class]">
                                         {{ getStatusDisplay(todaysAppointment.status).text }}
                                     </span>
                                 </div>
                                 
-                                <div class="space-y-3">
+                                <div class="space-y-2 sm:space-y-3">
                                     <div>
-                                        <p class="text-sm font-medium text-blue-900 dark:text-blue-100">
-                                            {{ todaysAppointment.pet.name }} - {{ todaysAppointment.type }}
+                                        <p class="text-xs sm:text-sm font-medium text-blue-900 dark:text-blue-100">
+                                            {{ todaysAppointment.pet?.name || 'Pet' }} - {{ todaysAppointment.type }}
                                         </p>
-                                        <p class="text-xs text-blue-700 dark:text-blue-300">
-                                            {{ todaysAppointment.pet.breed || todaysAppointment.pet.type }}
+                                        <p class="text-[10px] sm:text-xs text-blue-700 dark:text-blue-300">
+                                            {{ todaysAppointment.pet?.breed || todaysAppointment.pet?.type || 'Unknown' }}
                                         </p>
                                     </div>
                                     
                                     <div>
-                                        <p class="text-sm font-medium text-blue-800 dark:text-blue-200">{{ todaysAppointment.clinic.name }}</p>
-                                        <p class="text-xs text-blue-700 dark:text-blue-300">
+                                        <p class="text-xs sm:text-sm font-medium text-blue-800 dark:text-blue-200">{{ todaysAppointment.clinic?.name || 'Clinic' }}</p>
+                                        <p class="text-[10px] sm:text-xs text-blue-700 dark:text-blue-300">
                                             {{ todaysAppointment.veterinarian?.name || 'Veterinarian TBA' }}
                                         </p>
                                     </div>
                                     
-                                    <div class="bg-blue-100 dark:bg-blue-800/50 rounded-lg p-3">
+                                    <div class="bg-blue-100 dark:bg-blue-800/50 rounded-lg p-2 sm:p-3">
                                         <div class="flex items-center justify-between">
                                             <div>
-                                                <p class="text-sm font-medium text-blue-900 dark:text-blue-100">Today</p>
-                                                <p class="text-xs text-blue-700 dark:text-blue-300">{{ formatAppointmentDate(todaysAppointment.scheduled_at) }}</p>
+                                                <p class="text-xs sm:text-sm font-medium text-blue-900 dark:text-blue-100">Today</p>
+                                                <p class="text-[10px] sm:text-xs text-blue-700 dark:text-blue-300">{{ formatAppointmentDate(todaysAppointment.scheduled_at) }}</p>
                                             </div>
                                             <div class="text-right">
-                                                <p class="text-sm font-medium text-blue-900 dark:text-blue-100">{{ formatAppointmentTime(todaysAppointment.scheduled_at) }}</p>
-                                                <p class="text-xs text-blue-700 dark:text-blue-300">{{ todaysAppointment.duration_minutes }} minutes</p>
+                                                <p class="text-xs sm:text-sm font-medium text-blue-900 dark:text-blue-100">{{ formatAppointmentTime(todaysAppointment.scheduled_at) }}</p>
+                                                <p class="text-[10px] sm:text-xs text-blue-700 dark:text-blue-300">{{ todaysAppointment.duration_minutes }} minutes</p>
                                             </div>
                                         </div>
                                     </div>
                                     
-                                    <div class="flex gap-2">
+                                    <div class="flex gap-1.5 sm:gap-2">
                                         <button @click="viewAppointmentDetails(todaysAppointment.id)" 
-                                                class="flex-1 bg-blue-600 text-white py-2 px-3 rounded-md hover:bg-blue-700 text-xs font-medium">
+                                                class="flex-1 bg-blue-600 text-white py-1.5 sm:py-2 px-2 sm:px-3 rounded-md hover:bg-blue-700 text-[10px] sm:text-xs font-medium">
                                             View Details
                                         </button>
                                         <button @click="rescheduleAppointmentById(todaysAppointment.id)" 
-                                                class="flex-1 border border-blue-300 text-blue-700 py-2 px-3 rounded-md hover:bg-blue-100 text-xs font-medium dark:border-blue-600 dark:text-blue-300 dark:hover:bg-blue-800">
+                                                class="flex-1 border border-blue-300 text-blue-700 py-1.5 sm:py-2 px-2 sm:px-3 rounded-md hover:bg-blue-100 text-[10px] sm:text-xs font-medium dark:border-blue-600 dark:text-blue-300 dark:hover:bg-blue-800">
                                             Reschedule
                                         </button>
                                     </div>
@@ -252,13 +252,13 @@ const quickBooking = (type: string) => {
                             </div>
                             
                             <!-- No appointment today -->
-                            <div v-else class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
-                                <div class="text-center py-6">
-                                    <div class="text-4xl mb-2">📅</div>
-                                    <h3 class="font-semibold text-gray-900 dark:text-gray-100 mb-1">No appointments today</h3>
-                                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">You have a free day!</p>
+                            <div v-else class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 sm:p-4 border border-gray-200 dark:border-gray-600">
+                                <div class="text-center py-4 sm:py-6">
+                                    <div class="text-3xl sm:text-4xl mb-2">📅</div>
+                                    <h3 class="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">No appointments today</h3>
+                                    <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3 sm:mb-4">You have a free day!</p>
                                     <button @click="bookNewAppointment" 
-                                            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium">
+                                            class="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-xs sm:text-sm font-medium">
                                         Schedule an appointment
                                     </button>
                                 </div>
@@ -268,22 +268,22 @@ const quickBooking = (type: string) => {
                         <!-- Upcoming Appointments - Full Width -->
                         <div class="lg:col-span-2">
                             <div>
-                                <div class="flex items-center justify-between mb-4">
-                                    <h4 class="font-medium text-gray-900 dark:text-gray-100">Upcoming Appointments</h4>
+                                <div class="flex items-center justify-between mb-3 sm:mb-4">
+                                    <h4 class="text-sm sm:text-base font-medium text-gray-900 dark:text-gray-100">Upcoming Appointments</h4>
                                     <button @click="viewCalendar" 
-                                            class="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium">
+                                            class="text-xs sm:text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium">
                                         View Calendar →
                                     </button>
                                 </div>
-                                <div v-if="filteredUpcomingAppointments.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div v-if="filteredUpcomingAppointments.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3 md:gap-4">
                                     <div @click="viewAppointmentDetails(appointment.id)" v-for="appointment in filteredUpcomingAppointments.slice(0, 6)" :key="appointment.id" 
-                                         class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg cursor-pointer transition-all duration-200 ease-in-out hover:bg-gray-100 dark:hover:bg-gray-600 hover:shadow-md hover:scale-[1.02] hover:border hover:border-blue-200 dark:hover:border-blue-600">
-                                        <div class="flex items-center justify-between mb-2">
+                                         class="p-2 sm:p-3 bg-gray-50 dark:bg-gray-700 rounded-lg cursor-pointer transition-all duration-200 ease-in-out hover:bg-gray-100 dark:hover:bg-gray-600 hover:shadow-md hover:scale-[1.02] hover:border hover:border-blue-200 dark:hover:border-blue-600">
+                                        <div class="flex items-center justify-between mb-1 sm:mb-2">
                                             <div class="min-w-0 flex-1">
-                                                <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                                                    {{ appointment.pet.name }} - {{ appointment.type }}
+                                                <p class="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                                                    {{ appointment.pet?.name || 'Pet' }} - {{ appointment.type }}
                                                 </p>
-                                                <p class="text-xs text-gray-600 dark:text-gray-400">
+                                                <p class="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400">
                                                     {{ formatAppointmentDate(appointment.scheduled_at) }} • {{ formatAppointmentTime(appointment.scheduled_at) }}
                                                 </p>
                                             </div>
@@ -295,12 +295,12 @@ const quickBooking = (type: string) => {
                                 </div>
                                 
                                 <!-- No upcoming appointments -->
-                                <div v-else class="text-center py-8">
-                                    <div class="text-4xl mb-3">📝</div>
-                                    <h3 class="font-semibold text-gray-900 dark:text-gray-100 mb-2">No upcoming appointments</h3>
-                                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Ready to schedule your next visit?</p>
+                                <div v-else class="text-center py-6 sm:py-8">
+                                    <div class="text-3xl sm:text-4xl mb-2 sm:mb-3">📝</div>
+                                    <h3 class="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100 mb-1 sm:mb-2">No upcoming appointments</h3>
+                                    <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3 sm:mb-4">Ready to schedule your next visit?</p>
                                     <button @click="bookNewAppointment" 
-                                            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium">
+                                            class="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-xs sm:text-sm font-medium">
                                         Book an appointment
                                     </button>
                                 </div>

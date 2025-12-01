@@ -6,14 +6,15 @@ $app = require_once 'bootstrap/app.php';
 $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
 $kernel->bootstrap();
 
+
 $pdo = DB::connection()->getPdo();
 
 // Get all tables
 $stmt = $pdo->query("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name");
 $tables = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
-echo "DATABASE SCHEMA\n";
-echo str_repeat("=", 120) . "\n\n";
+$output = "DATABASE SCHEMA\n";
+$output .= str_repeat("=", 120) . "\n\n";
 
 foreach ($tables as $table) {
     // Skip SQLite internal tables
@@ -21,15 +22,15 @@ foreach ($tables as $table) {
         continue;
     }
     
-    echo "TABLE: $table\n";
-    echo str_repeat("-", 120) . "\n";
+    $output .= "TABLE: $table\n";
+    $output .= str_repeat("-", 120) . "\n";
     
     // Get column information
     $stmt = $pdo->query("PRAGMA table_info($table)");
     $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Header
-    echo sprintf(
+    $output .= sprintf(
         "%-30s | %-20s | %-10s | %-15s | %-20s\n",
         "COLUMN NAME",
         "TYPE",
@@ -37,11 +38,11 @@ foreach ($tables as $table) {
         "DEFAULT",
         "PRIMARY KEY"
     );
-    echo str_repeat("-", 120) . "\n";
+    $output .= str_repeat("-", 120) . "\n";
     
     // Rows
     foreach ($columns as $col) {
-        echo sprintf(
+        $output .= sprintf(
             "%-30s | %-20s | %-10s | %-15s | %-20s\n",
             $col['name'],
             $col['type'],
@@ -56,9 +57,9 @@ foreach ($tables as $table) {
     $foreignKeys = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     if (!empty($foreignKeys)) {
-        echo "\n  Foreign Keys:\n";
+        $output .= "\n  Foreign Keys:\n";
         foreach ($foreignKeys as $fk) {
-            echo sprintf(
+            $output .= sprintf(
                 "    %s -> %s(%s)\n",
                 $fk['from'],
                 $fk['table'],
@@ -72,7 +73,7 @@ foreach ($tables as $table) {
     $indexes = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     if (!empty($indexes)) {
-        echo "\n  Indexes:\n";
+        $output .= "\n  Indexes:\n";
         foreach ($indexes as $index) {
             $indexName = $index['name'];
             $unique = $index['unique'] ? 'UNIQUE' : 'NON-UNIQUE';
@@ -82,7 +83,7 @@ foreach ($tables as $table) {
             $indexCols = $stmt->fetchAll(PDO::FETCH_ASSOC);
             $colNames = array_map(fn($c) => $c['name'], $indexCols);
             
-            echo sprintf(
+            $output .= sprintf(
                 "    %s (%s) on columns: %s\n",
                 $indexName,
                 $unique,
@@ -91,7 +92,14 @@ foreach ($tables as $table) {
         }
     }
     
-    echo "\n" . str_repeat("=", 120) . "\n\n";
+    $output .= "\n" . str_repeat("=", 120) . "\n\n";
 }
 
-echo "\nTotal tables: " . count(array_filter($tables, fn($t) => strpos($t, 'sqlite_') !== 0)) . "\n";
+$output .= "\nTotal tables: " . count(array_filter($tables, fn($t) => strpos($t, 'sqlite_') !== 0)) . "\n";
+
+// Write to file
+$filePath = __DIR__ . DIRECTORY_SEPARATOR . 'database_schema.txt';
+file_put_contents($filePath, $output);
+
+// Also echo a message to the console
+echo "Database schema written to $filePath\n";

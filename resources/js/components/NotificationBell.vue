@@ -141,24 +141,24 @@ onMounted(() => {
             </Button>
         </DropdownMenuTrigger>
         
-        <DropdownMenuContent align="end" class="w-96">
-            <DropdownMenuLabel class="flex items-center justify-between">
-                <span>Notifications</span>
+        <DropdownMenuContent align="end" class="w-[calc(100vw-2rem)] sm:w-96 max-w-96">
+            <DropdownMenuLabel class="flex items-center justify-between px-3 sm:px-4">
+                <span class="text-sm sm:text-base">Notifications</span>
                 <Button
                     v-if="unreadCount > 0"
                     variant="ghost"
                     size="sm"
                     @click="markAllAsRead"
-                    class="h-7 text-xs"
+                    class="h-7 text-xs px-2 sm:px-3"
                 >
-                    <CheckCheck class="h-3 w-3 mr-1" />
-                    Mark all read
+                    <CheckCheck class="h-3 w-3 sm:mr-1" />
+                    <span class="hidden sm:inline">Mark all read</span>
                 </Button>
             </DropdownMenuLabel>
             
             <DropdownMenuSeparator />
             
-            <div class="max-h-[400px] overflow-y-auto">
+            <div class="max-h-[60vh] sm:max-h-[400px] overflow-y-auto">
                 <div v-if="notifications.length === 0" class="p-4 text-center text-muted-foreground text-sm">
                     No notifications yet
                 </div>
@@ -166,15 +166,15 @@ onMounted(() => {
                 <div
                     v-for="notification in notifications"
                     :key="notification.id"
-                    class="relative px-2 py-3 hover:bg-accent/50 cursor-pointer transition-colors group"
+                    class="relative px-2 sm:px-3 py-3 hover:bg-accent/50 cursor-pointer transition-colors group"
                     :class="{ 'bg-accent/20': !notification.is_read }"
                     @click="handleNotificationClick(notification)"
                 >
-                    <div class="flex gap-3">
+                    <div class="flex gap-2 sm:gap-3">
                         <div class="mt-1 flex-shrink-0">
                             <component
                                 :is="getNotificationIcon(notification.type)"
-                                class="h-5 w-5"
+                                class="h-4 w-4 sm:h-5 sm:w-5"
                                 :class="notification.is_read ? 'text-muted-foreground' : 'text-primary'"
                             />
                         </div>
@@ -182,18 +182,18 @@ onMounted(() => {
                         <div class="flex-1 min-w-0 space-y-1">
                             <div class="flex items-start justify-between gap-2">
                                 <p
-                                    class="text-sm font-medium leading-tight"
+                                    class="text-xs sm:text-sm font-medium leading-tight pr-1"
                                     :class="notification.is_read ? 'text-muted-foreground' : 'text-foreground'"
                                 >
                                     {{ notification.title }}
                                 </p>
                                 
-                                <div class="flex items-center gap-1 flex-shrink-0">
+                                <div class="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
                                     <Button
                                         v-if="!notification.is_read"
                                         variant="ghost"
                                         size="icon"
-                                        class="h-6 w-6 opacity-0 group-hover:opacity-100"
+                                        class="h-6 w-6 sm:h-7 sm:w-7 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
                                         @click.stop="markAsRead(notification)"
                                     >
                                         <Check class="h-3 w-3" />
@@ -202,7 +202,7 @@ onMounted(() => {
                                     <Button
                                         variant="ghost"
                                         size="icon"
-                                        class="h-6 w-6 opacity-0 group-hover:opacity-100"
+                                        class="h-6 w-6 sm:h-7 sm:w-7 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
                                         @click.stop="deleteNotification(notification)"
                                     >
                                         <Trash2 class="h-3 w-3" />
@@ -214,7 +214,7 @@ onMounted(() => {
                                 {{ notification.message }}
                             </p>
                             
-                            <p class="text-xs text-muted-foreground">
+                            <p class="text-[10px] sm:text-xs text-muted-foreground">
                                 {{ formatTimeAgo(notification.created_at) }}
                             </p>
                         </div>
@@ -231,7 +231,7 @@ onMounted(() => {
             
             <DropdownMenuItem
                 v-if="notifications.length > 0"
-                class="justify-center text-sm text-primary cursor-pointer"
+                class="justify-center text-xs sm:text-sm text-primary cursor-pointer py-3"
                 @click="router.visit('/notifications')"
             >
                 View all notifications

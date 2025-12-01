@@ -84,17 +84,17 @@ interface Clinic {
 
 interface MedicalRecord {
     id: number;
-    visit_date: string;
-    visit_type: string;
-    visit_type_display: string;
-    chief_complaint: string | null;
+    date: string;
+    appointment_id: number | null;
+    // Simplified 4-field structure
     diagnosis: string | null;
-    treatment_provided: string | null;
-    medications_prescribed: string | null;
+    findings: string | null;
+    treatment_given: string | null;
+    prescriptions: string | null;
+    // Metadata
     veterinarian_name: string | null;
-    clinic_name: string | null;
-    is_emergency: boolean;
-    days_since_visit: number;
+    clinic_name: string; // Anonymous clinic name (Clinic A, B, C)
+    days_since_visit: number | null;
     clinic: Clinic | null;
 }
 
@@ -281,6 +281,21 @@ const tabs = [
 
 // Medical Records Categorization
 const selectedRecordType = ref('all');
+const uploadingDocument = ref(false);
+const documentInput = ref<HTMLInputElement | null>(null);
+
+// Pagination for medical records
+const recordsPerPage = ref(10);
+const currentPage = ref(1);
+const expandedRecords = ref<Set<number>>(new Set());
+
+const toggleRecordExpansion = (recordId: number) => {
+    if (expandedRecords.value.has(recordId)) {
+        expandedRecords.value.delete(recordId);
+    } else {
+        expandedRecords.value.add(recordId);
+    }
+};
 
 const recordTypeCategories = [
     { value: 'checkup', label: 'Checkup', icon: '🩺', iconColor: 'text-blue-600', bgClass: 'bg-blue-50 dark:bg-blue-900/20', badgeClass: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
@@ -303,9 +318,32 @@ const getRecordCountByType = (type: string) => {
 
 const filteredMedicalRecords = computed(() => {
     if (!props.medical_records) return [];
-    if (selectedRecordType.value === 'all') return props.medical_records;
-    return props.medical_records.filter(record => record.visit_type === selectedRecordType.value);
+    return props.medical_records;
 });
+
+// Paginated medical records
+const paginatedRecords = computed(() => {
+    const start = (currentPage.value - 1) * recordsPerPage.value;
+    const end = start + recordsPerPage.value;
+    return filteredMedicalRecords.value.slice(start, end);
+});
+
+const totalPages = computed(() => {
+    return Math.ceil(filteredMedicalRecords.value.length / recordsPerPage.value);
+});
+
+const changePage = (page: number) => {
+    if (page >= 1 && page <= totalPages.value) {
+        currentPage.value = page;
+        expandedRecords.value.clear(); // Collapse all when changing pages
+    }
+};
+
+const changePerPage = (perPage: number) => {
+    recordsPerPage.value = perPage;
+    currentPage.value = 1; // Reset to first page
+    expandedRecords.value.clear();
+};
 
 // Documents management
 const documents = ref<Array<{
@@ -325,9 +363,6 @@ const documents = ref<Array<{
         url: '#'
     }
 ]);
-
-const uploadingDocument = ref(false);
-const documentInput = ref<HTMLInputElement | null>(null);
 
 const openDocumentUpload = () => {
     documentInput.value?.click();
@@ -381,42 +416,42 @@ const deleteDocument = (docId: number) => {
     <Head :title="`${pet.name} - Pet Details`" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
+        <div class="flex h-full flex-1 flex-col gap-4 sm:gap-6 rounded-xl p-3 sm:p-4">
             <!-- Pet Header with Gradient -->
-            <div class="relative bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl p-6 shadow-lg">
-                <div class="flex flex-col md:flex-row items-center md:items-center gap-6">
+            <div class="relative bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl p-4 sm:p-6 shadow-lg">
+                <div class="flex flex-col md:flex-row items-center md:items-center gap-4 sm:gap-6">
                     <!-- Pet Photo -->
                     <div class="relative group flex-shrink-0">
                         <div @click="openImageUpload" 
-                             class="w-24 h-24 md:w-32 md:h-32 rounded-xl flex items-center justify-center cursor-pointer overflow-hidden ring-4 ring-white/20 shadow-xl hover:ring-white/40 transition-all"
+                             class="w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 rounded-xl flex items-center justify-center cursor-pointer overflow-hidden ring-4 ring-white/20 shadow-xl hover:ring-white/40 transition-all"
                              :class="pet.profile_image ? '' : 'bg-white/20 backdrop-blur-sm'">
                             <img v-if="pet.profile_image" 
                                  :src="`/storage/${pet.profile_image}`" 
                                  :alt="pet.name"
                                  class="w-full h-full object-cover">
-                            <span v-else class="text-white text-xl font-bold">{{ pet.name.charAt(0) }}</span>
+                            <span v-else class="text-white text-lg sm:text-xl font-bold">{{ pet.name.charAt(0) }}</span>
                         </div>
                     </div>
                     
                     <!-- Pet Info -->
                     <div class="flex-1 text-center md:text-left">
-                        <h1 class="text-3xl md:text-4xl font-bold mb-2">{{ pet.name }}</h1>
-                        <p class="text-blue-100">{{ pet.type?.name || 'Pet' }}</p>
+                        <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold mb-2">{{ pet.name }}</h1>
+                        <p class="text-sm sm:text-base text-blue-100">{{ pet.type?.name || 'Pet' }}</p>
                     </div>
                 </div>
             </div>
 
             <!-- Tabbed Content Section -->
-            <div class="rounded-lg border bg-card shadow-sm">
+            <div class="rounded-lg border bg-card shadow-sm flex flex-col overflow-hidden">
                 <!-- Tab Navigation -->
-                <div class="border-b">
-                    <nav class="flex -mb-px px-6">
+                <div class="border-b flex-shrink-0">
+                    <nav class="flex -mb-px px-3 sm:px-4 md:px-6 overflow-x-auto scrollbar-hide">
                         <button
                             v-for="tab in tabs"
                             :key="tab.id"
                             @click="activeTab = tab.id"
                             :class="[
-                                'whitespace-nowrap py-4 px-4 border-b-2 font-medium text-sm flex items-center gap-2',
+                                'whitespace-nowrap py-3 sm:py-4 px-2 sm:px-4 border-b-2 font-medium text-xs sm:text-sm flex items-center gap-1.5 sm:gap-2',
                                 activeTab === tab.id
                                     ? 'border-primary text-primary'
                                     : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
@@ -429,11 +464,11 @@ const deleteDocument = (docId: number) => {
                 </div>
 
                 <!-- Tab Content -->
-                <div class="p-6">
+                <div class="p-3 sm:p-4 md:p-6 overflow-y-auto flex-1">
                     <!-- Pet Information Tab -->
-                    <div v-if="activeTab === 'info'" class="space-y-6">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-lg font-semibold">Pet Information</h3>
+                    <div v-if="activeTab === 'info'" class="space-y-4 sm:space-y-6">
+                        <div class="flex items-center justify-between mb-3 sm:mb-4">
+                            <h3 class="text-base sm:text-lg font-semibold">Pet Information</h3>
                             
                             <!-- Action Menu -->
                             <div class="relative">
@@ -461,14 +496,14 @@ const deleteDocument = (docId: number) => {
                         </div>
                         
                         <!-- Combined Information -->
-                        <div class="bg-muted/30 rounded-lg p-6 border">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                        <div class="bg-muted/30 rounded-lg p-4 sm:p-6 border">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 sm:gap-x-8 gap-y-3 sm:gap-y-4">
                                 <!-- Basic Details Column -->
                                 <div class="space-y-3">
-                                    <h4 class="text-sm font-semibold text-muted-foreground mb-3 pb-2 border-b">Basic Details</h4>
+                                    <h4 class="text-xs sm:text-sm font-semibold text-muted-foreground mb-3 pb-2 border-b">Basic Details</h4>
                                     <div class="flex justify-between">
-                                        <span class="text-sm text-muted-foreground">Name:</span>
-                                        <span class="text-sm font-medium">{{ pet.name }}</span>
+                                        <span class="text-xs sm:text-sm text-muted-foreground">Name:</span>
+                                        <span class="text-xs sm:text-sm font-medium">{{ pet.name }}</span>
                                     </div>
                                     <div class="flex justify-between">
                                         <span class="text-sm text-muted-foreground">Type:</span>
@@ -525,10 +560,10 @@ const deleteDocument = (docId: number) => {
 
                         <!-- Vaccinations Section -->
                         <div v-if="vaccinations.length > 0">
-                            <h4 class="text-base font-semibold mb-3">Vaccinations</h4>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <h4 class="text-sm sm:text-base font-semibold mb-3">Vaccinations</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                                 <div v-for="vaccination in vaccinations" :key="vaccination.id" 
-                                     class="bg-muted/30 rounded-lg p-4 border">
+                                     class="bg-muted/30 rounded-lg p-3 sm:p-4 border">
                                     <div class="flex justify-between items-start mb-2">
                                         <h5 class="font-medium">{{ vaccination.vaccine_name }}</h5>
                                         <span :class="[
@@ -549,10 +584,10 @@ const deleteDocument = (docId: number) => {
 
                         <!-- Health Conditions -->
                         <div v-if="health_conditions.length > 0">
-                            <h4 class="text-base font-semibold mb-3">Health Conditions</h4>
-                            <div class="space-y-3">
+                            <h4 class="text-sm sm:text-base font-semibold mb-3">Health Conditions</h4>
+                            <div class="space-y-2 sm:space-y-3">
                                 <div v-for="condition in health_conditions" :key="condition.id" 
-                                     class="bg-muted/30 rounded-lg p-4 border">
+                                     class="bg-muted/30 rounded-lg p-3 sm:p-4 border">
                                     <div class="flex justify-between items-start mb-2">
                                         <h5 class="font-medium">{{ condition.condition_name }}</h5>
                                         <span :class="[
@@ -574,71 +609,172 @@ const deleteDocument = (docId: number) => {
 
                     <!-- Visit History Tab -->
                     <div v-if="activeTab === 'history'" class="space-y-4">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-lg font-semibold">Visit History</h3>
-                            <span class="text-sm text-muted-foreground">{{ medical_records.length }} visits</span>
+                        <!-- Header with total count -->
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-lg font-semibold">Medical History Timeline</h3>
+                            <span class="text-sm text-muted-foreground">{{ medical_records.length }} total records</span>
+                        </div>
+
+                        <!-- Pagination Controls -->
+                        <div v-if="medical_records.length > 0" class="flex flex-wrap items-center justify-between gap-3 p-3 bg-muted/30 rounded-lg border">
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm text-muted-foreground">Show:</span>
+                                <select 
+                                    v-model="recordsPerPage" 
+                                    @change="changePerPage(recordsPerPage)"
+                                    class="px-3 py-1 border rounded-md bg-background text-sm"
+                                >
+                                    <option :value="10">10 per page</option>
+                                    <option :value="50">50 per page</option>
+                                    <option :value="100">100 per page</option>
+                                </select>
+                            </div>
+                            
+                            <div class="flex items-center gap-2">
+                                <button 
+                                    @click="changePage(currentPage - 1)"
+                                    :disabled="currentPage === 1"
+                                    class="px-3 py-1 border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                                >
+                                    Previous
+                                </button>
+                                <span class="text-sm text-muted-foreground">
+                                    Page {{ currentPage }} of {{ totalPages }}
+                                </span>
+                                <button 
+                                    @click="changePage(currentPage + 1)"
+                                    :disabled="currentPage === totalPages"
+                                    class="px-3 py-1 border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                                >
+                                    Next
+                                </button>
+                            </div>
                         </div>
                         
-                        <div v-if="medical_records.length > 0" class="space-y-4">
-                            <div v-for="record in medical_records" :key="record.id" 
-                                 class="bg-muted/30 rounded-lg p-4 border hover:bg-muted/50 transition-colors">
-                                <div class="flex justify-between items-start mb-3">
-                                    <div>
-                                        <h4 class="font-semibold text-lg">{{ record.visit_type_display }}</h4>
-                                        <p class="text-sm text-muted-foreground">{{ formatDate(record.visit_date) }}</p>
-                                    </div>
-                                    <span v-if="record.is_emergency" class="px-3 py-1 bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 text-xs rounded-full font-medium">
-                                        Emergency
-                                    </span>
-                                    <span v-else class="px-3 py-1 bg-primary/10 text-primary text-xs rounded-full font-medium">
-                                        Completed
-                                    </span>
-                                </div>
+                        <!-- Timeline -->
+                        <div v-if="medical_records.length > 0" class="relative space-y-4">
+                            <!-- Timeline line -->
+                            <div class="absolute left-6 top-0 bottom-0 w-0.5 bg-border"></div>
+                            
+                            <!-- Records -->
+                            <div v-for="record in paginatedRecords" :key="record.id" class="relative pl-16">
+                                <!-- Timeline dot -->
+                                <div class="absolute left-4 top-6 w-4 h-4 bg-primary rounded-full border-4 border-background ring-2 ring-border"></div>
                                 
-                                <div class="space-y-2 mb-3">
-                                    <p v-if="record.chief_complaint" class="text-sm leading-relaxed">
-                                        <span class="font-medium">Chief Complaint:</span> {{ record.chief_complaint }}
-                                    </p>
-                                    <p v-if="record.diagnosis" class="text-sm leading-relaxed">
-                                        <span class="font-medium">Diagnosis:</span> {{ record.diagnosis }}
-                                    </p>
-                                    <p v-if="record.treatment_provided" class="text-sm leading-relaxed">
-                                        <span class="font-medium">Treatment:</span> {{ record.treatment_provided }}
-                                    </p>
-                                </div>
-                                
-                                <div class="flex items-center gap-4 text-sm text-muted-foreground pt-3 border-t">
-                                    <div v-if="record.veterinarian_name" class="flex items-center gap-2">
-                                        <User class="w-4 h-4" />
-                                        <span>{{ record.veterinarian_name }}</span>
+                                <!-- Record card -->
+                                <div class="bg-card border rounded-lg shadow-sm hover:shadow-md transition-shadow">
+                                    <!-- Card header - always visible -->
+                                    <div 
+                                        @click="toggleRecordExpansion(record.id)"
+                                        class="p-4 cursor-pointer hover:bg-muted/30 transition-colors"
+                                    >
+                                        <div class="flex items-start justify-between mb-2">
+                                            <div class="flex-1">
+                                                <div class="flex items-center gap-2 mb-1">
+                                                    <h4 class="font-semibold text-base">{{ formatDate(record.date) }}</h4>
+                                                    <span class="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">
+                                                        Medical Record #{{ record.id }}
+                                                    </span>
+                                                </div>
+                                                <p class="text-sm text-muted-foreground">
+                                                    {{ record.days_since_visit }} days ago
+                                                </p>
+                                            </div>
+                                            <button class="text-muted-foreground hover:text-foreground">
+                                                <svg 
+                                                    class="w-5 h-5 transition-transform" 
+                                                    :class="{ 'rotate-180': expandedRecords.has(record.id) }"
+                                                    fill="none" 
+                                                    stroke="currentColor" 
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        
+                                        <!-- Preview - Diagnosis snippet -->
+                                        <div class="flex items-start gap-2 mt-2">
+                                            <span class="text-sm font-medium text-muted-foreground">Diagnosis:</span>
+                                            <p class="text-sm line-clamp-1 flex-1">
+                                                {{ record.diagnosis || 'Not specified' }}
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div v-if="record.clinic_name" class="flex items-center gap-2">
-                                        <Building2 class="w-4 h-4" />
-                                        <span>{{ record.clinic_name }}</span>
-                                    </div>
-                                    <div class="flex items-center gap-2">
-                                        <Clock class="w-4 h-4" />
-                                        <span>{{ record.days_since_visit }} days ago</span>
+                                    
+                                    <!-- Expanded content -->
+                                    <div 
+                                        v-if="expandedRecords.has(record.id)"
+                                        class="px-4 pb-4 space-y-4 border-t bg-muted/10"
+                                    >
+                                        <!-- Diagnosis -->
+                                        <div v-if="record.diagnosis" class="pt-4">
+                                            <h5 class="font-medium text-sm mb-2 flex items-center gap-2">
+                                                <span class="text-lg">🩺</span>
+                                                Diagnosis
+                                            </h5>
+                                            <p class="text-sm leading-relaxed bg-background p-3 rounded-md border">{{ record.diagnosis }}</p>
+                                        </div>
+                                        
+                                        <!-- Findings -->
+                                        <div v-if="record.findings">
+                                            <h5 class="font-medium text-sm mb-2 flex items-center gap-2">
+                                                <span class="text-lg">🔍</span>
+                                                Findings
+                                            </h5>
+                                            <p class="text-sm leading-relaxed bg-background p-3 rounded-md border whitespace-pre-wrap">{{ record.findings }}</p>
+                                        </div>
+                                        
+                                        <!-- Treatment Given -->
+                                        <div v-if="record.treatment_given">
+                                            <h5 class="font-medium text-sm mb-2 flex items-center gap-2">
+                                                <span class="text-lg">💊</span>
+                                                Treatment Given
+                                            </h5>
+                                            <p class="text-sm leading-relaxed bg-background p-3 rounded-md border whitespace-pre-wrap">{{ record.treatment_given }}</p>
+                                        </div>
+                                        
+                                        <!-- Prescriptions -->
+                                        <div v-if="record.prescriptions">
+                                            <h5 class="font-medium text-sm mb-2 flex items-center gap-2">
+                                                <span class="text-lg">📋</span>
+                                                Prescriptions
+                                            </h5>
+                                            <p class="text-sm leading-relaxed bg-background p-3 rounded-md border whitespace-pre-wrap">{{ record.prescriptions }}</p>
+                                        </div>
+                                        
+                                        <!-- Metadata footer -->
+                                        <div class="flex items-center gap-4 text-xs text-muted-foreground pt-3 border-t">
+                                            <div v-if="record.veterinarian_name" class="flex items-center gap-2">
+                                                <User class="w-4 h-4" />
+                                                <span>{{ record.veterinarian_name }}</span>
+                                            </div>
+                                            <div class="flex items-center gap-2">
+                                                <Building2 class="w-4 h-4" />
+                                                <span>{{ record.clinic_name }}</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                         
+                        <!-- Empty state -->
                         <div v-else class="text-center py-12">
                             <History class="w-16 h-16 mx-auto text-muted-foreground opacity-50 mb-4" />
-                            <p class="text-muted-foreground">No visit history yet</p>
+                            <p class="text-base text-muted-foreground">No medical history yet</p>
                             <p class="text-sm text-muted-foreground mt-2">Medical records from clinic visits will appear here</p>
                         </div>
                     </div>
 
                     <!-- Documents Tab -->
-                    <div v-if="activeTab === 'documents'" class="space-y-4">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-lg font-semibold">Pet Documents</h3>
+                    <div v-if="activeTab === 'documents'" class="space-y-3 sm:space-y-4">
+                        <div class="flex items-center justify-between mb-3 sm:mb-4">
+                            <h3 class="text-base sm:text-lg font-semibold">Pet Documents</h3>
                             <button 
                                 @click="openDocumentUpload"
                                 :disabled="uploadingDocument"
-                                class="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-medium text-sm transition-all flex items-center gap-2 disabled:opacity-50"
+                                class="px-3 sm:px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-medium text-xs sm:text-sm transition-all flex items-center gap-2 disabled:opacity-50"
                             >
                                 <Upload class="w-4 h-4" />
                                 Upload Document
@@ -662,9 +798,9 @@ const deleteDocument = (docId: number) => {
                         </div>
 
                         <!-- Documents List -->
-                        <div v-if="documents.length > 0" class="space-y-3">
+                        <div v-if="documents.length > 0" class="space-y-2 sm:space-y-3">
                             <div v-for="doc in documents" :key="doc.id"
-                                 class="flex items-center justify-between bg-muted/30 rounded-lg p-4 border hover:bg-muted/50 transition-colors">
+                                 class="flex items-center justify-between bg-muted/30 rounded-lg p-3 sm:p-4 border hover:bg-muted/50 transition-colors">
                                 <div class="flex items-center gap-3 flex-1">
                                     <div class="p-2 bg-primary/10 rounded-lg">
                                         <FileText class="w-6 h-6 text-primary" />
@@ -696,10 +832,10 @@ const deleteDocument = (docId: number) => {
                         </div>
 
                         <!-- Empty State -->
-                        <div v-else class="text-center py-12">
-                            <FileText class="w-16 h-16 mx-auto text-muted-foreground opacity-50 mb-4" />
-                            <p class="text-muted-foreground mb-2">No documents uploaded yet</p>
-                            <p class="text-sm text-muted-foreground mb-4">Upload vaccination certificates, medical reports, and other important documents</p>
+                        <div v-else class="text-center py-8 sm:py-12">
+                            <FileText class="w-12 h-12 sm:w-16 sm:h-16 mx-auto text-muted-foreground opacity-50 mb-3 sm:mb-4" />
+                            <p class="text-sm sm:text-base text-muted-foreground mb-2">No documents uploaded yet</p>
+                            <p class="text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-4">Upload vaccination certificates, medical reports, and other important documents</p>
                             <button 
                                 @click="openDocumentUpload"
                                 class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-medium text-sm transition-all"

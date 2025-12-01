@@ -651,26 +651,26 @@ const getFilterCount = (filterKey: string) => {
     <Head title="Appointments" />
     
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
+        <div class="flex h-full flex-1 flex-col gap-3 sm:gap-4 overflow-x-auto rounded-xl p-3 sm:p-4">
             <!-- Header with Stats -->
-            <div class="rounded-lg border bg-card p-6">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+            <div class="rounded-lg border bg-card p-3 sm:p-4 md:p-6">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-4 sm:mb-6">
                     <div>
-                        <h1 class="text-2xl font-semibold mb-2 flex items-center gap-2">
-                            <CalendarIcon class="h-6 w-6 text-primary" />
+                        <h1 class="text-lg sm:text-xl md:text-2xl font-semibold mb-2 flex items-center gap-2">
+                            <CalendarIcon class="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
                             Appointments
                         </h1>
-                        <p class="text-muted-foreground">
+                        <p class="text-xs sm:text-sm text-muted-foreground">
                             {{ isClinic ? 'Manage and view your clinic appointments' : 'Manage and view your pet appointments' }}
                         </p>
                     </div>
                     
                     <!-- Control Panel -->
-                    <div class="flex flex-col gap-3 mt-4 md:mt-0">
+                    <div class="flex flex-col gap-2 sm:gap-3 mt-3 sm:mt-4 md:mt-0">
                         <!-- View Mode Toggle and Filter -->
                         <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
                             <!-- View Toggle Buttons -->
-                            <div class="flex items-center gap-1 bg-muted rounded-md p-1">
+                            <div class="flex items-center gap-0.5 sm:gap-1 bg-muted rounded-md p-0.5 sm:p-1">
                                 <button 
                                     @click="viewMode = 'calendar'"
                                     class="flex-1 sm:flex-none px-3 py-1.5 text-xs sm:text-sm rounded transition-colors flex items-center justify-center gap-2"

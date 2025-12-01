@@ -371,12 +371,12 @@ const rateAppointment = (appointment: Appointment) => {
     <Head title="Booking History" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-6">
+        <div class="flex h-full flex-1 flex-col gap-4 sm:gap-6 rounded-xl p-3 sm:p-4 md:p-6">
             <!-- Page Header -->
             <div class="flex items-center justify-between">
                 <div>
-                    <h1 class="text-2xl font-semibold text-foreground">Booking History</h1>
-                    <p class="text-muted-foreground">
+                    <h1 class="text-xl sm:text-2xl font-semibold text-foreground">Booking History</h1>
+                    <p class="text-xs sm:text-sm text-muted-foreground">
                         View your past appointments and booking history
                     </p>
                 </div>
@@ -384,23 +384,23 @@ const rateAppointment = (appointment: Appointment) => {
 
             <!-- Filters Section -->
             <div class="rounded-lg border bg-card">
-                <div class="p-4 border-b">
-                    <h3 class="text-sm font-semibold flex items-center gap-2">
+                <div class="p-3 sm:p-4 border-b">
+                    <h3 class="text-xs sm:text-sm font-semibold flex items-center gap-2">
                         <Filter class="h-4 w-4" />
                         Filter History
                     </h3>
                 </div>
-                <div class="p-4">
-                    <div class="grid gap-4 md:grid-cols-3">
+                <div class="p-3 sm:p-4">
+                    <div class="grid gap-3 sm:gap-4 md:grid-cols-3">
                         <!-- Search -->
                         <div class="relative">
-                            <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Search class="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
                             <input 
                                 type="text" 
                                 v-model="searchQuery"
                                 @input="applyFilters"
                                 :placeholder="userType === 'clinic' ? 'Search by pet, owner, appointment #...' : 'Search by pet, clinic, service...'"
-                                class="w-full pl-10 pr-3 py-2 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                class="w-full pl-8 sm:pl-10 pr-2 sm:pr-3 py-2 border border-input bg-background rounded-md text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                             />
                         </div>
 
@@ -409,7 +409,7 @@ const rateAppointment = (appointment: Appointment) => {
                             v-if="userType === 'user'"
                             v-model="selectedPetId" 
                             @change="applyFilters"
-                            class="border border-input bg-background px-3 py-2 text-sm ring-offset-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                            class="border border-input bg-background px-2 sm:px-3 py-2 text-xs sm:text-sm ring-offset-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                         >
                             <option value="">All Pets</option>
                             <option v-for="pet in userPets" :key="pet.id" :value="pet.id">
@@ -425,7 +425,7 @@ const rateAppointment = (appointment: Appointment) => {
                             v-if="userType === 'user'"
                             v-model="selectedDateFilter" 
                             @change="applyFilters"
-                            class="border border-input bg-background px-3 py-2 text-sm ring-offset-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                            class="border border-input bg-background px-2 sm:px-3 py-2 text-xs sm:text-sm ring-offset-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                         >
                             <option value="last_month">Last Month</option>
                             <option value="last_3_months">Last 3 Months</option>
@@ -439,7 +439,7 @@ const rateAppointment = (appointment: Appointment) => {
                             v-if="userType === 'clinic'"
                             v-model="selectedDateRange" 
                             @change="applyFilters"
-                            class="border border-input bg-background px-3 py-2 text-sm ring-offset-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                            class="border border-input bg-background px-2 sm:px-3 py-2 text-xs sm:text-sm ring-offset-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                         >
                             <option value="all">All Time</option>
                             <option value="today">Today</option>
@@ -455,14 +455,14 @@ const rateAppointment = (appointment: Appointment) => {
 
             <!-- History Content -->
             <div class="rounded-lg border bg-card">
-                <div class="p-6">
+                <div class="p-3 sm:p-4 md:p-6">
                     <!-- Category Tabs -->
-                    <div class="mb-6">
-                        <div class="flex items-center gap-2 bg-muted rounded-lg p-1 flex-wrap">
+                    <div class="mb-4 sm:mb-6">
+                        <div class="flex items-center gap-1.5 sm:gap-2 bg-muted rounded-lg p-1 overflow-x-auto scrollbar-hide">
                             <button
                                 @click="setActiveCategory('all')"
                                 :class="[
-                                    'px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
+                                    'px-3 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0',
                                     activeCategory === 'all' 
                                         ? 'bg-background shadow-sm' 
                                         : 'text-muted-foreground hover:text-foreground'
@@ -473,7 +473,7 @@ const rateAppointment = (appointment: Appointment) => {
                             <button
                                 @click="setActiveCategory('completed')"
                                 :class="[
-                                    'px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
+                                    'px-3 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0',
                                     activeCategory === 'completed' 
                                         ? 'bg-background shadow-sm' 
                                         : 'text-muted-foreground hover:text-foreground'
@@ -484,7 +484,7 @@ const rateAppointment = (appointment: Appointment) => {
                             <button
                                 @click="setActiveCategory('cancelled')"
                                 :class="[
-                                    'px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
+                                    'px-3 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0',
                                     activeCategory === 'cancelled' 
                                         ? 'bg-background shadow-sm' 
                                         : 'text-muted-foreground hover:text-foreground'
@@ -495,7 +495,7 @@ const rateAppointment = (appointment: Appointment) => {
                             <button
                                 @click="setActiveCategory('no_show')"
                                 :class="[
-                                    'px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
+                                    'px-3 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0',
                                     activeCategory === 'no_show' 
                                         ? 'bg-background shadow-sm' 
                                         : 'text-muted-foreground hover:text-foreground'
@@ -507,57 +507,57 @@ const rateAppointment = (appointment: Appointment) => {
                     </div>
 
                     <!-- Appointments List -->
-                    <div class="space-y-3">
+                    <div class="space-y-2 sm:space-y-3">
                         <div 
                             v-for="appointment in filteredAppointments" 
                             :key="appointment.id"
                             @click="viewDetails(appointment.id)"
-                            class="border rounded-lg p-4 hover:bg-muted/50 transition-all cursor-pointer group"
+                            class="border rounded-lg p-3 sm:p-4 hover:bg-muted/50 transition-all cursor-pointer group"
                         >
-                            <div class="flex items-start justify-between gap-4">
+                            <div class="flex items-start justify-between gap-2 sm:gap-4">
                                 <div class="flex-1 min-w-0">
-                                    <div class="flex items-center gap-3 mb-3 flex-wrap">
-                                        <h4 class="font-semibold text-foreground truncate">
+                                    <div class="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3 flex-wrap">
+                                        <h4 class="font-semibold text-sm sm:text-base text-foreground truncate">
                                             {{ appointment.pet?.name }} - {{ getAppointmentTypeDisplay(appointment.type) }}
                                         </h4>
                                         <span 
-                                            class="px-2.5 py-1 text-xs font-medium rounded-full whitespace-nowrap"
+                                            class="px-2 sm:px-2.5 py-0.5 sm:py-1 text-[10px] sm:text-xs font-medium rounded-full whitespace-nowrap"
                                             :class="getStatusBadgeClass(appointment.status)"
                                         >
                                             {{ getStatusDisplay(appointment.status).text }}
                                         </span>
                                     </div>
                                     
-                                    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-sm">
+                                    <div class="grid gap-2 sm:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 text-xs sm:text-sm">
                                         <!-- For Clinic View: Show Owner -->
                                         <div v-if="userType === 'clinic' && appointment.owner">
-                                            <p class="text-muted-foreground text-xs mb-1">Pet Owner</p>
-                                            <p class="text-foreground font-medium">{{ appointment.owner.name }}</p>
+                                            <p class="text-muted-foreground text-[10px] sm:text-xs mb-1">Pet Owner</p>
+                                            <p class="text-foreground font-medium text-xs sm:text-sm">{{ appointment.owner.name }}</p>
                                         </div>
                                         <!-- For Pet Owner View: Show Clinic -->
                                         <div v-else>
-                                            <p class="text-muted-foreground text-xs mb-1">Clinic</p>
-                                            <p class="text-foreground font-medium">{{ appointment.clinic?.name }}</p>
+                                            <p class="text-muted-foreground text-[10px] sm:text-xs mb-1">Clinic</p>
+                                            <p class="text-foreground font-medium text-xs sm:text-sm">{{ appointment.clinic?.name }}</p>
                                         </div>
                                         <div>
-                                            <p class="text-muted-foreground text-xs mb-1">Date & Time</p>
-                                            <p class="text-foreground font-medium">
+                                            <p class="text-muted-foreground text-[10px] sm:text-xs mb-1">Date & Time</p>
+                                            <p class="text-foreground font-medium text-xs sm:text-sm">
                                                 {{ formatAppointmentDateTime(appointment.scheduled_at).date }} • 
                                                 {{ formatAppointmentDateTime(appointment.scheduled_at).time }}
                                             </p>
                                         </div>
                                         <div v-if="appointment.actual_cost || appointment.estimated_cost">
-                                            <p class="text-muted-foreground text-xs mb-1">Cost</p>
-                                            <p class="text-foreground font-medium">
+                                            <p class="text-muted-foreground text-[10px] sm:text-xs mb-1">Cost</p>
+                                            <p class="text-foreground font-medium text-xs sm:text-sm">
                                                 {{ formatCurrency(appointment.actual_cost || appointment.estimated_cost) }}
                                             </p>
                                         </div>
                                     </div>
 
                                     <!-- Notes Section -->
-                                    <div v-if="appointment.notes" class="mt-3 p-3 rounded-md" :class="getNotesBgClass(appointment.status)">
-                                        <p class="text-xs font-medium mb-1" :class="getNotesTextClass(appointment.status)">Notes</p>
-                                        <p class="text-sm" :class="getNotesTextClass(appointment.status)">{{ appointment.notes }}</p>
+                                    <div v-if="appointment.notes" class="mt-2 sm:mt-3 p-2 sm:p-3 rounded-md" :class="getNotesBgClass(appointment.status)">
+                                        <p class="text-[10px] sm:text-xs font-medium mb-1" :class="getNotesTextClass(appointment.status)">Notes</p>
+                                        <p class="text-xs sm:text-sm" :class="getNotesTextClass(appointment.status)">{{ appointment.notes }}</p>
                                     </div>
                                 </div>
                                 
@@ -565,9 +565,9 @@ const rateAppointment = (appointment: Appointment) => {
                                 <div v-if="userType === 'user' && appointment.status === 'completed'" class="flex flex-col gap-2 flex-shrink-0">
                                     <button 
                                         @click.stop="rateAppointment(appointment)"
-                                        class="px-3 py-1.5 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-medium rounded-md transition-colors whitespace-nowrap flex items-center gap-1"
+                                        class="px-2 sm:px-3 py-1 sm:py-1.5 bg-primary hover:bg-primary/90 text-primary-foreground text-[10px] sm:text-xs font-medium rounded-md transition-colors whitespace-nowrap flex items-center gap-1"
                                     >
-                                        <Star class="h-3 w-3" />
+                                        <Star class="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                                         Rate
                                     </button>
                                 </div>
@@ -577,26 +577,26 @@ const rateAppointment = (appointment: Appointment) => {
                         <!-- Empty State -->
                         <div 
                             v-if="filteredAppointments.length === 0"
-                            class="text-center py-12"
+                            class="text-center py-8 sm:py-12"
                         >
-                            <div class="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-                                <svg class="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div class="mx-auto w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-muted flex items-center justify-center mb-3 sm:mb-4">
+                                <svg class="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                                 </svg>
                             </div>
-                            <p class="text-muted-foreground font-medium mb-1">
+                            <p class="text-sm sm:text-base text-muted-foreground font-medium mb-1">
                                 {{ categoryCounts.all === 0 ? 'No appointment history found' : 'No appointments match your filters' }}
                             </p>
-                            <p class="text-sm text-muted-foreground">
+                            <p class="text-xs sm:text-sm text-muted-foreground">
                                 {{ categoryCounts.all === 0 ? 'Your booking history will appear here' : 'Try adjusting your search or filters' }}
                             </p>
                         </div>
                     </div>
                     
                     <!-- Pagination -->
-                    <div v-if="categoryCounts.all > 0" class="mt-6 pt-6 border-t">
-                        <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
-                            <p class="text-sm text-muted-foreground">
+                    <div v-if="categoryCounts.all > 0" class="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t">
+                        <div class="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
+                            <p class="text-xs sm:text-sm text-muted-foreground">
                                 Showing <span class="font-medium text-foreground">{{ filteredAppointments.length > 0 ? 1 : 0 }}</span> to 
                                 <span class="font-medium text-foreground">{{ filteredAppointments.length }}</span> of 
                                 <span class="font-medium text-foreground">{{ categoryCounts.all }}</span> appointments
@@ -605,18 +605,18 @@ const rateAppointment = (appointment: Appointment) => {
                                 <button 
                                     v-if="appointments.current_page > 1"
                                     @click="previousPage"
-                                    class="flex items-center gap-1 px-3 py-2 border rounded-md hover:bg-muted transition-colors text-sm"
+                                    class="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 sm:py-2 border rounded-md hover:bg-muted transition-colors text-xs sm:text-sm"
                                 >
-                                    <ChevronLeft class="h-4 w-4" />
+                                    <ChevronLeft class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                                     Previous
                                 </button>
                                 <button 
                                     v-if="appointments.current_page < appointments.last_page"
                                     @click="nextPage"
-                                    class="flex items-center gap-1 px-3 py-2 border rounded-md hover:bg-muted transition-colors text-sm"
+                                    class="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 sm:py-2 border rounded-md hover:bg-muted transition-colors text-xs sm:text-sm"
                                 >
                                     Next
-                                    <ChevronRight class="h-4 w-4" />
+                                    <ChevronRight class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                                 </button>
                             </div>
                         </div>

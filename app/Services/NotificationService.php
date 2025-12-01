@@ -98,10 +98,17 @@ class NotificationService
     /**
      * Send notification when appointment is rescheduled.
      */
-    public function appointmentRescheduled(Appointment $appointment, array $oldData): void
+    public function appointmentRescheduled(Appointment $appointment, array $oldData = null): void
     {
-        $oldDate = Carbon::parse($oldData['scheduled_at'])->format('M d, Y');
-        $oldTime = Carbon::parse($oldData['scheduled_at'])->format('h:i A');
+        // Handle case where oldData is not provided (clinic reschedule from new method)
+        if (!$oldData) {
+            $oldDate = 'the original date';
+            $oldTime = '';
+        } else {
+            $oldDate = Carbon::parse($oldData['scheduled_at'])->format('M d, Y');
+            $oldTime = Carbon::parse($oldData['scheduled_at'])->format('h:i A');
+        }
+        
         $newDate = Carbon::parse($appointment->scheduled_at)->format('M d, Y');
         $newTime = Carbon::parse($appointment->scheduled_at)->format('h:i A');
 
@@ -110,34 +117,134 @@ class NotificationService
             'user_id' => $appointment->owner_id,
             'type' => 'appointment_rescheduled',
             'title' => 'Appointment Rescheduled',
-            'message' => "Your appointment at {$appointment->clinic->name} has been rescheduled from {$oldDate} at {$oldTime} to {$newDate} at {$newTime}",
+            'message' => "Your appointment at {$appointment->clinic->clinic_name} has been rescheduled" . 
+                         ($oldData ? " from {$oldDate} at {$oldTime}" : "") . 
+                         " to {$newDate} at {$newTime}" .
+                         ($appointment->reschedule_reason ? ". Reason: {$appointment->reschedule_reason}" : ""),
             'priority' => 'high',
             'data' => [
                 'appointment_id' => $appointment->id,
                 'clinic_id' => $appointment->clinic_id,
-                'old_scheduled_at' => $oldData['scheduled_at'],
+                'old_scheduled_at' => $oldData['scheduled_at'] ?? null,
                 'new_scheduled_at' => $appointment->scheduled_at,
+                'reason' => $appointment->reschedule_reason,
             ],
         ]);
 
         // Notify the clinic owner
-        // Fix: appointment.clinic_id is already clinic_registrations.id
         $clinicRegistration = \App\Models\ClinicRegistration::find($appointment->clinic_id);
         if ($clinicRegistration && $clinicRegistration->user) {
             Notification::create([
                 'user_id' => $clinicRegistration->user_id,
                 'type' => 'appointment_rescheduled',
                 'title' => 'Appointment Rescheduled',
-                'message' => "Appointment has been rescheduled from {$oldDate} at {$oldTime} to {$newDate} at {$newTime}",
+                'message' => "Appointment has been rescheduled" . 
+                             ($oldData ? " from {$oldDate} at {$oldTime}" : "") . 
+                             " to {$newDate} at {$newTime}",
                 'priority' => 'normal',
                 'data' => [
                     'appointment_id' => $appointment->id,
                     'user_id' => $appointment->owner_id,
-                    'old_scheduled_at' => $oldData['scheduled_at'],
+                    'old_scheduled_at' => $oldData['scheduled_at'] ?? null,
                     'new_scheduled_at' => $appointment->scheduled_at,
                 ],
             ]);
         }
+    }
+
+    /**
+     * Send notification when follow-up appointment is created.
+     */
+    public function followUpAppointmentCreated(Appointment $appointment): void
+    {
+        $scheduledDate = Carbon::parse($appointment->scheduled_at)->format('M d, Y');
+        $scheduledTime = Carbon::parse($appointment->scheduled_at)->format('h:i A');
+
+        // Notify the user (pet owner)
+        Notification::create([
+            'user_id' => $appointment->owner_id,
+            'type' => 'follow_up_appointment_created',
+            'title' => 'Follow-Up Appointment Scheduled',
+            'message' => "A follow-up appointment has been scheduled at {$appointment->clinic->clinic_name} for {$scheduledDate} at {$scheduledTime}",
+            'priority' => 'normal',
+            'data' => [
+                'appointment_id' => $appointment->id,
+                'parent_appointment_id' => $appointment->parent_appointment_id,
+                'clinic_id' => $appointment->clinic_id,
+                'scheduled_at' => $appointment->scheduled_at,
+            ],
+        ]);
+
+        // Notify the clinic owner
+        $clinicRegistration = \App\Models\ClinicRegistration::find($appointment->clinic_id);
+        if ($clinicRegistration && $clinicRegistration->user) {
+            Notification::create([
+                'user_id' => $clinicRegistration->user_id,
+                'type' => 'follow_up_appointment_created',
+                'title' => 'Follow-Up Appointment Created',
+                'message' => "Follow-up appointment created for {$scheduledDate} at {$scheduledTime}" . 
+                             ($appointment->service ? " - {$appointment->service->service_name}" : ""),
+                'priority' => 'normal',
+                'data' => [
+                    'appointment_id' => $appointment->id,
+                    'parent_appointment_id' => $appointment->parent_appointment_id,
+                    'user_id' => $appointment->owner_id,
+                    'pet_id' => $appointment->pet_id,
+                    'service_id' => $appointment->service_id,
+                    'scheduled_at' => $appointment->scheduled_at,
+                ],
+            ]);
+        }
+    }
+
+    /**
+     * Send notification when follow-up appointment is rescheduled.
+     */
+    public function followUpAppointmentRescheduled(Appointment $appointment): void
+    {
+        $newDate = Carbon::parse($appointment->scheduled_at)->format('M d, Y');
+        $newTime = Carbon::parse($appointment->scheduled_at)->format('h:i A');
+
+        // Notify the user (pet owner)
+        Notification::create([
+            'user_id' => $appointment->owner_id,
+            'type' => 'follow_up_appointment_rescheduled',
+            'title' => 'Follow-Up Appointment Rescheduled',
+            'message' => "Your follow-up appointment at {$appointment->clinic->clinic_name} has been rescheduled to {$newDate} at {$newTime}" .
+                         ($appointment->reschedule_reason ? ". Reason: {$appointment->reschedule_reason}" : ""),
+            'priority' => 'high',
+            'data' => [
+                'appointment_id' => $appointment->id,
+                'parent_appointment_id' => $appointment->parent_appointment_id,
+                'clinic_id' => $appointment->clinic_id,
+                'new_scheduled_at' => $appointment->scheduled_at,
+                'reason' => $appointment->reschedule_reason,
+            ],
+        ]);
+    }
+
+    /**
+     * Send reminder notification for follow-up appointment (24 hours before).
+     */
+    public function followUpAppointmentReminder(Appointment $appointment): void
+    {
+        $date = Carbon::parse($appointment->scheduled_at)->format('M d, Y');
+        $time = Carbon::parse($appointment->scheduled_at)->format('h:i A');
+
+        Notification::create([
+            'user_id' => $appointment->owner_id,
+            'type' => 'follow_up_appointment_reminder',
+            'title' => 'Follow-Up Appointment Reminder',
+            'message' => "Reminder: You have a follow-up appointment at {$appointment->clinic->clinic_name} tomorrow ({$date}) at {$time}",
+            'priority' => 'normal',
+            'data' => [
+                'appointment_id' => $appointment->id,
+                'parent_appointment_id' => $appointment->parent_appointment_id,
+                'clinic_id' => $appointment->clinic_id,
+                'scheduled_at' => $appointment->scheduled_at,
+                'reminder_type' => '24_hours',
+            ],
+        ]);
     }
 
     /**

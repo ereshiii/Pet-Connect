@@ -3,11 +3,13 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import ProgressIndicator from '@/components/ProgressIndicator.vue';
 import PinAddressLocation from './pinAddressLocation.vue';
 import TimePicker from '@/components/ui/time-picker/TimePicker.vue';
+import ErrorModal from '@/components/ErrorModal.vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
 import { clinicDashboard } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 import { ref, onMounted, computed, watch, onBeforeUnmount } from 'vue';
 import { philippineAddressData } from '@/utils/philippineAddress';
+import { useMobileKeyboard } from '@/composables/useMobileKeyboard';
 import axios from 'axios';
 
 interface Props {
@@ -16,6 +18,19 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+
+// Mobile keyboard handling
+const { handleInputFocus } = useMobileKeyboard();
+
+// Error modal state
+const showErrorModal = ref(false);
+const showSuccessModal = ref(false);
+const errorModalData = ref({
+    title: 'Registration Error',
+    message: '',
+    validationErrors: {} as Record<string, string | string[]>,
+    suggestions: [] as string[]
+});
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -200,6 +215,12 @@ const totalSteps = 6;
 // Refs for veterinarian specialization inputs
 const vetSpecInputs = ref<Record<number, HTMLInputElement>>({});
 
+// Ref for quick add services modal
+const showQuickAddModal = ref(false);
+
+// Ref for pin location modal
+const showPinLocationModal = ref(false);
+
 const stepLabels = [
     'Clinic Info',
     'Address',
@@ -334,7 +355,7 @@ const getDuplicateServiceWarning = (serviceName: string, currentIndex: number) =
     if (!serviceName || serviceName.trim() === '') return '';
     
     const duplicates = (form.services || []).filter((service, index) => 
-        service.name.toLowerCase().trim() === serviceName.toLowerCase().trim() && index !== currentIndex
+        service.name && service.name.toLowerCase().trim() === serviceName.toLowerCase().trim() && index !== currentIndex
     );
     
     if (duplicates.length > 0) {
@@ -456,10 +477,62 @@ const submit = () => {
     // Submit using router.post with raw FormData
     router.post('/clinic/register', formData, {
         onSuccess: () => {
-            router.visit('/clinic/registration-prompt');
+            showSuccessModal.value = true;
         },
         onError: (errors) => {
             console.error('Registration submission errors:', errors);
+            
+            // Count total errors
+            const errorCount = Object.keys(errors).length;
+            
+            // Navigate to first step with errors
+            const errorStepMap: { [key: string]: number } = {
+                'clinic_name': 1,
+                'clinic_description': 1,
+                'website': 1,
+                'email': 1,
+                'phone': 1,
+                'region': 2,
+                'province': 2,
+                'city': 2,
+                'barangay': 2,
+                'street_address': 2,
+                'postal_code': 2,
+                'operating_hours': 3,
+                'services': 4,
+                'veterinarians': 5,
+                'certification_proofs': 6
+            };
+            
+            // Find the earliest step with errors
+            let earliestStep = 6;
+            for (const errorKey in errors) {
+                const baseKey = errorKey.split('.')[0];
+                const stepNumber = errorStepMap[baseKey];
+                if (stepNumber && stepNumber < earliestStep) {
+                    earliestStep = stepNumber;
+                }
+            }
+            
+            // Navigate to the step with errors
+            if (earliestStep < currentStep.value) {
+                currentStep.value = earliestStep;
+            }
+            
+            // Prepare modal data
+            errorModalData.value = {
+                title: 'Registration Validation Failed',
+                message: `We found ${errorCount} validation error${errorCount > 1 ? 's' : ''} in your registration form. Please review and correct the highlighted fields below.`,
+                validationErrors: errors as Record<string, string | string[]>,
+                suggestions: [
+                    earliestStep < currentStep.value ? `Navigated to Step ${earliestStep} where errors were found` : 'Please review all required fields',
+                    'Make sure all mandatory information is filled in correctly',
+                    'Check that your email and phone number are in the correct format'
+                ]
+            };
+            
+            // Show error modal
+            showErrorModal.value = true;
         }
     });
 };
@@ -475,31 +548,78 @@ const handleCertificationProofUpload = (event: Event) => {
 const cancel = () => {
     router.visit('/clinic/registration-prompt');
 };
+
+// Copy Monday hours to all days
+const copyToAllDays = () => {
+    const mondayHours = form.operating_hours.monday;
+    if (mondayHours.open && mondayHours.close) {
+        const days = ['tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+        days.forEach(day => {
+            form.operating_hours[day as keyof typeof form.operating_hours] = {
+                open: mondayHours.open,
+                close: mondayHours.close
+            };
+        });
+    }
+};
+
+// Copy Monday hours to weekends only
+const copyToWeekends = () => {
+    const mondayHours = form.operating_hours.monday;
+    if (mondayHours.open && mondayHours.close) {
+        form.operating_hours.saturday = {
+            open: mondayHours.open,
+            close: mondayHours.close
+        };
+        form.operating_hours.sunday = {
+            open: mondayHours.open,
+            close: mondayHours.close
+        };
+    }
+};
+
+// Modal handlers
+const closeErrorModal = () => {
+    showErrorModal.value = false;
+    errorModalData.value = {
+        title: 'Registration Error',
+        message: '',
+        validationErrors: {},
+        suggestions: []
+    };
+};
+
+const closeSuccessModal = () => {
+    showSuccessModal.value = false;
+    router.visit('/clinic/registration-prompt');
+};
 </script>
 
 <template>
-    <Head title="Register New Clinic" />
+    <Head title="Register New Clinic">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    </Head>
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-6">
+        <div class="flex h-full flex-1 flex-col gap-4 sm:gap-6 overflow-x-auto rounded-xl p-3 sm:p-4 md:p-6">
             <!-- Header -->
-            <div class="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900 rounded-xl border border-blue-200/50 dark:border-blue-900/30 shadow-sm p-8">
-                <div class="flex items-center justify-between mb-6">
-                    <div class="flex items-center gap-3">
-                        <div class="p-3 bg-blue-600 dark:bg-blue-500 rounded-xl shadow-lg">
-                            <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div class="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-black dark:to-gray-900 rounded-xl border border-blue-200/50 dark:border-gray-800 shadow-sm p-4 sm:p-6 md:p-8">
+                <div class="flex items-center justify-between mb-4 sm:mb-6">
+                    <div class="flex items-center gap-2 sm:gap-3">
+                        <div class="p-2 sm:p-3 bg-gradient-to-br from-blue-600 to-purple-600 dark:from-blue-500 dark:to-purple-500 rounded-xl shadow-lg">
+                            <svg class="h-5 w-5 sm:h-6 sm:w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                             </svg>
                         </div>
-                        <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">Register New Clinic</h1>
+                        <h1 class="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">Register New Clinic</h1>
                     </div>
                     <!-- Auto-save indicator -->
-                    <div v-if="isAutoSaving" class="flex items-center gap-2 px-4 py-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                        <svg class="animate-spin h-4 w-4 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24">
+                    <div v-if="isAutoSaving" class="flex items-center gap-2 px-4 py-2 bg-blue-100 dark:bg-gray-900/50 rounded-lg">
+                        <svg class="animate-spin h-4 w-4 bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        <span class="text-sm text-blue-700 dark:text-blue-300 font-medium">Saving...</span>
+                        <span class="text-sm bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent font-medium">Saving...</span>
                     </div>
                 </div>
 
@@ -512,28 +632,28 @@ const cancel = () => {
             </div>
 
             <!-- Form Content -->
-            <div class="bg-white dark:bg-gray-800 rounded-xl border border-sidebar-border/70 dark:border-sidebar-border p-6">
-                <form @submit.prevent="submit">
+            <div class="bg-white dark:bg-black rounded-xl border border-sidebar-border/70 dark:border-gray-800 p-4 sm:p-5 md:p-6 pb-20 sm:pb-6">
+                <form @submit.prevent="submit" @focusin="handleInputFocus">
                     <!-- Step 1: Clinic Information -->
-                    <div v-if="currentStep === 1" class="space-y-8">
-                        <div class="flex items-center gap-3 mb-6">
-                            <div class="p-2.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                                <svg class="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div v-if="currentStep === 1" class="space-y-6 md:space-y-8">
+                        <div class="flex items-start sm:items-center gap-2 sm:gap-3 mb-4 md:mb-6">
+                            <div class="p-2 sm:p-2.5 bg-gradient-to-br from-blue-500 to-purple-500 dark:from-blue-600 dark:to-purple-600 rounded-lg flex-shrink-0">
+                                <svg class="h-5 w-5 sm:h-6 sm:w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                             </div>
                             <div>
-                                <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Clinic Information</h2>
-                                <p class="text-sm text-gray-600 dark:text-gray-400">Basic information about your veterinary clinic</p>
+                                <h2 class="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">Clinic Information</h2>
+                                <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Basic information about your veterinary clinic</p>
                             </div>
                         </div>
                         
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <!-- Clinic Name -->
                             <div class="group">
-                                <label for="clinic_name" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2.5">
-                                    <span class="flex items-center gap-2">
-                                        <svg class="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <label for="clinic_name" class="block text-xs sm:text-sm font-semibold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent mb-2 sm:mb-2.5">
+                                    <span class="flex items-center gap-1.5 sm:gap-2">
+                                        <svg class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                                         </svg>
                                         Clinic Name
@@ -545,7 +665,7 @@ const cancel = () => {
                                     type="text" 
                                     id="clinic_name" 
                                     required
-                                    class="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 transition-all duration-200 group-hover:border-gray-300 dark:group-hover:border-gray-500"
+                                    class="w-full px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base border-2 border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 dark:bg-gray-900 dark:text-gray-100 transition-all duration-200 group-hover:border-gray-300 dark:group-hover:border-gray-500"
                                     placeholder="Enter clinic name"
                                 />
                                 <div v-if="form.errors.clinic_name" class="mt-2 text-sm text-red-600 flex items-center gap-1.5">
@@ -572,7 +692,7 @@ const cancel = () => {
                                     type="email" 
                                     id="email" 
                                     required
-                                    class="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 transition-all duration-200 group-hover:border-gray-300 dark:group-hover:border-gray-500"
+                                    class="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 dark:bg-gray-900 dark:text-gray-100 transition-all duration-200 group-hover:border-gray-300 dark:group-hover:border-gray-500"
                                     placeholder="clinic@example.com"
                                 />
                                 <div v-if="form.errors.email" class="mt-2 text-sm text-red-600 flex items-center gap-1.5">
@@ -599,7 +719,7 @@ const cancel = () => {
                                     type="tel" 
                                     id="phone" 
                                     required
-                                    class="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 transition-all duration-200 group-hover:border-gray-300 dark:group-hover:border-gray-500"
+                                    class="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 dark:bg-gray-900 dark:text-gray-100 transition-all duration-200 group-hover:border-gray-300 dark:group-hover:border-gray-500"
                                     placeholder="(02) 123-4567"
                                 />
                                 <div v-if="form.errors.phone" class="mt-2 text-sm text-red-600 flex items-center gap-1.5">
@@ -625,7 +745,7 @@ const cancel = () => {
                                     v-model="form.website" 
                                     type="url" 
                                     id="website"
-                                    class="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 transition-all duration-200 group-hover:border-gray-300 dark:group-hover:border-gray-500"
+                                    class="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 dark:bg-gray-900 dark:text-gray-100 transition-all duration-200 group-hover:border-gray-300 dark:group-hover:border-gray-500"
                                     placeholder="https://www.example.com"
                                 />
                                 <div v-if="form.errors.website" class="mt-2 text-sm text-red-600 flex items-center gap-1.5">
@@ -651,7 +771,7 @@ const cancel = () => {
                                 v-model="form.clinic_description" 
                                 id="clinic_description"
                                 rows="5"
-                                class="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 transition-all duration-200 resize-none group-hover:border-gray-300 dark:group-hover:border-gray-500"
+                                class="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 dark:bg-gray-900 dark:text-gray-100 transition-all duration-200 resize-none group-hover:border-gray-300 dark:group-hover:border-gray-500"
                                 placeholder="Describe your clinic, mission, and what makes you unique..."
                             ></textarea>
                             <div v-if="form.errors.clinic_description" class="mt-2 text-sm text-red-600 flex items-center gap-1.5">
@@ -715,7 +835,7 @@ const cancel = () => {
                                     @change="handleRegionChange"
                                     id="region" 
                                     required
-                                    class="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 transition-all duration-200 group-hover:border-gray-300 dark:group-hover:border-gray-500 cursor-pointer"
+                                    class="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 dark:bg-gray-900 dark:text-gray-100 transition-all duration-200 group-hover:border-gray-300 dark:group-hover:border-gray-500 cursor-pointer"
                                 >
                                     <option value="">Select Region</option>
                                     <option v-for="region in philippineAddressData.regions" :key="region" :value="region">{{ region }}</option>
@@ -745,7 +865,7 @@ const cancel = () => {
                                     id="province" 
                                     required
                                     :disabled="!form.region"
-                                    class="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-gray-800 transition-all duration-200 group-hover:border-gray-300 dark:group-hover:border-gray-500 cursor-pointer"
+                                    class="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 dark:bg-gray-900 dark:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-gray-800 transition-all duration-200 group-hover:border-gray-300 dark:group-hover:border-gray-500 cursor-pointer"
                                 >
                                     <option value="">{{ form.region ? 'Select Province' : 'Select Region first' }}</option>
                                     <option v-for="province in availableProvinces" :key="province" :value="province">{{ province }}</option>
@@ -775,7 +895,7 @@ const cancel = () => {
                                     id="city" 
                                     required
                                     :disabled="!form.province"
-                                    class="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-gray-800 transition-all duration-200 group-hover:border-gray-300 dark:group-hover:border-gray-500 cursor-pointer"
+                                    class="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 dark:bg-gray-900 dark:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-gray-800 transition-all duration-200 group-hover:border-gray-300 dark:group-hover:border-gray-500 cursor-pointer"
                                 >
                                     <option value="">{{ form.province ? 'Select City/Municipality' : 'Select Province first' }}</option>
                                     <option v-for="city in availableCities" :key="city" :value="city">{{ city }}</option>
@@ -804,7 +924,7 @@ const cancel = () => {
                                     id="barangay" 
                                     required
                                     :disabled="!form.city"
-                                    class="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-gray-800 transition-all duration-200 group-hover:border-gray-300 dark:group-hover:border-gray-500 cursor-pointer"
+                                    class="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 dark:bg-gray-900 dark:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-gray-800 transition-all duration-200 group-hover:border-gray-300 dark:group-hover:border-gray-500 cursor-pointer"
                                 >
                                     <option value="">{{ form.city ? 'Select Barangay' : 'Select City first' }}</option>
                                     <option v-for="barangay in availableBarangays" :key="barangay" :value="barangay">{{ barangay }}</option>
@@ -833,7 +953,7 @@ const cancel = () => {
                                     type="text" 
                                     id="postal_code" 
                                     required
-                                    class="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 transition-all duration-200 group-hover:border-gray-300 dark:group-hover:border-gray-500"
+                                    class="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 dark:bg-gray-900 dark:text-gray-100 transition-all duration-200 group-hover:border-gray-300 dark:group-hover:border-gray-500"
                                     placeholder="e.g. 1234"
                                 />
                                 <div v-if="form.errors.postal_code" class="mt-2 text-sm text-red-600 flex items-center gap-1.5">
@@ -861,7 +981,7 @@ const cancel = () => {
                                 type="text" 
                                 id="street_address" 
                                 required
-                                class="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 transition-all duration-200 group-hover:border-gray-300 dark:group-hover:border-gray-500"
+                                class="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 dark:bg-gray-900 dark:text-gray-100 transition-all duration-200 group-hover:border-gray-300 dark:group-hover:border-gray-500"
                                 placeholder="Building number, street name, subdivision, etc."
                             />
                             <div v-if="form.errors.street_address" class="mt-2 text-sm text-red-600 flex items-center gap-1.5">
@@ -872,16 +992,64 @@ const cancel = () => {
                             </div>
                         </div>
 
-                        <!-- Pin Location on Map -->
-                        <div>
-                            <PinAddressLocation
-                                :latitude="form.latitude"
-                                :longitude="form.longitude"
-                                :address="`${form.street_address}, ${form.barangay}, ${form.city}, ${form.province}`"
-                                @location-update="handleLocationUpdate"
-                            />
-                            <div v-if="form.errors.latitude || form.errors.longitude" class="mt-1 text-sm text-red-600">
-                                Please pin your clinic location on the map above.
+                        <!-- Pin Location Button -->
+                        <div class="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-black rounded-xl p-5 shadow-sm">
+                            <div class="flex items-start justify-between mb-4">
+                                <div class="flex items-start gap-3">
+                                    <div class="p-2 bg-gradient-to-br from-blue-600 to-purple-600 dark:from-blue-500 dark:to-purple-500 rounded-lg flex-shrink-0">
+                                        <svg class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent mb-1">
+                                            Pin Clinic Location
+                                        </h3>
+                                        <p class="text-sm text-gray-600 dark:text-gray-400">
+                                            Mark your clinic's exact location on the map for better visibility
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Current Location Display -->
+                            <div v-if="form.latitude && form.longitude" class="mb-4 p-3 bg-green-50 dark:bg-gray-800 border border-green-200 dark:border-green-800 rounded-lg">
+                                <div class="flex items-start">
+                                    <svg class="h-5 w-5 text-green-500 mt-0.5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    <div>
+                                        <p class="text-sm font-medium text-green-800 dark:text-green-300">Location Pinned</p>
+                                        <p class="text-xs text-green-600 dark:text-green-400 font-mono mt-1">
+                                            {{ form.latitude.toFixed(6) }}, {{ form.longitude.toFixed(6) }}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div v-else class="mb-4 p-3 bg-yellow-50 dark:bg-gray-800 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                                <div class="flex items-start">
+                                    <svg class="h-5 w-5 text-yellow-500 mt-0.5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                                    </svg>
+                                    <p class="text-sm text-yellow-800 dark:text-yellow-300">No location pinned yet</p>
+                                </div>
+                            </div>
+                            
+                            <button
+                                type="button"
+                                @click="showPinLocationModal = true"
+                                class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 dark:from-blue-500 dark:to-purple-500 dark:hover:from-blue-600 dark:hover:to-purple-600 text-white py-3 px-4 rounded-lg font-semibold transition-all duration-200 shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                            >
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                </svg>
+                                {{ form.latitude && form.longitude ? 'Update Location on Map' : 'Pin Location on Map' }}
+                            </button>
+                            
+                            <div v-if="form.errors.latitude || form.errors.longitude" class="mt-3 text-sm text-red-600 dark:text-red-400">
+                                Please pin your clinic location on the map.
                             </div>
                         </div>
                     </div>
@@ -903,17 +1071,17 @@ const cancel = () => {
                         </div>
 
                         <!-- Helpful Note -->
-                        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-xl p-5 shadow-sm">
+                        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-black border-2 border-blue-200 dark:border-gray-700 rounded-xl p-5 shadow-sm">
                             <div class="flex items-start gap-4">
                                 <div class="flex-shrink-0 mt-0.5">
-                                    <div class="p-2 bg-blue-100 dark:bg-blue-800/50 rounded-lg">
-                                        <svg class="h-5 w-5 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <div class="p-2 bg-gradient-to-br from-blue-500 to-purple-500 dark:from-blue-600 dark:to-purple-600 rounded-lg">
+                                        <svg class="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
                                             <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
                                         </svg>
                                     </div>
                                 </div>
                                 <div class="flex-1">
-                                    <h4 class="text-base font-bold text-blue-900 dark:text-blue-100 mb-2">💡 Speed up approval by adding hours</h4>
+                                    <h4 class="text-base font-bold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent mb-2">💡 Speed up approval by adding hours</h4>
                                     <p class="text-sm text-blue-800 dark:text-blue-200 leading-relaxed">
                                         Providing your operating hours helps us verify your clinic faster and allows pet owners to book appointments immediately after approval. You can always update these later in your clinic settings.
                                     </p>
@@ -923,14 +1091,38 @@ const cancel = () => {
                         
                         <!-- Daily Hours -->
                         <div class="space-y-5">
-                            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                                <svg class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
-                                Weekly Schedule
-                            </h3>
+                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2">
+                                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                    <svg class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    Weekly Schedule
+                                </h3>
+                                <div class="flex flex-wrap gap-2">
+                                    <button
+                                        @click="copyToAllDays"
+                                        type="button"
+                                        class="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-900/50 font-medium transition-colors duration-200"
+                                    >
+                                        <svg class="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                        </svg>
+                                        Copy to All Days
+                                    </button>
+                                    <button
+                                        @click="copyToWeekends"
+                                        type="button"
+                                        class="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/50 font-medium transition-colors duration-200"
+                                    >
+                                        <svg class="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                        </svg>
+                                        Copy to Weekends
+                                    </button>
+                                </div>
+                            </div>
                             <!-- Monday -->
-                            <div class="bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-all duration-200">
+                            <div class="bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-all duration-200">
                                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
                                     <label class="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                                         <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
@@ -951,7 +1143,7 @@ const cancel = () => {
                             </div>
 
                             <!-- Tuesday -->
-                            <div class="bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-all duration-200">
+                            <div class="bg-white dark:bg-black border-2 border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-all duration-200">
                                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
                                     <label class="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                                         <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
@@ -972,7 +1164,7 @@ const cancel = () => {
                             </div>
 
                             <!-- Wednesday -->
-                            <div class="bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-all duration-200">
+                            <div class="bg-white dark:bg-black border-2 border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-all duration-200">
                                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
                                     <label class="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                                         <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
@@ -993,7 +1185,7 @@ const cancel = () => {
                             </div>
 
                             <!-- Thursday -->
-                            <div class="bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-all duration-200">
+                            <div class="bg-white dark:bg-black border-2 border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-all duration-200">
                                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
                                     <label class="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                                         <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
@@ -1014,7 +1206,7 @@ const cancel = () => {
                             </div>
 
                             <!-- Friday -->
-                            <div class="bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-all duration-200">
+                            <div class="bg-white dark:bg-black border-2 border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-all duration-200">
                                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
                                     <label class="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                                         <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
@@ -1035,7 +1227,7 @@ const cancel = () => {
                             </div>
 
                             <!-- Saturday -->
-                            <div class="bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-all duration-200">
+                            <div class="bg-white dark:bg-black border-2 border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-all duration-200">
                                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
                                     <label class="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                                         <div class="w-2 h-2 bg-green-500 rounded-full"></div>
@@ -1056,7 +1248,7 @@ const cancel = () => {
                             </div>
 
                             <!-- Sunday -->
-                            <div class="bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-all duration-200">
+                            <div class="bg-white dark:bg-black border-2 border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-all duration-200">
                                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
                                     <label class="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                                         <div class="w-2 h-2 bg-orange-500 rounded-full"></div>
@@ -1113,31 +1305,89 @@ const cancel = () => {
                             </div>
                         </div>
                         
-                        <!-- Quick Add Common Services -->
-                        <div class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800/50 dark:to-gray-900/50 rounded-xl border-2 border-gray-200 dark:border-gray-700 p-6 shadow-sm">
-                            <div class="flex items-center gap-3 mb-4">
-                                <svg class="h-6 w-6 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                                </svg>
-                                <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100">Quick Add Common Services</h3>
-                            </div>
-                            <p class="text-sm text-gray-600 dark:text-gray-400 mb-5">Click to add commonly offered veterinary services. You can edit details and add pricing later.</p>
-                            
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                <button
-                                    v-for="service in commonServices"
-                                    :key="service.name"
-                                    @click="addCommonService(service)"
-                                    type="button"
-                                    :disabled="form.services.some(s => s.name === service.name)"
-                                    class="group text-left p-4 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:bg-white dark:hover:bg-gray-700 hover:border-emerald-500 dark:hover:border-emerald-500 hover:shadow-lg transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-gray-200 dark:disabled:hover:border-gray-700 disabled:hover:shadow-none bg-white dark:bg-gray-800/50"
-                                >
-                                    <div class="font-semibold text-sm text-gray-900 dark:text-gray-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 mb-1">{{ service.name }}</div>
-                                    <div class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
-                                        <span class="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded-md">{{ serviceCategories[service.category] }}</span>
-                                        <span>• {{ service.duration }} min</span>
+                        <!-- Quick Add Common Services Button -->
+                        <div class="bg-gradient-to-br from-emerald-50 to-green-50 dark:from-gray-900 dark:to-black rounded-xl border-2 border-emerald-200 dark:border-gray-700 p-5 shadow-sm">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <svg class="h-6 w-6 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                    </svg>
+                                    <div>
+                                        <h3 class="text-base sm:text-lg font-bold text-gray-900 dark:text-gray-100">Quick Add Common Services</h3>
+                                        <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Add commonly offered veterinary services</p>
                                     </div>
+                                </div>
+                                <button
+                                    @click="showQuickAddModal = true"
+                                    type="button"
+                                    class="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-lg hover:from-emerald-700 hover:to-green-700 font-semibold text-sm transition-all duration-200 shadow-md hover:shadow-lg"
+                                >
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                    </svg>
+                                    <span class="hidden sm:inline">Browse Services</span>
+                                    <span class="sm:hidden">Browse</span>
                                 </button>
+                            </div>
+                        </div>
+
+                        <!-- Quick Add Services Modal -->
+                        <div v-if="showQuickAddModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" @click.self="showQuickAddModal = false">
+                            <div class="bg-white dark:bg-black rounded-xl shadow-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden">
+                                <!-- Modal Header -->
+                                <div class="flex items-center justify-between gap-4 p-4 sm:p-6 border-b-2 border-gray-200 dark:border-gray-700">
+                                    <div class="flex items-center gap-3 flex-1 min-w-0">
+                                        <div class="p-2 bg-gradient-to-br from-emerald-500 to-emerald-600 dark:from-emerald-600 dark:to-emerald-700 rounded-lg flex-shrink-0">
+                                            <svg class="h-5 w-5 sm:h-6 sm:w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                            </svg>
+                                        </div>
+                                        <div class="min-w-0">
+                                            <h3 class="text-lg sm:text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">Common Veterinary Services</h3>
+                                            <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Click to add services to your clinic</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        @click="showQuickAddModal = false"
+                                        type="button"
+                                        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex-shrink-0"
+                                    >
+                                        <svg class="h-5 w-5 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                                
+                                <!-- Modal Body -->
+                                <div class="p-4 sm:p-6 overflow-y-auto max-h-[calc(85vh-140px)]">
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                        <button
+                                            v-for="service in commonServices" 
+                                            :key="service.name"
+                                            @click="addCommonService(service)" 
+                                            type="button"
+                                            :disabled="form.services.some(s => s.name === service.name)"
+                                            class="group text-left p-3 sm:p-4 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:border-emerald-500 dark:hover:border-emerald-500 hover:shadow-lg transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-gray-200 dark:disabled:hover:border-gray-700 disabled:hover:shadow-none bg-white dark:bg-gray-900"
+                                        >
+                                            <div class="flex items-start justify-between gap-2">
+                                                <span class="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 leading-tight">{{ service.name }}</span>
+                                                <span class="px-2 py-0.5 text-xs font-medium bg-gray-100 dark:bg-black text-gray-600 dark:text-gray-300 rounded-full flex-shrink-0">{{ service.duration }}min</span>
+                                            </div>
+                                            <div class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ serviceCategories[service.category] }}</div>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Modal Footer -->
+                                <div class="flex items-center justify-end p-4 sm:p-6 border-t-2 border-gray-200 dark:border-gray-700 gap-3">
+                                    <button
+                                        @click="showQuickAddModal = false"
+                                        type="button"
+                                        class="px-4 py-2 bg-gray-200 dark:bg-black text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 font-semibold text-sm transition-colors"
+                                    >
+                                        Close
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
@@ -1153,7 +1403,7 @@ const cancel = () => {
                                 <button 
                                     @click="addService"
                                     type="button"
-                                    class="group flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white rounded-xl hover:from-emerald-700 hover:to-emerald-600 font-semibold text-sm transition-all duration-200 shadow-md hover:shadow-lg"
+                                    class="group flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-xl hover:from-emerald-700 hover:to-green-700 font-semibold text-sm transition-all duration-200 shadow-md hover:shadow-lg"
                                 >
                                     <svg class="h-5 w-5 transition-transform group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -1162,9 +1412,9 @@ const cancel = () => {
                                 </button>
                             </div>
 
-                            <div v-if="!form.services || form.services.length === 0" class="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50/50 dark:bg-gray-800/50">
+                            <div v-if="!form.services || form.services.length === 0" class="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50/50 dark:bg-black/50">
                                 <div class="text-gray-500 dark:text-gray-400">
-                                    <div class="mx-auto w-20 h-20 mb-4 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center">
+                                    <div class="mx-auto w-20 h-20 mb-4 bg-gray-200 dark:bg-gray-900 rounded-full flex items-center justify-center">
                                         <svg class="h-10 w-10 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                                         </svg>
@@ -1178,7 +1428,7 @@ const cancel = () => {
                                 <div 
                                     v-for="(service, index) in form.services" 
                                     :key="index"
-                                    class="border-2 border-gray-200 dark:border-gray-700 rounded-xl p-5 bg-white dark:bg-gray-800 hover:shadow-lg transition-shadow duration-200"
+                                    class="border-2 border-gray-200 dark:border-gray-700 rounded-xl p-5 bg-white dark:bg-black hover:shadow-lg transition-shadow duration-200"
                                 >
                                     <div class="flex items-center justify-between mb-5">
                                         <h4 class="font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
@@ -1207,7 +1457,7 @@ const cancel = () => {
                                                 v-model="service.name"
                                                 type="text" 
                                                 required
-                                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
                                                 placeholder="e.g., General Consultation"
                                             />
                                             <div v-if="form.errors[`services.${index}.name`]" class="mt-1 text-sm text-red-600">{{ form.errors[`services.${index}.name`] }}</div>
@@ -1224,7 +1474,7 @@ const cancel = () => {
                                             <select 
                                                 v-model="service.category"
                                                 required
-                                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
                                             >
                                                 <option v-for="(label, value) in serviceCategories" :key="value" :value="value">
                                                     {{ label }}
@@ -1243,7 +1493,7 @@ const cancel = () => {
                                                 type="number" 
                                                 min="1"
                                                 max="1440"
-                                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
                                             />
                                         </div>
                                     </div>
@@ -1256,7 +1506,7 @@ const cancel = () => {
                                         <textarea 
                                             v-model="service.description"
                                             rows="2"
-                                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
                                             placeholder="Describe what this service includes..."
                                         ></textarea>
                                     </div>
@@ -1303,7 +1553,7 @@ const cancel = () => {
                         </div>
                         
                         <div class="space-y-6">
-                            <div v-for="(vet, index) in form.veterinarians" :key="index" class="border-2 border-gray-200 dark:border-gray-700 rounded-xl p-6 bg-white dark:bg-gray-800 hover:shadow-lg transition-shadow duration-200">
+                            <div v-for="(vet, index) in form.veterinarians" :key="index" class="border-2 border-gray-200 dark:border-gray-700 rounded-xl p-6 bg-white dark:bg-gray-900 hover:shadow-lg transition-shadow duration-200">
                                 <div class="flex justify-between items-center mb-6">
                                     <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                                         <span class="flex items-center justify-center w-8 h-8 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-lg text-sm font-bold">{{ index + 1 }}</span>
@@ -1334,7 +1584,7 @@ const cancel = () => {
                                                 type="text" 
                                                 :id="`vet_name_${index}`"
                                                 required
-                                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
                                                 placeholder="Dr. Juan Dela Cruz"
                                             />
                                             <div v-if="form.errors[`veterinarians.${index}.name`]" class="mt-1 text-sm text-red-600">{{ form.errors[`veterinarians.${index}.name`] }}</div>
@@ -1349,7 +1599,7 @@ const cancel = () => {
                                                 type="text" 
                                                 :id="`vet_license_${index}`"
                                                 required
-                                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
                                                 placeholder="License Number"
                                             />
                                             <div v-if="form.errors[`veterinarians.${index}.license_number`]" class="mt-1 text-sm text-red-600">{{ form.errors[`veterinarians.${index}.license_number`] }}</div>
@@ -1366,7 +1616,7 @@ const cancel = () => {
                                                 v-model="vet.email" 
                                                 type="email" 
                                                 :id="`vet_email_${index}`"
-                                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
                                                 placeholder="email@example.com"
                                             />
                                             <div v-if="form.errors[`veterinarians.${index}.email`]" class="mt-1 text-sm text-red-600">{{ form.errors[`veterinarians.${index}.email`] }}</div>
@@ -1380,7 +1630,7 @@ const cancel = () => {
                                                 v-model="vet.phone" 
                                                 type="tel" 
                                                 :id="`vet_phone_${index}`"
-                                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
                                                 placeholder="(02) 123-4567"
                                             />
                                             <div v-if="form.errors[`veterinarians.${index}.phone`]" class="mt-1 text-sm text-red-600">{{ form.errors[`veterinarians.${index}.phone`] }}</div>
@@ -1392,20 +1642,23 @@ const cancel = () => {
                                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                             Specializations (Optional)
                                         </label>
-                                        <div class="flex gap-2 mb-2">
+                                        <div class="flex flex-col sm:flex-row gap-2 mb-2">
                                             <input 
                                                 :ref="el => { if (el) vetSpecInputs[index] = el as HTMLInputElement; }"
                                                 type="text" 
                                                 @keyup.enter="(e) => { addSpecialization(index, (e.target as HTMLInputElement).value); (e.target as HTMLInputElement).value = ''; }"
-                                                class="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                                class="flex-1 px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
                                                 placeholder="e.g., Small Animal Medicine, Surgery (Press Enter to add)"
                                             />
                                             <button 
                                                 @click="() => { const input = vetSpecInputs[index]; if (input) { addSpecialization(index, input.value); input.value = ''; } }"
                                                 type="button"
-                                                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
+                                                class="w-full sm:w-auto px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-md hover:from-blue-700 hover:to-purple-700 text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg flex items-center justify-center gap-2"
                                             >
-                                                Add
+                                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                                </svg>
+                                                <span>Add</span>
                                             </button>
                                         </div>
                                         <div v-if="vet.specializations && vet.specializations.length > 0" class="flex flex-wrap gap-2">
@@ -1468,7 +1721,7 @@ const cancel = () => {
                             </div>
                             <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">Upload all certification documents, licenses, and permits (PDF or image files)</p>
                             
-                            <div class="bg-white dark:bg-gray-800 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-8 hover:border-amber-500 dark:hover:border-amber-500 transition-all duration-200 hover:bg-amber-50/30 dark:hover:bg-amber-900/5">
+                            <div class="bg-white dark:bg-black border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-8 hover:border-amber-500 dark:hover:border-amber-500 transition-all duration-200 hover:bg-amber-50/30 dark:hover:bg-amber-900/5">
                                 <label for="certification_proofs" class="block cursor-pointer">
                                     <div class="flex flex-col items-center text-center">
                                         <div class="p-4 bg-amber-100 dark:bg-amber-900/30 rounded-full mb-4">
@@ -1598,31 +1851,31 @@ const cancel = () => {
                             <!-- Services List -->
                             <div v-if="form.services && form.services.length > 0" class="mt-6">
                                 <h4 class="font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-                                    <svg class="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <svg class="h-5 w-5 bg-gradient-to-r from-blue-500 to-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                                     </svg>
                                     Services Overview:
                                 </h4>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                                    <div v-for="service in form.services" :key="service.name" class="flex justify-between items-center p-3 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 hover:shadow-md transition-shadow">
+                                    <div v-for="service in form.services" :key="service.name" class="flex justify-between items-center p-3 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600 hover:shadow-md transition-shadow">
                                         <span class="font-medium text-gray-900 dark:text-gray-100">{{ service.name }}</span>
-                                        <span class="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md text-xs font-semibold">{{ service.duration_minutes }} min</span>
+                                        <span class="px-2 py-1 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 text-blue-700 dark:text-blue-300 rounded-md text-xs font-semibold">{{ service.duration_minutes }} min</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 border-2 border-yellow-200 dark:border-yellow-800 rounded-xl p-5 shadow-sm">
+                        <div class="bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-gray-900 dark:to-black border-2 border-yellow-200 dark:border-gray-700 rounded-xl p-5 shadow-sm">
                             <div class="flex items-start gap-4">
                                 <div class="flex-shrink-0 mt-0.5">
-                                    <div class="p-2 bg-yellow-100 dark:bg-yellow-800/50 rounded-lg">
-                                        <svg class="h-6 w-6 text-yellow-600 dark:text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <div class="p-2 bg-gradient-to-br from-yellow-500 to-amber-500 dark:from-yellow-600 dark:to-amber-600 rounded-lg">
+                                        <svg class="h-6 w-6 text-white" fill="currentColor" viewBox="0 0 20 20">
                                             <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
                                         </svg>
                                     </div>
                                 </div>
                                 <div class="flex-1">
-                                    <h3 class="text-base font-bold text-yellow-900 dark:text-yellow-100 mb-2">📋 Please Note</h3>
+                                    <h3 class="text-base font-bold bg-gradient-to-r from-yellow-600 to-amber-600 dark:from-yellow-400 dark:to-amber-400 bg-clip-text text-transparent mb-2">📋 Please Note</h3>
                                     <p class="text-sm text-yellow-800 dark:text-yellow-200 leading-relaxed">
                                         Your clinic registration will be reviewed by our team. You will receive an email confirmation once approved, typically within <strong>1-2 business days</strong>.
                                     </p>
@@ -1632,27 +1885,27 @@ const cancel = () => {
                     </div>
 
                     <!-- Navigation Buttons -->
-                    <div class="flex justify-between items-center pt-8 border-t-2 border-gray-200 dark:border-gray-700">
+                    <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 sm:gap-0 pt-6 sm:pt-8 mt-6 sm:mt-8 border-t-2 border-gray-200 dark:border-gray-700">
                         <button 
                             v-if="currentStep > 1"
                             @click="prevStep" 
                             type="button" 
-                            class="group flex items-center gap-2 px-6 py-3 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 font-semibold transition-all duration-200 hover:shadow-md"
+                            class="group flex items-center justify-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 text-sm sm:text-base border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 font-semibold transition-all duration-200 hover:shadow-md"
                         >
-                            <svg class="h-5 w-5 transition-transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg class="hidden sm:block h-4 w-4 sm:h-5 sm:w-5 transition-transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                             </svg>
                             Previous
                         </button>
                         <div v-else></div>
 
-                        <div class="flex gap-3">
+                        <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
                             <button 
                                 @click="cancel" 
                                 type="button" 
-                                class="group flex items-center gap-2 px-6 py-3 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 font-semibold transition-all duration-200 hover:shadow-md"
+                                class="group flex items-center justify-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 text-sm sm:text-base border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 font-semibold transition-all duration-200 hover:shadow-md"
                             >
-                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg class="hidden sm:block h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                                 Cancel
@@ -1662,10 +1915,10 @@ const cancel = () => {
                                 v-if="currentStep < totalSteps"
                                 @click="nextStep" 
                                 type="button" 
-                                class="group flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl hover:from-blue-700 hover:to-blue-600 font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
+                                class="group flex items-center justify-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 text-sm sm:text-base bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
                             >
                                 Next
-                                <svg class="h-5 w-5 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg class="hidden sm:block h-4 w-4 sm:h-5 sm:w-5 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                                 </svg>
                             </button>
@@ -1674,12 +1927,12 @@ const cancel = () => {
                                 v-if="currentStep === totalSteps"
                                 type="submit" 
                                 :disabled="form.processing" 
-                                class="group flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 font-bold transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-lg"
+                                class="group flex items-center justify-center gap-2 px-6 py-2.5 sm:px-8 sm:py-3 text-sm sm:text-base bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 font-bold transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-lg"
                             >
-                                <svg v-if="!form.processing" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg v-if="!form.processing" class="hidden sm:block h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
-                                <svg v-else class="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <svg v-else class="h-4 w-4 sm:h-5 sm:w-5 animate-spin" fill="none" viewBox="0 0 24 24">
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
@@ -1691,5 +1944,124 @@ const cancel = () => {
                 </form>
             </div>
         </div>
+
+        <!-- Error Modal -->
+        <ErrorModal 
+            :show="showErrorModal"
+            :title="errorModalData.title"
+            :message="errorModalData.message"
+            :validation-errors="errorModalData.validationErrors"
+            :suggestions="errorModalData.suggestions"
+            @close="closeErrorModal"
+        />
+
+        <!-- Pin Location Modal -->
+        <div v-if="showPinLocationModal" 
+             class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+             @click="showPinLocationModal = false">
+            <div @click.stop 
+                 class="bg-white dark:bg-black rounded-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-200 dark:border-gray-800">
+                <!-- Modal Header -->
+                <div class="sticky top-0 bg-white dark:bg-black border-b border-gray-200 dark:border-gray-800 p-4 sm:p-6 flex items-center justify-between gap-4 z-10">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2 bg-gradient-to-br from-blue-600 to-purple-600 dark:from-blue-500 dark:to-purple-500 rounded-lg flex-shrink-0">
+                            <svg class="h-5 w-5 sm:h-6 sm:w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            </svg>
+                        </div>
+                        <h3 class="text-lg sm:text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
+                            Pin Clinic Location
+                        </h3>
+                    </div>
+                    <button 
+                        @click="showPinLocationModal = false"
+                        class="flex-shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- Modal Content -->
+                <div class="p-4 sm:p-6">
+                    <PinAddressLocation 
+                        :latitude="form.latitude" 
+                        :longitude="form.longitude" 
+                        :address="`${form.street_address}, ${form.barangay}, ${form.city}, ${form.province}`"
+                        @location-update="handleLocationUpdate"
+                    />
+                </div>
+                
+                <!-- Modal Footer -->
+                <div class="sticky bottom-0 bg-white dark:bg-black border-t border-gray-200 dark:border-gray-800 p-4 sm:p-6">
+                    <button
+                        @click="showPinLocationModal = false"
+                        class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 dark:from-blue-500 dark:to-purple-500 dark:hover:from-blue-600 dark:hover:to-purple-600 text-white py-3 px-4 rounded-lg font-semibold transition-all duration-200 shadow-lg hover:shadow-xl"
+                    >
+                        Done
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Success Modal -->
+        <div v-if="showSuccessModal" 
+             class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+             @click="closeSuccessModal">
+            <div @click.stop 
+                 class="bg-white dark:bg-black rounded-xl p-6 sm:p-8 max-w-md w-full mx-4 shadow-2xl border border-gray-200 dark:border-gray-800">
+                <!-- Header -->
+                <div class="flex flex-col items-center text-center mb-6">
+                    <div class="w-16 h-16 bg-gradient-to-br from-emerald-500 to-green-500 rounded-full flex items-center justify-center mb-4">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-green-600 dark:from-emerald-400 dark:to-green-400 bg-clip-text text-transparent">
+                        Registration Submitted!
+                    </h3>
+                </div>
+                
+                <!-- Content -->
+                <div class="space-y-4 mb-6">
+                    <p class="text-gray-700 dark:text-gray-300 text-center leading-relaxed">
+                        Your clinic registration has been successfully submitted for review.
+                    </p>
+                    <div class="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800 border border-blue-200 dark:border-gray-700 rounded-lg p-4">
+                        <h4 class="text-sm font-semibold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent mb-2">
+                            What's Next?
+                        </h4>
+                        <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                            <li class="flex items-start">
+                                <svg class="w-4 h-4 text-blue-500 mt-0.5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                </svg>
+                                <span>Our team will review your application within 2-3 business days</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-4 h-4 text-blue-500 mt-0.5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                </svg>
+                                <span>You'll receive an email notification once approved</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-4 h-4 text-blue-500 mt-0.5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                </svg>
+                                <span>Check your email for any additional information requests</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <!-- Action -->
+                <button @click="closeSuccessModal"
+                        class="w-full bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white py-3 px-4 rounded-lg font-semibold transition-all duration-200 shadow-lg hover:shadow-xl">
+                    Continue
+                </button>
+            </div>
+        </div>
     </AppLayout>
 </template>
+

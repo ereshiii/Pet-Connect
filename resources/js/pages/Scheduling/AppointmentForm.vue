@@ -8,6 +8,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, router, useForm } from '@inertiajs/vue3';
 import { ref, computed, watch } from 'vue';
 import { handleFormError } from '@/utils/errorHandler';
+import { useMobileKeyboard } from '@/composables/useMobileKeyboard';
 import { MapPin, CalendarCheck, X, ArrowLeft } from 'lucide-vue-next';
 
 // Types
@@ -87,6 +88,9 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+
+// Mobile keyboard handling
+const { handleInputFocus } = useMobileKeyboard();
 
 // Dynamic breadcrumbs based on mode
 const breadcrumbs = computed<BreadcrumbItem[]>(() => {
@@ -418,36 +422,37 @@ const formatDate = (dateStr: string) => {
 </script>
 
 <template>
-    <Head :title="pageTitle" />
+    <Head :title="pageTitle">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    </Head>
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
+        <div class="flex h-full flex-1 flex-col gap-3 sm:gap-4 overflow-x-auto rounded-xl p-3 sm:p-4">
             <!-- Header -->
-            <div class="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-2xl p-8 shadow-lg">
-                <div class="flex items-center justify-between mb-4">
-                    <div>
-                        <h1 class="text-3xl font-bold">{{ pageTitle }}</h1>
-                        <p v-if="mode === 'create'" class="text-blue-100 mt-2 flex items-center gap-2">
-                            <MapPin class="h-5 w-5" />
-                            <span class="font-semibold">{{ selectedClinicName }}</span>
+            <div class="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 shadow-lg">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mb-4">
+                    <div class="flex-1">
+                        <h1 class="text-xl sm:text-2xl md:text-3xl font-bold">{{ pageTitle }}</h1>
+                        <p v-if="mode === 'create'" class="text-blue-100 mt-1 sm:mt-2 flex items-center gap-2 text-sm sm:text-base">\n                            <MapPin class="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                            <span class="font-semibold truncate">{{ selectedClinicName }}</span>
                         </p>
-                        <p v-else class="text-blue-100 mt-2">
+                        <p v-else class="text-blue-100 mt-1 sm:mt-2 text-sm sm:text-base">
                             Update your appointment date and time
                         </p>
                     </div>
-                    <div v-if="mode === 'reschedule'" class="flex gap-2">
+                    <div v-if="mode === 'reschedule'" class="flex gap-2 w-full sm:w-auto">
                         <button @click="goBack" 
-                                class="px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg text-sm font-medium flex items-center gap-2 transition-all">
-                            <ArrowLeft class="h-4 w-4" />
+                                class="px-3 sm:px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg text-xs sm:text-sm font-medium flex items-center justify-center gap-1.5 sm:gap-2 transition-all flex-1 sm:flex-initial">
+                            <ArrowLeft class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             Cancel
                         </button>
                     </div>
                 </div>
 
                 <!-- Current Appointment Info (Reschedule Mode Only) -->
-                <div v-if="mode === 'reschedule' && appointment" class="bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl p-4">
-                    <h3 class="font-semibold text-white mb-3">Current Appointment</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div v-if="mode === 'reschedule' && appointment" class="bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl p-3 sm:p-4 mt-4">
+                    <h3 class="font-semibold text-white mb-2 sm:mb-3 text-sm sm:text-base">Current Appointment</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm">
                         <div class="space-y-2">
                             <p class="text-blue-100">
                                 <span class="font-semibold text-white">Pet:</span> {{ appointment.pet.name }} ({{ appointment.pet.type }} - {{ appointment.pet.breed }})
@@ -469,22 +474,22 @@ const formatDate = (dateStr: string) => {
             </div>
 
             <!-- Booking/Reschedule Form -->
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-8">
-                <h2 v-if="mode === 'reschedule'" class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Select New Date & Time</h2>
+            <div class="bg-white dark:bg-black rounded-xl sm:rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 p-4 sm:p-6 md:p-8 pb-20 sm:pb-8">
+                <h2 v-if="mode === 'reschedule'" class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-4 sm:mb-6">Select New Date & Time</h2>
                 
-                <form @submit.prevent="submitForm" class="space-y-6">
+                <form @submit.prevent="submitForm" @focusin="handleInputFocus" class="space-y-4 sm:space-y-6">
                     <!-- Pet Selection -->
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        <label class="block text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5 sm:mb-2">
                             Select Pet <span class="text-red-500">*</span>
                         </label>
                         <select 
                             v-model="form.pet_id"
                             :disabled="mode === 'reschedule'"
                             :class="[
-                                'w-full px-4 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all',
-                                form.errors.pet_id ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-300 dark:border-gray-600 hover:border-blue-400',
-                                mode === 'reschedule' ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'dark:bg-gray-700',
+                                'w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all',
+                                form.errors.pet_id ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-300 dark:border-gray-700 hover:border-blue-400',
+                                mode === 'reschedule' ? 'bg-gray-100 dark:bg-gray-900 cursor-not-allowed' : 'dark:bg-gray-900',
                                 'dark:text-gray-200'
                             ]"
                         >
@@ -500,14 +505,14 @@ const formatDate = (dateStr: string) => {
 
                     <!-- Service Selection -->
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        <label class="block text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5 sm:mb-2">
                             Select Service <span class="text-red-500">*</span>
                         </label>
                         <select 
                             v-model="selectedServiceId"
                             :class="[
-                                'w-full px-4 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-background text-foreground',
-                                form.errors.service_ids ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-300 dark:border-gray-600 hover:border-blue-400'
+                                'w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all dark:bg-gray-900 dark:text-gray-200',
+                                form.errors.service_ids ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-300 dark:border-gray-700 hover:border-blue-400'
                             ]"
                         >
                             <option value="" disabled class="bg-background text-foreground">Select a service</option>
@@ -534,13 +539,13 @@ const formatDate = (dateStr: string) => {
 
                     <!-- Reason for Rescheduling (Reschedule Mode Only) -->
                     <div v-if="mode === 'reschedule'">
-                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        <label class="block text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5 sm:mb-2">
                             Reason for Rescheduling (Optional)
                         </label>
                         <textarea 
                             v-model="form.reschedule_reason"
                             rows="3"
-                            class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-background text-foreground rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none hover:border-blue-400"
+                            class="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none hover:border-blue-400"
                             placeholder="Brief reason why you're rescheduling (optional)..."
                         ></textarea>
                         <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">This helps us serve you better</p>
@@ -548,16 +553,16 @@ const formatDate = (dateStr: string) => {
 
                     <!-- Reason for Visit -->
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        <label class="block text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5 sm:mb-2">
                             Reason for Visit <span class="text-red-500">*</span>
                         </label>
                         <textarea 
                             v-model="form.reason"
                             rows="4"
                             :class="[
-                                'w-full px-4 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none',
-                                form.errors.reason ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-300 dark:border-gray-600 hover:border-blue-400',
-                                'dark:bg-gray-700 dark:text-gray-200'
+                                'w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none',
+                                form.errors.reason ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-300 dark:border-gray-700 hover:border-blue-400',
+                                'dark:bg-gray-900 dark:text-gray-200'
                             ]"
                             placeholder="Please describe the reason for your visit..."
                         ></textarea>
@@ -567,9 +572,9 @@ const formatDate = (dateStr: string) => {
                     </div>
 
                     <!-- Date and Time -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5 sm:mb-2">
                                 {{ mode === 'reschedule' ? 'New Date' : 'Date' }} <span class="text-red-500">*</span>
                             </label>
                             <DatePicker
@@ -610,28 +615,28 @@ const formatDate = (dateStr: string) => {
                         </div>
                     </div>
 
-                    <!-- Contact Phone (Read-only) -->
+                    <!-- Contact Phone -->
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        <label class="block text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5 sm:mb-2">
                             Contact Phone <span class="text-red-500">*</span>
                         </label>
                         <input 
                             v-model="form.contact_phone"
                             type="tel"
-                            readonly
-                            class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg shadow-sm cursor-not-allowed"
+                            placeholder="+63 9XX XXX XXXX"
+                            class="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all hover:border-blue-400"
                         />
                         <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            Your contact number from profile settings
+                            Auto-filled from your profile (you can edit if needed)
                         </p>
                     </div>
 
                     <!-- Summary -->
-                    <div v-if="selectedPet && selectedClinic && form.preferred_date && form.preferred_time" class="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-xl p-6">
-                        <h4 class="font-semibold text-blue-900 dark:text-blue-100 mb-3 text-lg">
+                    <div v-if="selectedPet && selectedClinic && form.preferred_date && form.preferred_time" class="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-900 border-2 border-blue-200 dark:border-gray-700 rounded-xl p-4 sm:p-6">
+                        <h4 class="font-semibold text-blue-900 dark:text-blue-100 mb-2 sm:mb-3 text-base sm:text-lg">
                             📋 {{ mode === 'reschedule' ? 'Updated ' : '' }}Appointment Summary
                         </h4>
-                        <div class="text-sm text-blue-800 dark:text-blue-200 space-y-2">
+                        <div class="text-xs sm:text-sm text-blue-800 dark:text-blue-200 space-y-1.5 sm:space-y-2">
                             <p><span class="font-semibold">Pet:</span> {{ selectedPet.name }} ({{ selectedPet.type }} - {{ selectedPet.breed }})</p>
                             <p><span class="font-semibold">Clinic:</span> {{ selectedClinic.name }}</p>
                             <div v-if="selectedServices.length > 0">
@@ -648,12 +653,12 @@ const formatDate = (dateStr: string) => {
                     </div>
 
                     <!-- Form Actions -->
-                    <div class="flex flex-col sm:flex-row gap-4 pt-6">
+                    <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4 sm:pt-6">
                         <button 
                             type="submit"
                             :disabled="form.processing"
                             :class="[
-                                'flex-1 py-4 px-6 rounded-xl font-semibold transition-all transform shadow-lg flex items-center justify-center gap-2',
+                                'flex-1 py-3 sm:py-4 px-4 sm:px-6 text-sm sm:text-base rounded-xl font-semibold transition-all transform shadow-lg flex items-center justify-center gap-2',
                                 form.processing 
                                     ? 'bg-gray-400 text-gray-700 cursor-not-allowed' 
                                     : 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 hover:scale-[1.02] hover:shadow-xl'
@@ -670,7 +675,7 @@ const formatDate = (dateStr: string) => {
                             type="button"
                             @click="goBack"
                             :disabled="form.processing"
-                            class="flex-1 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-4 px-6 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                            class="flex-1 border-2 border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 py-3 sm:py-4 px-4 sm:px-6 text-sm sm:text-base rounded-xl hover:bg-gray-100 dark:hover:bg-gray-900 font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                         >
                             <X class="h-5 w-5" />
                             Cancel
@@ -680,18 +685,18 @@ const formatDate = (dateStr: string) => {
             </div>
 
             <!-- Booking Information -->
-            <div class="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-2xl border-2 border-blue-200 dark:border-blue-700 p-6 shadow-sm">
-                <div class="flex items-start gap-4">
-                    <div class="p-3 bg-blue-100 dark:bg-blue-900/50 rounded-xl flex-shrink-0">
+            <div class="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-900 rounded-xl sm:rounded-2xl border-2 border-blue-200 dark:border-gray-700 p-4 sm:p-6 shadow-sm">
+                <div class="flex items-start gap-3 sm:gap-4">
+                    <div class="p-2 sm:p-3 bg-blue-100 dark:bg-gray-800 rounded-xl flex-shrink-0">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </div>
                     <div class="flex-1">
-                        <h3 class="text-lg font-bold text-blue-900 dark:text-blue-100 mb-3">
+                        <h3 class="text-base sm:text-lg font-bold text-blue-900 dark:text-blue-100 mb-2 sm:mb-3">
                             📋 Important Information
                         </h3>
-                        <div class="space-y-2 text-sm text-blue-800 dark:text-blue-200">
+                        <div class="space-y-1.5 sm:space-y-2 text-xs sm:text-sm text-blue-800 dark:text-blue-200">
                             <div class="flex items-start gap-2">
                                 <span class="text-blue-600 dark:text-blue-400 mt-0.5">•</span>
                                 <p>
@@ -735,23 +740,23 @@ const formatDate = (dateStr: string) => {
         />
 
         <!-- Success Modal (Create Mode Only) -->
-        <div v-if="showSuccessModal && mode === 'create'" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div class="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
+        <div v-if="showSuccessModal && mode === 'create'" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-3 sm:p-4 z-50">
+            <div class="bg-white dark:bg-black rounded-lg max-w-md w-full p-4 sm:p-6 border dark:border-gray-800">
                 <div class="text-center">
-                    <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/20 mb-4">
-                        <span class="text-green-600 dark:text-green-400 text-2xl">✅</span>
+                    <div class="mx-auto flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-green-100 dark:bg-green-900/20 mb-3 sm:mb-4">
+                        <span class="text-green-600 dark:text-green-400 text-xl sm:text-2xl">✅</span>
                     </div>
 
-                    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+                    <h3 class="text-base sm:text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
                         Appointment Booked Successfully!
                     </h3>
                     
-                    <div v-if="bookingConfirmation" class="text-sm text-gray-600 dark:text-gray-400 space-y-2 mb-6">
+                    <div v-if="bookingConfirmation" class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 space-y-2 mb-4 sm:mb-6">
                         <p class="text-green-600 dark:text-green-400 font-medium">
                             Your appointment has been submitted and the clinic will be notified immediately.
                         </p>
                         
-                        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 text-left">
+                        <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 sm:p-4 text-left border dark:border-gray-800">
                             <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-2">Booking Details:</h4>
                             <div class="space-y-1 text-sm">
                                 <p><strong>Confirmation #:</strong> {{ bookingConfirmation.confirmation_number }}</p>
@@ -763,7 +768,7 @@ const formatDate = (dateStr: string) => {
                             </div>
                         </div>
 
-                        <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-left">
+                        <div class="bg-blue-50 dark:bg-gray-900 rounded-lg p-3 text-left border dark:border-gray-800">
                             <h5 class="font-medium text-blue-900 dark:text-blue-100 text-sm mb-1">What happens next?</h5>
                             <ul class="text-xs text-blue-800 dark:text-blue-300 space-y-1">
                                 <li>• The clinic will review your booking request</li>
@@ -774,16 +779,16 @@ const formatDate = (dateStr: string) => {
                         </div>
                     </div>
 
-                    <div class="flex flex-col sm:flex-row gap-3">
+                    <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
                         <button 
                             @click="goToAppointments"
-                            class="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
+                            class="flex-1 bg-blue-600 text-white py-2 px-3 sm:px-4 rounded-md hover:bg-blue-700 transition-colors text-xs sm:text-sm font-medium"
                         >
                             View My Appointments
                         </button>
                         <button 
                             @click="bookAnother"
-                            class="flex-1 border border-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-50 transition-colors text-sm font-medium dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                            class="flex-1 border border-gray-300 text-gray-700 py-2 px-3 sm:px-4 rounded-md hover:bg-gray-50 transition-colors text-xs sm:text-sm font-medium dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-900"
                         >
                             Book Another
                         </button>

@@ -5,6 +5,7 @@ import PinAddressLocation from '@/pages/2clinicPages/registerClinic/pinAddressLo
 import { Head, useForm, router } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 import { philippineAddressData } from '@/utils/philippineAddress';
+import { useMobileKeyboard } from '@/composables/useMobileKeyboard';
 
 interface Pet {
     id: number;
@@ -39,6 +40,9 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+
+// Mobile keyboard handling
+const { handleInputFocus } = useMobileKeyboard();
 
 const currentStep = ref(props.currentStep || 1);
 const totalSteps = 4;
@@ -400,7 +404,9 @@ const completeSetup = () => {
 </script>
 
 <template>
-    <Head title="Complete Your Profile" />
+    <Head title="Complete Your Profile">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    </Head>
 
     <AppLayout>
         <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-6">
@@ -429,8 +435,8 @@ const completeSetup = () => {
             </div>
 
             <!-- Form Content -->
-            <div class="bg-white dark:bg-gray-800 rounded-xl border border-sidebar-border/70 dark:border-sidebar-border p-6">
-                <form @submit.prevent>
+            <div class="bg-white dark:bg-gray-800 rounded-xl border border-sidebar-border/70 dark:border-sidebar-border p-6 pb-20 sm:pb-6">
+                <form @submit.prevent @focusin="handleInputFocus">
                     <!-- Step 1: Contact Information -->
                     <div v-if="currentStep === 1" class="space-y-8">
                         <div class="flex items-center gap-3 mb-6">

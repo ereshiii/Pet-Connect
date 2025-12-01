@@ -161,6 +161,14 @@ class PetController extends Controller
 
         $validated['owner_id'] = Auth::id();
 
+        // Set species from the selected type_id
+        if (isset($validated['type_id'])) {
+            $petType = PetType::find($validated['type_id']);
+            if ($petType) {
+                $validated['species'] = $petType->species;
+            }
+        }
+
         // Handle profile image upload
         if ($request->hasFile('profile_image')) {
             $validated['profile_image'] = $request->file('profile_image')
@@ -259,31 +267,41 @@ class PetController extends Controller
         ];
 
         // Get medical records with clinic information
-        $medicalRecords = $pet->medicalRecords->map(function ($record) {
+        // Create anonymous clinic mapping (Clinic A, B, C, etc.)
+        $clinicMapping = [];
+        $clinicCounter = 0;
+        
+        $medicalRecords = $pet->medicalRecords->map(function ($record) use (&$clinicMapping, &$clinicCounter) {
+            // Generate anonymous clinic name if not already mapped
+            $anonymousClinicName = null;
+            if ($record->clinicRegistration) {
+                $clinicId = $record->clinicRegistration->id;
+                if (!isset($clinicMapping[$clinicId])) {
+                    $clinicMapping[$clinicId] = 'Clinic ' . chr(65 + $clinicCounter); // A, B, C...
+                    $clinicCounter++;
+                }
+                $anonymousClinicName = $clinicMapping[$clinicId];
+            }
+            
             return [
                 'id' => $record->id,
-                'visit_date' => $record->visit_date?->format('Y-m-d'),
-                'visit_type' => $record->visit_type,
-                'visit_type_display' => $record->visit_type_display,
-                'chief_complaint' => $record->chief_complaint,
+                'date' => $record->date?->format('Y-m-d'),
+                'appointment_id' => $record->appointment_id,
+                // Simplified 4-field structure
                 'diagnosis' => $record->diagnosis,
-                'treatment_provided' => $record->treatment_provided,
-                'medications_prescribed' => $record->medications_prescribed,
-                'veterinarian_name' => $record->veterinarian_name,
-                'clinic_name' => $record->clinic_name,
-                'next_visit_date' => $record->next_visit_date?->format('Y-m-d'),
-                'weight_recorded' => $record->weight_recorded,
-                'cost_formatted' => $record->cost_formatted,
-                'is_emergency' => $record->is_emergency,
-                'vital_signs' => $record->vital_signs,
-                'days_since_visit' => $record->days_since_visit,
+                'findings' => $record->findings,
+                'treatment_given' => $record->treatment_given,
+                'prescriptions' => $record->prescriptions,
+                // Metadata
+                'veterinarian_name' => $record->veterinarian?->name ?? 'Unknown',
+                'clinic_name' => $anonymousClinicName ?? 'Unknown Clinic',
+                'days_since_visit' => $record->date ? now()->diffInDays($record->date) : null,
                 'clinic' => $record->clinicRegistration ? [
                     'id' => $record->clinicRegistration->id,
-                    'clinic_name' => $record->clinicRegistration->clinic_name,
-                    'phone_number' => $record->clinicRegistration->phone,
+                    'anonymous_name' => $anonymousClinicName,
                 ] : null,
             ];
-        })->sortByDesc('visit_date')->values();
+        })->sortByDesc('date')->values();
 
         // Get vaccinations with clinic information
         $vaccinations = $pet->vaccinations->map(function ($vaccination) {

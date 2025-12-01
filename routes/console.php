@@ -40,6 +40,18 @@ Schedule::command('appointments:send-reminders')
         \Log::error('Failed to send appointment reminders');
     });
 
+// Schedule follow-up appointment reminders (24-hour notifications)
+Schedule::command('appointments:send-followup-reminders')
+    ->hourly()
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->onSuccess(function () {
+        \Log::info('Follow-up appointment reminders sent successfully');
+    })
+    ->onFailure(function () {
+        \Log::error('Failed to send follow-up appointment reminders');
+    });
+
 // Schedule subscription billing processing (daily at 1:00 AM)
 Schedule::command('subscription:process-billing')
     ->dailyAt('01:00')

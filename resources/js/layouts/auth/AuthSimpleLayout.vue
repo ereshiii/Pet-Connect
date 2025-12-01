@@ -75,7 +75,7 @@ const features = [
         <div class="absolute inset-0 bg-white/40 dark:bg-gray-900/40 backdrop-blur-md"></div>
 
         <!-- Theme Toggle Button -->
-        <div class="absolute top-6 right-6 z-50">
+        <div class="absolute top-6 right-6 z-50 hidden sm:block">
             <div class="relative">
                 <button
                     @click="showThemeDropdown = !showThemeDropdown"
@@ -102,6 +102,33 @@ const features = [
                         <span>{{ option.label }}</span>
                     </button>
                 </div>
+            </div>
+        </div>
+
+        <!-- Theme Toggle Floating Button (mobile only) -->
+        <div class="fixed bottom-4 right-4 z-50 sm:hidden">
+            <button 
+                @click="showThemeDropdown = !showThemeDropdown"
+                class="bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg rounded-full p-2.5 flex items-center justify-center transition-all hover:from-blue-600 hover:to-purple-700 hover:scale-110"
+                title="Change theme"
+            >
+                <component :is="getCurrentThemeIcon()" class="h-5 w-5 text-white" />
+            </button>
+            <!-- Dropdown Menu (icons only) -->
+            <div 
+                v-if="showThemeDropdown"
+                @click.stop
+                class="absolute bottom-16 right-0 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-2 w-14"
+            >
+                <button
+                    v-for="option in themeOptions"
+                    :key="option.value"
+                    @click="updateAppearance(option.value); showThemeDropdown = false"
+                    class="flex items-center justify-center px-2 py-3 w-full hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 dark:hover:from-blue-900/50 dark:hover:to-purple-900/50 transition-all"
+                    :title="option.label"
+                >
+                    <component :is="option.Icon" class="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                </button>
             </div>
         </div>
 

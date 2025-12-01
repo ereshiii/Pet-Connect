@@ -33,48 +33,12 @@ import {
     ChartBar,
     Star,
     Send,
-    X
+    X,
+    Upload,
+    FileUp,
+    Paperclip,
+    Plus
 } from 'lucide-vue-next';
-
-// Medical Record Templates for different types
-const medicalRecordTemplates = {
-    checkup: {
-        label: 'General Checkup',
-        icon: '🏥',
-        color: 'blue',
-        fields: ['diagnosis', 'physical_exam', 'vital_signs', 'treatment', 'medications', 'clinical_notes', 'follow_up_date']
-    },
-    vaccination: {
-        label: 'Vaccination',
-        icon: '💉',
-        color: 'green',
-        fields: ['vaccine_name', 'vaccine_batch', 'administration_site', 'next_due_date', 'adverse_reactions', 'clinical_notes']
-    },
-    treatment: {
-        label: 'Treatment',
-        icon: '⚕️',
-        color: 'purple',
-        fields: ['diagnosis', 'treatment', 'procedures_performed', 'medications', 'treatment_response', 'clinical_notes', 'follow_up_date']
-    },
-    surgery: {
-        label: 'Surgery',
-        icon: '🔪',
-        color: 'red',
-        fields: ['diagnosis', 'surgery_type', 'procedure_details', 'anesthesia_used', 'complications', 'post_op_instructions', 'medications', 'follow_up_date']
-    },
-    emergency: {
-        label: 'Emergency',
-        icon: '🚨',
-        color: 'orange',
-        fields: ['presenting_complaint', 'triage_level', 'diagnosis', 'emergency_treatment', 'stabilization_measures', 'medications', 'disposition', 'follow_up_date']
-    },
-    other: {
-        label: 'Other',
-        icon: '📋',
-        color: 'gray',
-        fields: ['diagnosis', 'treatment', 'medications', 'clinical_notes', 'follow_up_date']
-    }
-};
 
 // Props from the backend
 interface Props {
@@ -101,6 +65,15 @@ interface Props {
         disputeWindowEndsAt?: string;
         disputeHoursRemaining?: number | null;
         canChangeVet?: boolean;
+        appointment_type?: 'scheduled' | 'walk-in';
+        is_follow_up?: boolean;
+        parent_appointment_id?: number | null;
+        can_create_follow_up?: boolean;
+        confirmation_window_ends_at?: string | null;
+        confirmed_at?: string | null;
+        can_owner_reschedule_or_cancel?: boolean;
+        can_clinic_reschedule?: boolean;
+        can_clinic_cancel?: boolean;
         pet: {
             id: number;
             name: string;
@@ -259,29 +232,9 @@ const canEditMedicalRecordsComputed = computed(() => {
     return props.canEditMedicalRecords || isInProgress.value;
 });
 
-const activeTemplate = computed(() => {
-    return medicalRecordTemplates[medicalForm.record_type as keyof typeof medicalRecordTemplates] || medicalRecordTemplates.checkup;
-});
-
 const isFormValid = computed(() => {
-    const type = medicalForm.record_type;
-    
-    switch (type) {
-        case 'checkup':
-            return !!medicalForm.diagnosis && !!medicalForm.treatment;
-        case 'vaccination':
-            return !!medicalForm.vaccine_name;
-        case 'treatment':
-            return !!medicalForm.diagnosis && !!medicalForm.treatment;
-        case 'surgery':
-            return !!medicalForm.surgery_type && !!medicalForm.post_op_instructions;
-        case 'emergency':
-            return !!medicalForm.presenting_complaint && !!medicalForm.emergency_treatment;
-        case 'other':
-            return !!medicalForm.diagnosis && !!medicalForm.treatment;
-        default:
-            return !!medicalForm.diagnosis && !!medicalForm.treatment;
-    }
+    // Only diagnosis is required
+    return !!medicalForm.diagnosis;
 });
 
 // Debug logging to verify data reception
@@ -309,12 +262,30 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 const activeTab = ref('details');
 const showMedicalRecordModal = ref(false);
-const showRecordTypeSelection = ref(false);
-const selectedRecordType = ref<string | null>(null);
 const showConfirmModal = ref(false);
 const showNoShowModal = ref(false);
 const noShowReason = ref('');
 const activeDropdown = ref(false);
+
+// New state for follow-up, reschedule, cancel, and documents
+const showFollowUpModal = ref(false);
+const showClinicRescheduleModal = ref(false);
+const showClinicCancelModal = ref(false);
+const followUpForm = ref({
+    scheduled_at: '',
+    reason: '',
+    notes: '',
+});
+const clinicRescheduleForm = ref({
+    scheduled_at: '',
+    reason: '',
+});
+const clinicCancelForm = ref({
+    reason: '',
+});
+const isSubmittingFollowUp = ref(false);
+const isSubmittingReschedule = ref(false);
+const isSubmittingCancel = ref(false);
 
 const tabs = computed(() => {
     const baseTabs = [
@@ -322,7 +293,8 @@ const tabs = computed(() => {
         { id: 'medical', name: 'Medical Record', icon: Stethoscope },
     ];
     
-    if (isPetOwner.value && props.documents) {
+    // Documents tab always visible for clinics, visible for pet owners if documents exist
+    if (isClinic.value || (isPetOwner.value && props.documents && props.documents.length > 0)) {
         baseTabs.push({ id: 'documents', name: 'Documents', icon: File });
     }
     
@@ -467,38 +439,20 @@ const startAppointment = () => {
 };
 
 const markAsComplete = () => {
-    showRecordTypeSelection.value = true;
-};
-
-const selectRecordType = (type: string) => {
-    selectedRecordType.value = type;
-    medicalForm.record_type = type;
-    showRecordTypeSelection.value = false;
     showMedicalRecordModal.value = true;
     activeTab.value = 'medical';
 };
 
 const confirmComplete = () => {
     if (!isFormValid.value) {
-        alert('Please complete all required fields for this record type before completing.');
+        alert('Please complete the diagnosis field before completing.');
         return;
     }
 
-    // Clean up the medical record data - remove empty strings and null values for optional fields
-    const cleanedMedicalRecord: Record<string, any> = {
-        record_type: medicalForm.record_type,
-    };
+    // Include only the 4 simplified fields
+    const cleanedMedicalRecord: Record<string, any> = {};
 
-    // Only include non-empty values
-    const fieldsToInclude = [
-        'diagnosis', 'treatment', 'medications', 'clinical_notes', 'follow_up_date',
-        'physical_exam', 'vital_signs', 'vaccine_name', 'vaccine_batch', 
-        'administration_site', 'next_due_date', 'adverse_reactions',
-        'procedures_performed', 'treatment_response', 'surgery_type',
-        'procedure_details', 'anesthesia_used', 'complications', 
-        'post_op_instructions', 'presenting_complaint', 'triage_level',
-        'emergency_treatment', 'stabilization_measures', 'disposition'
-    ];
+    const fieldsToInclude = ['diagnosis', 'findings', 'treatment_given', 'prescriptions'];
 
     fieldsToInclude.forEach(field => {
         const value = medicalForm[field as keyof typeof medicalForm];
@@ -688,7 +642,179 @@ const submitRating = () => {
 const downloadDocument = (doc: any) => {
     // Handle document download
     console.log('Download document:', doc.name);
-    // TODO: Implement actual document download
+    if (doc.url) {
+        window.open(doc.url, '_blank');
+    }
+};
+
+// Follow-up appointment functions
+const openFollowUpModal = () => {
+    showFollowUpModal.value = true;
+    followUpForm.value = {
+        follow_up_date: '',
+        follow_up_time: '',
+        reason: props.appointment.reason || '',
+        notes: '',
+    };
+};
+
+const closeFollowUpModal = () => {
+    showFollowUpModal.value = false;
+    followUpForm.value = {
+        follow_up_date: '',
+        follow_up_time: '',
+        reason: '',
+        notes: '',
+    };
+};
+
+const submitFollowUp = async () => {
+    if (!followUpForm.value.follow_up_date || !followUpForm.value.follow_up_time) {
+        alert('Please select a date and time for the follow-up appointment');
+        return;
+    }
+    
+    isSubmittingFollowUp.value = true;
+    
+    try {
+        // Combine date and time into scheduled_at
+        const scheduledAt = `${followUpForm.value.follow_up_date} ${followUpForm.value.follow_up_time}:00`;
+        
+        router.post(`/clinic/appointments/${props.appointment.id}/follow-up`, {
+            scheduled_at: scheduledAt,
+            reason: followUpForm.value.reason,
+            notes: followUpForm.value.notes
+        }, {
+            onSuccess: (page) => {
+                closeFollowUpModal();
+                
+                // Show success notification
+                const successMessage = page.props.flash?.success || 'Follow-up appointment scheduled successfully!';
+                alert(successMessage);
+                
+                refreshAppointment();
+            },
+            onError: (errors) => {
+                console.error('Follow-up creation failed:', errors);
+                const errorMessage = errors.error || 'Failed to create follow-up appointment. Please try again.';
+                alert(errorMessage);
+            },
+            onFinish: () => {
+                isSubmittingFollowUp.value = false;
+            }
+        });
+    } catch (error) {
+        console.error('Error creating follow-up:', error);
+        isSubmittingFollowUp.value = false;
+    }
+};
+
+// Clinic reschedule functions
+const openClinicRescheduleModal = () => {
+    showClinicRescheduleModal.value = true;
+    clinicRescheduleForm.value = {
+        new_date: '',
+        new_time: '',
+        reason: '',
+    };
+};
+
+const closeClinicRescheduleModal = () => {
+    showClinicRescheduleModal.value = false;
+    clinicRescheduleForm.value = {
+        new_date: '',
+        new_time: '',
+        reason: '',
+    };
+};
+
+const submitClinicReschedule = async () => {
+    if (!clinicRescheduleForm.value.new_date || !clinicRescheduleForm.value.new_time || !clinicRescheduleForm.value.reason) {
+        alert('Please provide both a new date/time and a reason for rescheduling');
+        return;
+    }
+    
+    isSubmittingReschedule.value = true;
+    
+    try {
+        // Combine date and time into scheduled_at
+        const scheduledAt = `${clinicRescheduleForm.value.new_date} ${clinicRescheduleForm.value.new_time}:00`;
+        
+        router.post(`/clinic/appointments/${props.appointment.id}/reschedule`, {
+            scheduled_at: scheduledAt,
+            reason: clinicRescheduleForm.value.reason
+        }, {
+            onSuccess: (page) => {
+                closeClinicRescheduleModal();
+                
+                // Show success notification
+                const successMessage = page.props.flash?.success || 'Appointment rescheduled successfully!';
+                alert(successMessage);
+                
+                refreshAppointment();
+            },
+            onError: (errors) => {
+                console.error('Reschedule failed:', errors);
+                const errorMessage = errors.error || 'Failed to reschedule appointment. Please try again.';
+                alert(errorMessage);
+            },
+            onFinish: () => {
+                isSubmittingReschedule.value = false;
+            }
+        });
+    } catch (error) {
+        console.error('Error rescheduling:', error);
+        isSubmittingReschedule.value = false;
+    }
+};
+
+// Clinic cancel functions
+const openClinicCancelModal = () => {
+    showClinicCancelModal.value = true;
+    clinicCancelForm.value = {
+        reason: '',
+    };
+};
+
+const closeClinicCancelModal = () => {
+    showClinicCancelModal.value = false;
+    clinicCancelForm.value = {
+        reason: '',
+    };
+};
+
+const submitClinicCancel = async () => {
+    if (!clinicCancelForm.value.reason) {
+        alert('Please provide a reason for cancelling this appointment');
+        return;
+    }
+    
+    isSubmittingCancel.value = true;
+    
+    try {
+        router.post(`/clinic/appointments/${props.appointment.id}/cancel`, clinicCancelForm.value, {
+            onSuccess: (page) => {
+                closeClinicCancelModal();
+                
+                // Show success notification
+                const successMessage = page.props.flash?.success || 'Appointment cancelled successfully!';
+                alert(successMessage);
+                
+                refreshAppointment();
+            },
+            onError: (errors) => {
+                console.error('Cancel failed:', errors);
+                const errorMessage = errors.error || 'Failed to cancel appointment. Please try again.';
+                alert(errorMessage);
+            },
+            onFinish: () => {
+                isSubmittingCancel.value = false;
+            }
+        });
+    } catch (error) {
+        console.error('Error cancelling:', error);
+        isSubmittingCancel.value = false;
+    }
 };
 
 // Add a method to navigate back to calendar if user came from there
@@ -891,12 +1017,12 @@ const getStatusColor = (status?: string) => {
     <Head title="Appointment Details" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
+        <div class="flex h-full flex-1 flex-col gap-3 sm:gap-4 overflow-x-auto rounded-xl p-3 sm:p-4">
             <!-- Header -->
-            <div class="rounded-lg border bg-card p-4 sm:p-6">
-                <div class="mb-4">
-                    <h1 class="text-xl sm:text-2xl font-semibold">Appointment Details</h1>
-                    <p class="text-sm text-muted-foreground mt-1">
+            <div class="rounded-lg border bg-card p-3 sm:p-4 md:p-6">
+                <div class="mb-3 sm:mb-4">
+                    <h1 class="text-lg sm:text-xl md:text-2xl font-semibold">Appointment Details</h1>
+                    <p class="text-xs sm:text-sm text-muted-foreground mt-1">
                         Confirmation #{{ appointment.confirmationNumber }}
                     </p>
                 </div>
@@ -1223,15 +1349,64 @@ const getStatusColor = (status?: string) => {
                                 Cancel Appointment
                             </button>
                         </div>
+                        
+                        <!-- 24-Hour Confirmation Window for Pet Owners -->
+                        <div v-if="isPetOwner && appointment.status === 'scheduled' && appointment.can_owner_reschedule_or_cancel && appointment.confirmation_window_ends_at" 
+                             class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mt-4">
+                            <div class="flex items-start gap-3">
+                                <AlertCircle class="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium text-blue-900 dark:text-blue-100 mb-1">
+                                        24-Hour Window Active
+                                    </p>
+                                    <p class="text-xs text-blue-700 dark:text-blue-300">
+                                        You can reschedule or cancel this appointment until {{ appointment.confirmation_window_ends_at }}
+                                    </p>
+                                    <div class="flex gap-2 mt-3">
+                                        <button @click="goToReschedule"
+                                                class="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-xs font-medium">
+                                            Reschedule
+                                        </button>
+                                        <button @click="cancelAppointment"
+                                                class="px-3 py-1.5 border border-blue-600 text-blue-600 dark:text-blue-400 rounded-md hover:bg-blue-50 dark:hover:bg-blue-950 text-xs font-medium">
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
                         <!-- Clinic Actions -->
                         <div v-if="isClinic && !isCompleted" class="pt-4 border-t">
                             <div class="flex justify-end gap-3 flex-wrap">
-                                <!-- Pending Status Actions -->
+                                <!-- Confirm Button (for pending appointments) -->
                                 <button v-if="isPending" 
                                         @click="confirmAppointment"
                                         class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium">
                                     Confirm Appointment
+                                </button>
+                                
+                                <!-- Reschedule Button (for pending/scheduled appointments) -->
+                                <button v-if="isPending || isScheduled" 
+                                        @click="openClinicRescheduleModal"
+                                        class="px-4 py-2 border border-blue-500 text-blue-600 dark:text-blue-400 rounded-md hover:bg-blue-50 dark:hover:bg-blue-950 text-sm font-medium flex items-center gap-2">
+                                    <Calendar class="h-4 w-4" />
+                                    Reschedule
+                                </button>
+                                
+                                <!-- Cancel Button (for pending/scheduled appointments) -->
+                                <button v-if="isPending || isScheduled" 
+                                        @click="openClinicCancelModal"
+                                        class="px-4 py-2 border border-red-500 text-red-600 dark:text-red-400 rounded-md hover:bg-red-50 dark:hover:bg-red-950 text-sm font-medium flex items-center gap-2">
+                                    <XCircle class="h-4 w-4" />
+                                    Cancel
+                                </button>
+                                
+                                <!-- Start Button (for scheduled appointments) -->
+                                <button v-if="isScheduled" 
+                                        @click="startAppointment"
+                                        class="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 text-sm font-medium">
+                                    Start Appointment
                                 </button>
                                 
                                 <!-- In Progress Status Actions -->
@@ -1244,6 +1419,18 @@ const getStatusColor = (status?: string) => {
                                         @click="markAsComplete"
                                         class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium">
                                     Complete & Add Record
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Follow-Up Button (for completed appointments) -->
+                        <div v-if="isClinic && appointment.status === 'completed' && appointment.can_create_follow_up" class="pt-4 border-t">
+                            <div class="flex justify-end">
+                                <button 
+                                    @click="openFollowUpModal"
+                                    class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 text-sm font-medium flex items-center gap-2">
+                                    <Plus class="h-4 w-4" />
+                                    Schedule Follow-Up Appointment
                                 </button>
                             </div>
                         </div>
@@ -1600,52 +1787,13 @@ const getStatusColor = (status?: string) => {
             </div>
         </div>
 
-        <!-- Record Type Selection Modal (Clinic) -->
-        <div v-if="isClinic && showRecordTypeSelection" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div class="bg-card rounded-lg p-6 w-full max-w-2xl shadow-xl">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-xl font-semibold">Select Medical Record Type</h2>
-                    <button @click="showRecordTypeSelection = false" class="text-muted-foreground hover:text-foreground">
-                        <span class="text-2xl">&times;</span>
-                    </button>
-                </div>
-
-                <div class="mb-6">
-                    <p class="text-muted-foreground mb-4">
-                        Choose the type of medical record to create for this appointment.
-                    </p>
-                    
-                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-                        <button v-for="(template, key) in medicalRecordTemplates" :key="key"
-                                @click="selectRecordType(key)"
-                                :class="[
-                                    'p-4 border-2 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors text-left',
-                                    selectedRecordType === key ? 'border-primary bg-primary/10' : 'border-border'
-                                ]">
-                            <div class="text-2xl mb-2">{{ template.icon }}</div>
-                            <div class="font-medium">{{ template.label }}</div>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="flex justify-end">
-                    <button 
-                        @click="showRecordTypeSelection = false"
-                        class="btn btn-outline"
-                    >
-                        Cancel
-                    </button>
-                </div>
-            </div>
-        </div>
-
         <!-- Medical Record Form Modal (Clinic) -->
         <div v-if="isClinic && showMedicalRecordModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
             <div class="bg-card rounded-lg p-6 w-full max-w-3xl shadow-xl my-8">
                 <div class="flex items-center justify-between mb-4">
                     <div class="flex items-center gap-3">
-                        <span class="text-3xl">{{ activeTemplate.icon }}</span>
-                        <h2 class="text-xl font-semibold">{{ activeTemplate.label }}</h2>
+                        <span class="text-3xl">📋</span>
+                        <h2 class="text-xl font-semibold">Medical Record</h2>
                     </div>
                     <button @click="showMedicalRecordModal = false" class="text-muted-foreground hover:text-foreground">
                         <span class="text-2xl">&times;</span>
@@ -1659,10 +1807,9 @@ const getStatusColor = (status?: string) => {
                         </p>
                     </div>
 
-                    <!-- Dynamic form fields based on selected type -->
+                    <!-- Simplified 4-field form -->
                     <MedicalRecordFormFields 
                         :form="medicalForm" 
-                        :fields="activeTemplate.fields" 
                     />
 
                     <p class="text-sm text-amber-600 dark:text-amber-400 mt-6 flex items-center gap-2">
@@ -1892,6 +2039,223 @@ const getStatusColor = (status?: string) => {
                         class="flex-1 px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm font-medium"
                     >
                         Mark as No Show
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Follow-Up Appointment Modal -->
+        <div v-if="showFollowUpModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div class="bg-card border rounded-lg shadow-xl max-w-md w-full p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold">Schedule Follow-Up Appointment</h2>
+                    <button 
+                        @click="closeFollowUpModal"
+                        class="text-muted-foreground hover:text-foreground"
+                    >
+                        <X class="h-5 w-5" />
+                    </button>
+                </div>
+
+                <div class="space-y-4">
+                    <p class="text-sm text-muted-foreground">
+                        Schedule a follow-up appointment for <strong>{{ appointment.pet.name }}</strong> with the same service and veterinarian.
+                    </p>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Follow-Up Date <span class="text-destructive">*</span></label>
+                        <input 
+                            type="date"
+                            v-model="followUpForm.follow_up_date"
+                            :min="new Date().toISOString().split('T')[0]"
+                            class="w-full px-3 py-2 border rounded-md bg-background text-foreground"
+                            required
+                        />
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Follow-Up Time <span class="text-destructive">*</span></label>
+                        <input 
+                            type="time"
+                            v-model="followUpForm.follow_up_time"
+                            class="w-full px-3 py-2 border rounded-md bg-background text-foreground"
+                            required
+                        />
+                        <p class="text-xs text-muted-foreground mt-1">Check clinic operating hours</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Reason for Follow-Up</label>
+                        <textarea 
+                            v-model="followUpForm.reason"
+                            class="w-full px-3 py-2 border rounded-md bg-background text-foreground"
+                            rows="3"
+                            placeholder="Why is this follow-up needed?"
+                            maxlength="500"
+                        ></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Additional Notes</label>
+                        <textarea 
+                            v-model="followUpForm.notes"
+                            class="w-full px-3 py-2 border rounded-md bg-background text-foreground"
+                            rows="2"
+                            placeholder="Any additional details..."
+                            maxlength="1000"
+                        ></textarea>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 mt-6">
+                    <button 
+                        type="button"
+                        @click="closeFollowUpModal"
+                        class="flex-1 px-4 py-2 border rounded-md hover:bg-muted text-sm font-medium"
+                        :disabled="isSubmittingFollowUp"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        type="button"
+                        @click="submitFollowUp"
+                        class="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 text-sm font-medium disabled:opacity-50"
+                        :disabled="isSubmittingFollowUp || !followUpForm.follow_up_date || !followUpForm.follow_up_time"
+                    >
+                        {{ isSubmittingFollowUp ? 'Scheduling...' : 'Schedule Follow-Up' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Clinic Reschedule Appointment Modal -->
+        <div v-if="showClinicRescheduleModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div class="bg-card border rounded-lg shadow-xl max-w-md w-full p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold">Reschedule Appointment</h2>
+                    <button 
+                        @click="closeClinicRescheduleModal"
+                        class="text-muted-foreground hover:text-foreground"
+                    >
+                        <X class="h-5 w-5" />
+                    </button>
+                </div>
+
+                <div class="space-y-4">
+                    <p class="text-sm text-muted-foreground">
+                        Reschedule appointment for <strong>{{ appointment.pet.name }}</strong> with <strong>{{ appointment.owner.name }}</strong>.
+                    </p>
+
+                    <div class="bg-muted rounded-lg p-3 text-sm">
+                        <p class="font-medium">Current Appointment</p>
+                        <p class="text-muted-foreground">{{ appointment.date }} at {{ appointment.time }}</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-2">New Date <span class="text-destructive">*</span></label>
+                        <input 
+                            type="date"
+                            v-model="clinicRescheduleForm.new_date"
+                            :min="new Date().toISOString().split('T')[0]"
+                            class="w-full px-3 py-2 border rounded-md bg-background text-foreground"
+                            required
+                        />
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-2">New Time <span class="text-destructive">*</span></label>
+                        <input 
+                            type="time"
+                            v-model="clinicRescheduleForm.new_time"
+                            class="w-full px-3 py-2 border rounded-md bg-background text-foreground"
+                            required
+                        />
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Reason for Rescheduling <span class="text-destructive">*</span></label>
+                        <textarea 
+                            v-model="clinicRescheduleForm.reason"
+                            class="w-full px-3 py-2 border rounded-md bg-background text-foreground"
+                            rows="3"
+                            placeholder="Explain why you are rescheduling this appointment..."
+                            maxlength="500"
+                            required
+                        ></textarea>
+                        <p class="text-xs text-muted-foreground mt-1">The owner will be notified of this change</p>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 mt-6">
+                    <button 
+                        @click="closeClinicRescheduleModal"
+                        class="flex-1 px-4 py-2 border rounded-md hover:bg-muted text-sm font-medium"
+                        :disabled="isSubmittingClinicReschedule"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        @click="submitClinicReschedule"
+                        class="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 text-sm font-medium disabled:opacity-50"
+                        :disabled="isSubmittingClinicReschedule || !clinicRescheduleForm.new_date || !clinicRescheduleForm.new_time || !clinicRescheduleForm.reason"
+                    >
+                        {{ isSubmittingClinicReschedule ? 'Rescheduling...' : 'Reschedule Appointment' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Clinic Cancel Appointment Modal -->
+        <div v-if="showClinicCancelModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div class="bg-card border rounded-lg shadow-xl max-w-md w-full p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold text-destructive">Cancel Appointment</h2>
+                    <button 
+                        @click="closeClinicCancelModal"
+                        class="text-muted-foreground hover:text-foreground"
+                    >
+                        <X class="h-5 w-5" />
+                    </button>
+                </div>
+
+                <div class="space-y-4">
+                    <p class="text-sm text-muted-foreground">
+                        Are you sure you want to cancel the appointment for <strong>{{ appointment.pet.name }}</strong> with <strong>{{ appointment.owner.name }}</strong>?
+                    </p>
+
+                    <div class="bg-destructive/10 rounded-lg p-3 text-sm">
+                        <p class="font-medium text-destructive">This action cannot be undone</p>
+                        <p class="text-muted-foreground mt-1">{{ appointment.date }} at {{ appointment.time }}</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Reason for Cancellation <span class="text-destructive">*</span></label>
+                        <textarea 
+                            v-model="clinicCancelForm.reason"
+                            class="w-full px-3 py-2 border rounded-md bg-background text-foreground"
+                            rows="4"
+                            placeholder="Explain why you are canceling this appointment..."
+                            maxlength="500"
+                            required
+                        ></textarea>
+                        <p class="text-xs text-muted-foreground mt-1">The owner will be notified immediately</p>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 mt-6">
+                    <button 
+                        @click="closeClinicCancelModal"
+                        class="flex-1 px-4 py-2 border rounded-md hover:bg-muted text-sm font-medium"
+                        :disabled="isSubmittingClinicCancel"
+                    >
+                        Keep Appointment
+                    </button>
+                    <button 
+                        @click="submitClinicCancel"
+                        class="flex-1 px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 text-sm font-medium disabled:opacity-50"
+                        :disabled="isSubmittingClinicCancel || !clinicCancelForm.reason"
+                    >
+                        {{ isSubmittingClinicCancel ? 'Canceling...' : 'Cancel Appointment' }}
                     </button>
                 </div>
             </div>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { useForm } from '@inertiajs/vue3';
+import { useMobileKeyboard } from '@/composables/useMobileKeyboard';
 
 interface PetFormData {
     name: string;
@@ -46,6 +47,8 @@ const emit = defineEmits<{
     (e: 'cancel'): void;
     (e: 'success'): void;
 }>();
+
+const { handleInputFocus } = useMobileKeyboard();
 
 // Form setup
 const form = useForm<PetFormData>({
@@ -124,19 +127,19 @@ const cancel = () => {
 </script>
 
 <template>
-    <form @submit.prevent="submitForm" class="divide-y divide-border">
+    <form @submit.prevent="submitForm" @focusin="handleInputFocus" class="divide-y divide-border">
         
         <!-- Basic Information -->
         <div class="p-6 md:p-8">
-            <div class="flex items-center gap-3 mb-6">
-                <div class="p-2 bg-primary/10 rounded-lg">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div class="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
+                <div class="p-1.5 sm:p-2 bg-primary/10 rounded-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                 </div>
                 <h3 class="text-xl font-semibold">Basic Information</h3>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 
                 <!-- Pet Name -->
                 <div class="md:col-span-2 lg:col-span-1">
@@ -147,11 +150,11 @@ const cancel = () => {
                         v-model="form.name"
                         type="text" 
                         required
-                        :class="['w-full px-4 py-3 border rounded-xl bg-background focus:outline-none focus:ring-2 focus:ring-primary transition-all',
+                        :class="['w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border rounded-xl bg-background focus:outline-none focus:ring-2 focus:ring-primary transition-all',
                                 form.errors.name ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'hover:border-muted-foreground']"
                         placeholder="Enter your pet's name"
                     />
-                    <p v-if="form.errors.name" class="text-red-600 dark:text-red-400 text-sm mt-2 flex items-center gap-1">
+                    <p v-if="form.errors.name" class="text-red-600 dark:text-red-400 text-xs sm:text-sm mt-2 flex items-center gap-1">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                             <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
                         </svg>
@@ -315,9 +318,9 @@ const cancel = () => {
 
         <!-- Additional Information -->
         <div class="p-6 md:p-8 bg-gray-50 dark:bg-gray-900/50">
-            <div class="flex items-center gap-3 mb-6">
-                <div class="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div class="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
+                <div class="p-1.5 sm:p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
                 </div>
@@ -355,12 +358,12 @@ const cancel = () => {
         </div>
 
         <!-- Form Actions -->
-        <div class="p-6 md:p-8 bg-gray-50 dark:bg-gray-900/50">
-            <div class="flex flex-col sm:flex-row gap-4">
+        <div class="p-4 sm:p-6 md:p-8 bg-gray-50 dark:bg-gray-900/50">
+            <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
                 <button 
                     type="submit"
                     :disabled="form.processing"
-                    class="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 px-6 rounded-xl hover:from-blue-700 hover:to-purple-700 font-semibold transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                    class="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 sm:py-4 px-4 sm:px-6 text-sm sm:text-base rounded-xl hover:from-blue-700 hover:to-purple-700 font-semibold transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
                 >
                     <svg v-if="form.processing" class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -381,7 +384,7 @@ const cancel = () => {
                     type="button"
                     @click="cancel"
                     :disabled="form.processing"
-                    class="flex-1 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-4 px-6 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    class="flex-1 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-3 sm:py-4 px-4 sm:px-6 text-sm sm:text-base rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />

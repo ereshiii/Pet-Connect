@@ -255,6 +255,12 @@ Route::prefix('clinic')->middleware(['auth', 'verified', 'clinic'])->group(funct
     Route::post('appointments/{appointment}/complete', [AppointmentController::class, 'completeAppointment'])->name('clinicAppointments.complete');
     Route::post('appointments/{appointment}/no-show', [AppointmentController::class, 'markAsNoShow'])->name('clinicAppointments.noShow');
     
+    // Emergency walk-in and clinic appointment management
+    Route::post('appointments/walk-in', [AppointmentController::class, 'createWalkIn'])->name('clinicAppointments.walkIn');
+    Route::post('appointments/{appointment}/reschedule', [AppointmentController::class, 'clinicReschedule'])->name('clinicAppointments.reschedule');
+    Route::post('appointments/{appointment}/cancel', [AppointmentController::class, 'clinicCancel'])->name('clinicAppointments.cancel');
+    Route::post('appointments/{appointment}/follow-up', [AppointmentController::class, 'scheduleFollowUp'])->name('clinicAppointments.followUp');
+    
     // History - Requires Professional or Pro Plus plan
     Route::middleware('subscription:history')->group(function () {
         Route::get('history', [AppointmentController::class, 'history'])->name('clinicHistory');

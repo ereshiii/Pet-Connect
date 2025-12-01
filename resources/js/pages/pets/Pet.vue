@@ -198,20 +198,20 @@ const clearFilters = () => {
     <Head title="My Pets" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
+        <div class="flex h-full flex-1 flex-col gap-4 sm:gap-6 overflow-x-auto rounded-xl p-3 sm:p-4">
             <!-- My Pets Overview -->
             <div class="rounded-lg border bg-card">
-                <div class="p-6">
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div class="p-3 sm:p-4 md:p-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
                         <div>
-                            <h2 class="text-xl font-semibold">My Pets</h2>
-                            <p class="text-sm text-muted-foreground mt-1">Manage your beloved companions</p>
+                            <h2 class="text-lg sm:text-xl font-semibold">My Pets</h2>
+                            <p class="text-xs sm:text-sm text-muted-foreground mt-1">Manage your beloved companions</p>
                         </div>
                         <div class="flex flex-col sm:flex-row gap-2">
                             <select 
                                 v-model="currentFilters.type"
                                 @change="applyFilters"
-                                class="px-3 py-2 border rounded-md text-sm bg-background"
+                                class="px-3 py-2 border rounded-md text-xs sm:text-sm bg-background"
                             >
                                 <option value="all">All Types</option>
                                 <option v-for="petType in petTypes" :key="petType.id" :value="petType.name">
@@ -223,19 +223,19 @@ const clearFilters = () => {
                                 @input="applyFilters"
                                 type="text"
                                 placeholder="Search pets..."
-                                class="px-3 py-2 border rounded-md text-sm bg-background min-w-0 flex-1 sm:w-48"
+                                class="px-3 py-2 border rounded-md text-xs sm:text-sm bg-background min-w-0 flex-1 sm:w-48"
                             />
                         </div>
                     </div>
                     
                     <!-- Pet Cards Grid -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
                         <div v-for="petItem in filteredPets" :key="petItem.id" 
                              @click="viewPetDetails(petItem.id)"
-                             class="bg-card rounded-lg p-4 border hover:bg-muted transition-colors cursor-pointer">
+                             class="bg-card rounded-lg p-3 sm:p-4 border hover:bg-muted transition-colors cursor-pointer">
                             
                             <!-- Pet Image -->
-                            <div class="w-full h-32 rounded-lg mb-4 flex items-center justify-center bg-cover bg-center"
+                            <div class="w-full h-28 sm:h-32 rounded-lg mb-3 sm:mb-4 flex items-center justify-center bg-cover bg-center"
                                  :style="petItem.profile_image ? `background-image: url('/storage/${petItem.profile_image}')` : ''"
                                  :class="!petItem.profile_image ? getRandomPetColor(petItem.id).bg : ''">
                                 <span v-if="!petItem.profile_image" 
@@ -245,12 +245,12 @@ const clearFilters = () => {
                             </div>
                             
                             <!-- Pet Basic Info -->
-                            <div class="mb-3">
-                                <h3 class="font-semibold text-lg mb-1">{{ petItem.name }}</h3>
-                                <p class="text-sm text-muted-foreground">
+                            <div class="mb-2 sm:mb-3">
+                                <h3 class="font-semibold text-base sm:text-lg mb-1">{{ petItem.name }}</h3>
+                                <p class="text-xs sm:text-sm text-muted-foreground">
                                     {{ petItem.breed?.name || 'Mixed Breed' }} • {{ petItem.gender_display }}
                                 </p>
-                                <p class="text-sm text-muted-foreground">
+                                <p class="text-xs sm:text-sm text-muted-foreground">
                                     {{ formatAge(petItem) }} • {{ formatWeight(petItem) }}
                                 </p>
                                 <p class="text-xs text-muted-foreground capitalize">
@@ -273,23 +273,23 @@ const clearFilters = () => {
                         
                         <!-- Add Pet Card -->
                         <div @click="openAddPetForm" 
-                             class="bg-card rounded-lg p-4 border-2 border-dashed hover:border-primary transition-colors cursor-pointer flex flex-col items-center justify-center min-h-[350px]">
+                             class="bg-card rounded-lg p-3 sm:p-4 border-2 border-dashed hover:border-primary transition-colors cursor-pointer flex flex-col items-center justify-center min-h-[280px] sm:min-h-[350px]">
                             <div class="text-center">
-                                <div class="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                                    <svg class="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div class="w-12 h-12 sm:w-16 sm:h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                                    <svg class="w-6 h-6 sm:w-8 sm:h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                                     </svg>
                                 </div>
-                                <h3 class="font-medium mb-2">Add New Pet</h3>
-                                <p class="text-sm text-muted-foreground">Register a new companion</p>
+                                <h3 class="font-medium text-sm sm:text-base mb-2">Add New Pet</h3>
+                                <p class="text-xs sm:text-sm text-muted-foreground">Register a new companion</p>
                             </div>
                         </div>
                     </div>
                     
                     <!-- No pets message -->
-                    <div v-if="filteredPets.length === 0 && props.pets.length > 0" class="text-center py-12">
+                    <div v-if="filteredPets.length === 0 && props.pets.length > 0" class="text-center py-8 sm:py-12">
                         <div class="mx-auto max-w-md">
-                            <svg class="mx-auto h-12 w-12 text-muted-foreground opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                             </svg>
                             <h3 class="mt-2 text-sm font-medium">No pets match your filters</h3>

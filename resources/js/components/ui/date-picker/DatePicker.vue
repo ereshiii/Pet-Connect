@@ -183,17 +183,17 @@ watch(isOpen, (open) => {
             @click="toggleCalendar"
             :disabled="disabled"
             :class="cn(
-                'w-full px-4 py-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all dark:bg-gray-900 dark:text-gray-100',
-                'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500',
+                'w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border rounded-lg sm:rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all dark:bg-gray-900 dark:text-gray-100',
+                'border-gray-300 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500',
                 'flex items-center justify-between gap-2',
                 disabled && 'opacity-50 cursor-not-allowed',
                 props.class
             )"
         >
-            <span :class="selectedDate ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'">
+            <span :class="selectedDate ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'" class="truncate">
                 {{ formattedDate || placeholder }}
             </span>
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
         </button>
@@ -209,48 +209,48 @@ watch(isOpen, (open) => {
         >
             <div
                 v-if="isOpen"
-                class="absolute z-50 mt-2 w-80 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg p-4"
+                class="absolute z-50 mt-2 w-full sm:w-80 bg-white dark:bg-black border border-gray-200 dark:border-gray-800 rounded-lg sm:rounded-xl shadow-lg p-3 sm:p-4"
             >
                 <!-- Month Navigation -->
-                <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center justify-between mb-3 sm:mb-4">
                     <button
                         type="button"
                         @click="previousMonth"
-                        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                        class="p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-gray-900 rounded-lg transition-colors"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600 dark:text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5 text-gray-600 dark:text-gray-400" viewBox="0 0 20 20" fill="currentColor">
                             <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
                         </svg>
                     </button>
 
-                    <div class="font-semibold text-gray-900 dark:text-gray-100">
+                    <div class="font-semibold text-sm sm:text-base text-gray-900 dark:text-gray-100">
                         {{ monthNames[currentMonth.getMonth()] }} {{ currentMonth.getFullYear() }}
                     </div>
 
                     <button
                         type="button"
                         @click="nextMonth"
-                        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                        class="p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-gray-900 rounded-lg transition-colors"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600 dark:text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5 text-gray-600 dark:text-gray-400" viewBox="0 0 20 20" fill="currentColor">
                             <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
                         </svg>
                     </button>
                 </div>
 
                 <!-- Days of Week -->
-                <div class="grid grid-cols-7 gap-1 mb-2">
+                <div class="grid grid-cols-7 gap-0.5 sm:gap-1 mb-1 sm:mb-2">
                     <div
                         v-for="day in daysOfWeek"
                         :key="day"
-                        class="text-center text-xs font-medium text-gray-600 dark:text-gray-400 py-2"
+                        class="text-center text-xs font-medium text-gray-600 dark:text-gray-400 py-1 sm:py-2"
                     >
                         {{ day }}
                     </div>
                 </div>
 
                 <!-- Calendar Days -->
-                <div class="grid grid-cols-7 gap-1">
+                <div class="grid grid-cols-7 gap-0.5 sm:gap-1">
                     <button
                         v-for="(day, index) in calendarDays"
                         :key="index"
@@ -258,7 +258,7 @@ watch(isOpen, (open) => {
                         @click="selectDate(day.fullDate)"
                         :disabled="isDisabled(day.fullDate)"
                         :class="cn(
-                            'aspect-square flex items-center justify-center rounded-lg text-sm transition-all',
+                            'aspect-square flex items-center justify-center rounded-lg text-xs sm:text-sm transition-all',
                             day.month === 'current' 
                                 ? 'text-gray-900 dark:text-gray-100' 
                                 : 'text-gray-400 dark:text-gray-600',
@@ -267,7 +267,7 @@ watch(isOpen, (open) => {
                             isSelected(day.fullDate) && 
                                 'bg-blue-600 text-white hover:bg-blue-700 font-semibold',
                             !isSelected(day.fullDate) && !isDisabled(day.fullDate) && 
-                                'hover:bg-gray-100 dark:hover:bg-gray-700',
+                                'hover:bg-gray-100 dark:hover:bg-gray-900',
                             isDisabled(day.fullDate) && 
                                 'opacity-40 cursor-not-allowed'
                         )"
@@ -277,11 +277,11 @@ watch(isOpen, (open) => {
                 </div>
 
                 <!-- Today Button -->
-                <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <div class="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200 dark:border-gray-800">
                     <button
                         type="button"
                         @click="goToToday"
-                        class="w-full py-2 px-4 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                        class="w-full py-1.5 sm:py-2 px-3 sm:px-4 text-xs sm:text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-gray-900 rounded-lg transition-colors"
                     >
                         Today
                     </button>

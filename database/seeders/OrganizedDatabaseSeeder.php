@@ -19,23 +19,26 @@ class OrganizedDatabaseSeeder extends Seeder
             // Step 1: Core accounts
             AdminSeeder::class,
             UserSeeder::class,
-            ClinicSeeder::class,
+            // ClinicSeeder::class,
             SubscriptionPlanSeeder::class,
             
             // Step 2: Clinic subscriptions (requires clinics and subscription plans)
-            ClinicSubscriptionSeeder::class,
+            // ClinicSubscriptionSeeder::class,
             
-            // Step 3: Pets (requires users)
-            PetSeeder::class,
+            // Step 3: Pet breeds and types
+            PetBreedSeeder::class,
             
-            // Step 4: Appointments (requires users, pets, clinics)
-            AppointmentSeeder::class,
+            // Step 4: Pets (requires users)
+            // PetSeeder::class,
             
-            // Step 5: Medical Records (requires completed appointments)
-            MedicalRecordSeeder::class,
+            // Step 5: Appointments (requires users, pets, clinics)
+            // AppointmentSeeder::class,
             
-            // Step 6: Reviews (requires completed appointments)
-            ReviewSeeder::class,
+            // Step 6: Medical Records (requires completed appointments)
+            // MedicalRecordSeeder::class,
+            
+            // Step 7: Reviews (requires completed appointments)
+            // ReviewSeeder::class,
         ]);
         
         $this->command->info('✅ Organized database seeding completed!');

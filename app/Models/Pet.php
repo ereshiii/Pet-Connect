@@ -15,6 +15,7 @@ class Pet extends Model
     protected $fillable = [
         'owner_id',
         'name',
+        'species',   // dog, cat, bird, etc. (derived from type_id)
         'breed_id',  // Foreign key to pet_breeds table (preferred)
         'breed',     // String breed name (fallback when breed_id not set)
         'type_id',

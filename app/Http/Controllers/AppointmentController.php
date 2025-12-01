@@ -13,6 +13,9 @@ use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Carbon\Carbon;
@@ -90,6 +93,12 @@ class AppointmentController extends Controller
                 'type' => $appointment->type ?? 'regular',
                 'notes' => $appointment->notes,
                 'reason' => $appointment->reason,
+                // New emergency walk-in & follow-up fields
+                'appointment_type' => $appointment->appointment_type,
+                'is_follow_up' => $appointment->is_follow_up,
+                'priority' => $appointment->priority,
+                'confirmation_window_ends_at' => $appointment->confirmation_window_ends_at?->timezone('Asia/Manila')->toIso8601String(),
+                'confirmed_at' => $appointment->confirmed_at?->timezone('Asia/Manila')->toIso8601String(),
                 // Flattened fields for AppointmentsList component
                 'pet_name' => $pet ? $pet->name : 'Unknown Pet',
                 'owner_name' => $owner ? $owner->name : 'Unknown Owner',
@@ -331,6 +340,12 @@ class AppointmentController extends Controller
                 'type' => $appointment->type ?? 'regular',
                 'notes' => $appointment->notes,
                 'reason' => $appointment->reason,
+                // New emergency walk-in & follow-up fields
+                'appointment_type' => $appointment->appointment_type,
+                'is_follow_up' => $appointment->is_follow_up,
+                'priority' => $appointment->priority,
+                'confirmation_window_ends_at' => $appointment->confirmation_window_ends_at?->timezone('Asia/Manila')->toIso8601String(),
+                'confirmed_at' => $appointment->confirmed_at?->timezone('Asia/Manila')->toIso8601String(),
                 // Flattened fields for AppointmentsList component
                 'pet_name' => $pet ? $pet->name : 'Unknown Pet',
                 'owner_name' => $owner ? $owner->name : 'Unknown Owner',
@@ -728,6 +743,19 @@ class AppointmentController extends Controller
                 'disputeWindowEndsAt' => $appointment->dispute_window_ends_at?->format('M j, Y g:i A'),
                 'disputeHoursRemaining' => $appointment->getDisputeWindowHoursRemaining(),
                 'canChangeVet' => $canChangeVet,
+                // New emergency walk-in & follow-up props
+                'appointment_type' => $appointment->appointment_type,
+                'is_follow_up' => $appointment->is_follow_up,
+                'parent_appointment_id' => $appointment->parent_appointment_id,
+                'confirmation_window_ends_at' => $appointment->confirmation_window_ends_at?->timezone('Asia/Manila')->toIso8601String(),
+                'confirmed_at' => $appointment->confirmed_at?->timezone('Asia/Manila')->toIso8601String(),
+                'reschedule_reason' => $appointment->reschedule_reason,
+                'cancel_reason' => $appointment->cancel_reason,
+                // Computed permissions
+                'can_owner_reschedule_or_cancel' => $appointment->canOwnerRescheduleOrCancel(),
+                'can_clinic_reschedule' => $appointment->canClinicReschedule(),
+                'can_clinic_cancel' => $appointment->canClinicCancel(),
+                'can_create_follow_up' => $appointment->canCreateFollowUp(),
                 'pet' => [
                     'id' => $appointment->pet->id,
                     'name' => $appointment->pet->name,
@@ -1476,10 +1504,15 @@ class AppointmentController extends Controller
             return back()->with('error', 'Cannot confirm appointment. The scheduled date has already passed.');
         }
 
-        // Confirm the appointment
-        $appointment->update(['status' => 'scheduled']);
+        // Confirm the appointment and set 24-hour window for pet owner
+        $confirmedAt = now();
+        $appointment->update([
+            'status' => 'scheduled',
+            'confirmed_at' => $confirmedAt,
+            'confirmation_window_ends_at' => $confirmedAt->copy()->addHours(24),
+        ]);
 
-        return back()->with('success', 'Appointment confirmed successfully.');
+        return back()->with('success', 'Appointment confirmed successfully. Pet owner has 24 hours to reschedule or cancel.');
     }
 
     /**
@@ -1594,30 +1627,10 @@ class AppointmentController extends Controller
                 'notes' => 'nullable|string',
                 'actualCost' => 'nullable|numeric|min:0',
                 'medical_record' => 'required|array',
-                'medical_record.record_type' => 'required|in:checkup,vaccination,treatment,surgery,emergency,other',
                 'medical_record.diagnosis' => 'nullable|string',
-                'medical_record.treatment' => 'nullable|string',
-                'medical_record.medications' => 'nullable|string',
-                'medical_record.clinical_notes' => 'nullable|string',
-                'medical_record.physical_exam' => 'nullable|string',
-                'medical_record.vital_signs' => 'nullable|string',
-                'medical_record.vaccine_name' => 'nullable|string',
-                'medical_record.vaccine_batch' => 'nullable|string',
-                'medical_record.administration_site' => 'nullable|string',
-                'medical_record.next_due_date' => 'nullable|date',
-                'medical_record.adverse_reactions' => 'nullable|string',
-                'medical_record.procedures_performed' => 'nullable|string',
-                'medical_record.treatment_response' => 'nullable|string',
-                'medical_record.surgery_type' => 'nullable|string',
-                'medical_record.procedure_details' => 'nullable|string',
-                'medical_record.anesthesia_used' => 'nullable|string',
-                'medical_record.complications' => 'nullable|string',
-                'medical_record.post_op_instructions' => 'nullable|string',
-                'medical_record.presenting_complaint' => 'nullable|string',
-                'medical_record.triage_level' => 'nullable|string',
-                'medical_record.emergency_treatment' => 'nullable|string',
-                'medical_record.stabilization_measures' => 'nullable|string',
-                'medical_record.disposition' => 'nullable|string',
+                'medical_record.findings' => 'nullable|string',
+                'medical_record.treatment_given' => 'nullable|string',
+                'medical_record.prescriptions' => 'nullable|string',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             \Log::error('Validation failed for appointment completion', [
@@ -1639,19 +1652,15 @@ class AppointmentController extends Controller
                 'dispute_window_ends_at' => now()->addHours(48), // 48-hour dispute window
             ]);
 
-            // Create medical record
+            // Create simplified medical record
             $medicalRecordData = $request->medical_record;
             $medicalRecordData['pet_id'] = $appointment->pet_id;
             $medicalRecordData['clinic_id'] = $clinicRegistration->id;
-            
-            // Set veterinarian_id to null since the FK constraint expects users.id
-            // but appointment.clinic_staff_id may not match a user ID
             $medicalRecordData['veterinarian_id'] = null;
-            
             $medicalRecordData['appointment_id'] = $appointment->id;
             $medicalRecordData['date'] = $appointment->scheduled_at;
-            $medicalRecordData['title'] = $this->generateMedicalRecordTitle($medicalRecordData['record_type']);
-            $medicalRecordData['description'] = $medicalRecordData['diagnosis'] ?? $medicalRecordData['clinical_notes'] ?? 'Medical record from appointment';
+            $medicalRecordData['title'] = 'Medical Record - ' . $appointment->scheduled_at->format('M d, Y');
+            $medicalRecordData['description'] = $medicalRecordData['diagnosis'] ?? $medicalRecordData['findings'] ?? 'Medical record from appointment';
             $medicalRecordData['cost'] = $request->actualCost;
 
             \App\Models\PetMedicalRecord::create($medicalRecordData);
@@ -1739,5 +1748,250 @@ class AppointmentController extends Controller
         // app(NotificationService::class)->appointmentNoShow($appointment);
 
         return back()->with('success', 'Appointment marked as no-show successfully.');
+    }
+
+    /**
+     * Create emergency walk-in appointment
+     */
+    public function createWalkIn(Request $request)
+    {
+        $clinicRegistration = Auth::user()->clinicRegistration;
+        
+        // Validate request
+        $validated = $request->validate([
+            'pet_id' => 'nullable|exists:pets,id',
+            'owner_id' => 'nullable|exists:users,id',
+            'new_owner_email' => 'nullable|required_without:owner_id|email',
+            'new_owner_name' => 'nullable|required_with:new_owner_email|string|max:255',
+            'new_owner_phone' => 'nullable|string|max:20',
+            'new_pet_name' => 'nullable|required_without:pet_id|string|max:255',
+            'new_pet_species' => 'nullable|required_with:new_pet_name|string|in:dog,cat,bird,rabbit,other',
+            'new_pet_breed' => 'nullable|string|max:255',
+            'new_pet_date_of_birth' => 'nullable|date|before:today',
+            'reason' => 'required|string|max:1000',
+            'notes' => 'nullable|string|max:2000',
+            'priority' => 'required|string|in:low,normal,high,critical',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $ownerId = $validated['owner_id'];
+            $petId = $validated['pet_id'];
+
+            // Create new owner if needed
+            if (!$ownerId && $validated['new_owner_email']) {
+                $password = Str::random(16);
+                $newOwner = User::create([
+                    'name' => $validated['new_owner_name'],
+                    'email' => $validated['new_owner_email'],
+                    'phone_number' => $validated['new_owner_phone'] ?? null,
+                    'password' => Hash::make($password),
+                    'email_verified_at' => now(),
+                    'role' => 'pet_owner',
+                ]);
+                $ownerId = $newOwner->id;
+
+                // Send welcome email with password reset link
+                $newOwner->sendPasswordResetNotification(
+                    Password::createToken($newOwner)
+                );
+            }
+
+            // Create new pet if needed
+            if (!$petId && $validated['new_pet_name']) {
+                $newPet = Pet::create([
+                    'user_id' => $ownerId,
+                    'name' => $validated['new_pet_name'],
+                    'species' => $validated['new_pet_species'],
+                    'breed' => $validated['new_pet_breed'] ?? null,
+                    'date_of_birth' => $validated['new_pet_date_of_birth'] ?? null,
+                    'gender' => 'unknown',
+                ]);
+                $petId = $newPet->id;
+            }
+
+            // Create walk-in appointment
+            $appointment = Appointment::create([
+                'pet_id' => $petId,
+                'owner_id' => $ownerId,
+                'clinic_id' => $clinicRegistration->id,
+                'appointment_type' => 'walk-in',
+                'status' => 'in_progress',
+                'scheduled_at' => now(),
+                'reason' => $validated['reason'],
+                'notes' => ($validated['notes'] ?? '') . 
+                          "\n\nPriority: " . strtoupper($validated['priority']) . 
+                          "\nWalk-in created by clinic at " . now()->format('M d, Y g:i A'),
+                'priority' => $validated['priority'],
+            ]);
+
+            DB::commit();
+
+            return redirect()
+                ->route('clinic.appointments.details', ['clinicRegistration' => $clinicRegistration, 'appointment' => $appointment])
+                ->with('success', 'Walk-in appointment created successfully.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Walk-in appointment creation failed: ' . $e->getMessage());
+            return back()->withErrors(['error' => 'Failed to create walk-in appointment. Please try again.']);
+        }
+    }
+
+    /**
+     * Clinic reschedule pending appointment with reason
+     */
+    public function clinicReschedule(Request $request, Appointment $appointment)
+    {
+        $clinicRegistration = Auth::user()->clinicRegistration;
+        
+        // Verify clinic owns appointment
+        if ($appointment->clinic_id !== $clinicRegistration->id) {
+            abort(403);
+        }
+
+        // Check if clinic can reschedule
+        if (!$appointment->canClinicReschedule()) {
+            return back()->withErrors([
+                'error' => 'Only pending appointments can be rescheduled by the clinic.'
+            ]);
+        }
+
+        $validated = $request->validate([
+            'scheduled_at' => 'required|date|after:now',
+            'reason' => 'required|string|max:500',
+        ]);
+
+        $oldDateTime = $appointment->scheduled_at->format('M d, Y g:i A');
+        $newDateTime = Carbon::parse($validated['scheduled_at'])->format('M d, Y g:i A');
+
+        $appointment->update([
+            'scheduled_at' => $validated['scheduled_at'],
+            'status' => 'confirmed',
+            'confirmed_at' => now(),
+            'confirmation_window_ends_at' => Carbon::parse($validated['scheduled_at'])->subHours(24),
+            'reschedule_reason' => $validated['reason'],
+            'notes' => ($appointment->notes ? $appointment->notes . "\n\n" : '') . 
+                      "Rescheduled by clinic from {$oldDateTime} to {$newDateTime}\n" .
+                      "Reason: {$validated['reason']}\n" .
+                      "Status automatically confirmed by clinic.",
+        ]);
+
+        // Load relationships for notification
+        $appointment->load(['clinic', 'owner', 'pet']);
+
+        // Send notification to pet owner
+        if ($appointment->is_follow_up) {
+            app(NotificationService::class)->followUpAppointmentRescheduled($appointment);
+        } else {
+            app(NotificationService::class)->appointmentRescheduled($appointment);
+        }
+
+        return back()->with('success', 'Appointment rescheduled successfully. Pet owner has been notified.');
+    }
+
+    /**
+     * Clinic cancel pending appointment with reason
+     */
+    public function clinicCancel(Request $request, Appointment $appointment)
+    {
+        $clinicRegistration = Auth::user()->clinicRegistration;
+        
+        // Verify clinic owns appointment
+        if ($appointment->clinic_id !== $clinicRegistration->id) {
+            abort(403);
+        }
+
+        // Check if clinic can cancel
+        if (!$appointment->canClinicCancel()) {
+            return back()->withErrors([
+                'error' => 'Only pending appointments can be cancelled by the clinic.'
+            ]);
+        }
+
+        $validated = $request->validate([
+            'reason' => 'required|string|max:500',
+        ]);
+
+        $appointment->update([
+            'status' => 'cancelled',
+            'cancel_reason' => $validated['reason'],
+            'notes' => ($appointment->notes ? $appointment->notes . "\n\n" : '') . 
+                      "Cancelled by clinic at " . now()->format('M d, Y g:i A') . "\n" .
+                      "Reason: {$validated['reason']}",
+        ]);
+
+        // Load relationships for notification
+        $appointment->load(['clinic', 'owner', 'pet']);
+
+        // Send notification to pet owner
+        app(NotificationService::class)->appointmentCancelled($appointment);
+
+        return back()->with('success', 'Appointment cancelled successfully. Pet owner has been notified.');
+    }
+
+    /**
+     * Schedule follow-up appointment from completed appointment
+     */
+    public function scheduleFollowUp(Request $request, Appointment $parentAppointment)
+    {
+        \Log::info('scheduleFollowUp method called', [
+            'appointment_id' => $parentAppointment->id,
+            'user_id' => Auth::id(),
+            'request_data' => $request->all()
+        ]);
+        
+        $clinicRegistration = Auth::user()->clinicRegistration;
+        
+        if (!$clinicRegistration) {
+            \Log::error('No clinic registration found for user', ['user_id' => Auth::id()]);
+            abort(403, 'No clinic registration found');
+        }
+        
+        // Verify clinic owns parent appointment
+        if ($parentAppointment->clinic_id !== $clinicRegistration->id) {
+            abort(403);
+        }
+
+        // Check if can create follow-up
+        if (!$parentAppointment->canCreateFollowUp()) {
+            return back()->withErrors([
+                'error' => 'Cannot create follow-up appointment. Parent appointment must be completed and have no existing follow-up.'
+            ]);
+        }
+
+        $validated = $request->validate([
+            'scheduled_at' => 'required|date|after:now',
+            'reason' => 'nullable|string|max:1000',
+            'notes' => 'nullable|string|max:2000',
+        ]);
+
+        // Create follow-up appointment
+        $followUp = Appointment::create([
+            'pet_id' => $parentAppointment->pet_id,
+            'owner_id' => $parentAppointment->owner_id,
+            'clinic_id' => $parentAppointment->clinic_id,
+            'service_id' => $parentAppointment->service_id, // Inherit service
+            'clinic_staff_id' => $parentAppointment->clinic_staff_id, // Inherit vet
+            'parent_appointment_id' => $parentAppointment->id,
+            'is_follow_up' => true,
+            'appointment_type' => 'scheduled',
+            'status' => 'confirmed',
+            'scheduled_at' => $validated['scheduled_at'],
+            'confirmed_at' => now(),
+            'confirmation_window_ends_at' => Carbon::parse($validated['scheduled_at'])->subHours(24),
+            'reason' => $validated['reason'] ?? "Follow-up appointment for: {$parentAppointment->reason}",
+            'notes' => ($validated['notes'] ?? '') . 
+                      "\n\nFollow-up for appointment #{$parentAppointment->id} on " . 
+                      $parentAppointment->scheduled_at->format('M d, Y'),
+        ]);
+
+        // Load relationships for notification
+        $followUp->load(['clinic', 'owner', 'pet', 'parentAppointment']);
+
+        // Send immediate notification
+        app(NotificationService::class)->followUpAppointmentCreated($followUp);
+
+        return back()->with('success', 'Follow-up appointment scheduled successfully. Pet owner has been notified.');
     }
 }
