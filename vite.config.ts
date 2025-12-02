@@ -7,10 +7,6 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
     build: {
-        target: 'es2015',
-        minify: 'esbuild', // Faster than terser
-        sourcemap: false, // Disable sourcemaps for faster builds
-        reportCompressedSize: false, // Skip compression reporting to save time
         rollupOptions: {
             onwarn(warning, warn) {
                 // Suppress "use client" directive warnings from React components
@@ -21,23 +17,61 @@ export default defineConfig({
             },
             output: {
                 manualChunks: (id) => {
-                    // Simplified chunking strategy for faster builds
+                    // Node modules vendor chunks
                     if (id.includes('node_modules')) {
-                        // Group all Vue-related packages
-                        if (id.includes('vue') || id.includes('@vue') || id.includes('@inertiajs')) {
+                        // Core frameworks - only if they actually exist
+                        if (id.includes('@inertiajs')) {
+                            return 'inertia-vendor';
+                        }
+                        if (id.includes('lucide-vue-next')) {
+                            return 'lucide-vendor';
+                        }
+                        if (id.includes('vue-toastification')) {
+                            return 'toast-vendor';
+                        }
+                        if (id.includes('leaflet')) {
+                            return 'leaflet-vendor';
+                        }
+                        // Group all other Vue-related packages together
+                        if (id.includes('vue') || id.includes('@vue')) {
                             return 'vue-vendor';
                         }
-                        // Group UI libraries
-                        if (id.includes('lucide') || id.includes('radix') || id.includes('reka')) {
+                        // UI and utility libraries
+                        if (id.includes('radix-vue') || id.includes('reka-ui')) {
                             return 'ui-vendor';
                         }
-                        // Everything else in one vendor chunk
+                        if (id.includes('class-variance-authority') || id.includes('clsx') || id.includes('tailwind-merge')) {
+                            return 'utility-vendor';
+                        }
+                        // Everything else goes to vendor
                         return 'vendor';
+                    }
+                    
+                    // Application chunks - only create if directory exists
+                    if (id.includes('/pages/1adminPages/')) {
+                        return 'admin';
+                    }
+                    if (id.includes('/pages/clinic/')) {
+                        return 'clinic';
+                    }
+                    if (id.includes('/pages/pets/')) {
+                        return 'pets';
+                    }
+                    if (id.includes('/pages/appointments/')) {
+                        return 'appointments';
+                    }
+                    if (id.includes('/pages/auth/')) {
+                        return 'auth';
+                    }
+                    
+                    // Component chunks
+                    if (id.includes('/components/ui/')) {
+                        return 'ui-components';
                     }
                 }
             }
         },
-        chunkSizeWarningLimit: 1000 // Increase warning limit to 1MB
+        chunkSizeWarningLimit: 800 // Increase warning limit to 800kB
     },
     plugins: [
         laravel({
@@ -61,7 +95,7 @@ export default defineConfig({
             registerType: 'autoUpdate',
             includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
             manifestFilename: 'pwa-manifest.json',
-            injectRegister: false,
+            injectRegister: false, // Disable automatic registration for now
             scope: '/',
             base: '/',
             manifest: {
@@ -95,17 +129,17 @@ export default defineConfig({
             },
             workbox: {
                 cleanupOutdatedCaches: true,
-                skipWaiting: false,
-                clientsClaim: false,
+                skipWaiting: false,        // Disable aggressive caching
+                clientsClaim: false,       // Disable immediate control
                 navigateFallback: null,
                 swDest: 'public/sw.js',
                 globDirectory: 'public/',
                 globPatterns: [
-                    'build/**/*.{js,css}', // Reduced patterns for faster builds
-                    '*.{png,ico}',
-                    'favicon.*'
+                    'build/**/*.{js,css,png,svg,ico}',
+                    '*.{png,svg,ico,json}',
+                    'favicon.*',
+                    'apple-touch-icon.png'
                 ],
-                maximumFileSizeToCacheInBytes: 5000000, // 5MB limit
                 runtimeCaching: [
                     {
                         urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -120,7 +154,7 @@ export default defineConfig({
                     },
                     {
                         urlPattern: /^https:\/\/petconnect\.test\/.*/i,
-                        handler: 'NetworkOnly',
+                        handler: 'NetworkOnly',  // Use NetworkOnly to avoid caching
                         options: {
                             cacheName: 'pages-cache'
                         }
@@ -128,7 +162,7 @@ export default defineConfig({
                 ]
             },
             devOptions: {
-                enabled: false
+                enabled: false  // Disable in development
             }
         }),
     ],
