@@ -1,14 +1,21 @@
 #!/bin/bash
 
 echo "Starting PetConnect deployment..."
+echo "PHP Version: $(php -v | head -n 1)"
 
 # Decode Firebase credentials if base64 encoded
 if [ ! -z "$FIREBASE_CREDENTIALS_BASE64" ]; then
     echo "Decoding Firebase credentials from base64..."
     mkdir -p /var/www/html/storage/app
     echo "$FIREBASE_CREDENTIALS_BASE64" | base64 -d > /var/www/html/storage/app/firebase-credentials.json
-    echo "Firebase credentials created at /var/www/html/storage/app/firebase-credentials.json"
+    echo "Firebase credentials created"
 fi
+
+# Ensure database file exists
+echo "Checking database file..."
+touch /var/www/html/database/database.sqlite
+chmod 664 /var/www/html/database/database.sqlite
+chown www-data:www-data /var/www/html/database/database.sqlite
 
 # Run migrations
 echo "Running migrations..."

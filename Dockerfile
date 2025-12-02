@@ -41,11 +41,15 @@ RUN composer install --optimize-autoloader --no-dev --no-interaction
 # Create .env file from example (Railway will override with environment variables)
 RUN cp .env.example .env 2>/dev/null || echo "APP_KEY=" > .env
 
-# Generate APP_KEY for build process
+# Generate APP_KEY for build process (will be overridden by Railway env vars)
 RUN php artisan key:generate --force || echo "Key generation skipped"
 
 # Note: Assets are pre-built locally and committed to public/build
 # No need to run npm install or npm run build on Railway
+
+# Clear any cached config from build
+RUN php artisan config:clear || true
+RUN php artisan cache:clear || true
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html \
@@ -66,6 +70,11 @@ RUN echo '<Directory /var/www/html/public>\n\
     Require all granted\n\
 </Directory>' > /etc/apache2/conf-available/laravel.conf \
     && a2enconf laravel
+
+# Enable error logging
+RUN echo "display_errors = On" >> /usr/local/etc/php/conf.d/error-reporting.ini \
+    && echo "display_startup_errors = On" >> /usr/local/etc/php/conf.d/error-reporting.ini \
+    && echo "error_reporting = E_ALL" >> /usr/local/etc/php/conf.d/error-reporting.ini
 
 # Expose port 80
 EXPOSE 80
