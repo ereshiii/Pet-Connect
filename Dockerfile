@@ -1,6 +1,6 @@
 FROM php:8.2-apache
 
-# Install system dependencies
+# Install system dependencies (removed nodejs and npm since build is pre-compiled)
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -10,9 +10,7 @@ RUN apt-get update && apt-get install -y \
     zip \
     unzip \
     sqlite3 \
-    libsqlite3-dev \
-    nodejs \
-    npm
+    libsqlite3-dev
 
 # Clear cache
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
@@ -45,8 +43,8 @@ RUN cp .env.example .env || echo "APP_KEY=" > .env
 # Generate APP_KEY for build process
 RUN php artisan key:generate --force
 
-# Install Node dependencies and build assets
-RUN npm install && npm run build
+# Note: Assets are pre-built locally and committed to public/build
+# No need to run npm install or npm run build on Railway
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html \

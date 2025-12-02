@@ -1,0 +1,1 @@
+import{d as a,b as t,e as s,h as n,g as c,t as o}from"./vue-vendor-DmxhFomr.js";const i={class:"mb-0.5 text-base font-medium"},r={key:0,class:"text-sm text-muted-foreground"},p=a({__name:"HeadingSmall",props:{title:{},description:{}},setup(e){return(d,m)=>(s(),t("header",null,[n("h3",i,o(e.title),1),e.description?(s(),t("p",r,o(e.description),1)):c("",!0)]))}});export{p as _};
