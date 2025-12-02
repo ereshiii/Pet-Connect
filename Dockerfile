@@ -58,23 +58,18 @@ RUN chown -R www-data:www-data /var/www/html \
 # Enable Apache mod_rewrite
 RUN a2enmod rewrite
 
-# Configure Apache DocumentRoot
-ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
-
-# Update the default VirtualHost to use the correct DocumentRoot with dynamic port
-RUN echo 'Listen 80\n\
+# Configure Apache DocumentRoot - create a simple working configuration
+RUN echo 'ServerName petconnect.up.railway.app\n\
+Listen 80\n\
 <VirtualHost *:80>\n\
     DocumentRoot /var/www/html/public\n\
-    ServerName petconnect.up.railway.app\n\
     <Directory /var/www/html/public>\n\
-        Options -Indexes +FollowSymLinks\n\
         AllowOverride All\n\
         Require all granted\n\
     </Directory>\n\
-    ErrorLog ${APACHE_LOG_DIR}/error.log\n\
-    CustomLog ${APACHE_LOG_DIR}/access.log combined\n\
 </VirtualHost>' > /etc/apache2/sites-available/000-default.conf \
-    && echo 'Listen 80' > /etc/apache2/ports.conf
+    && echo 'Listen 80' > /etc/apache2/ports.conf \
+    && echo 'ServerName petconnect.up.railway.app' >> /etc/apache2/apache2.conf
 
 # Enable error logging
 RUN echo "display_errors = On" >> /usr/local/etc/php/conf.d/error-reporting.ini \
