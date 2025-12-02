@@ -60,23 +60,21 @@ RUN a2enmod rewrite
 
 # Configure Apache DocumentRoot
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
-RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
-# Update the default VirtualHost to use the correct DocumentRoot
-RUN echo '<VirtualHost *:80>\n\
+# Update the default VirtualHost to use the correct DocumentRoot with dynamic port
+RUN echo 'Listen 80\n\
+<VirtualHost *:80>\n\
     DocumentRoot /var/www/html/public\n\
+    ServerName petconnect.up.railway.app\n\
     <Directory /var/www/html/public>\n\
-        Options Indexes FollowSymLinks\n\
+        Options -Indexes +FollowSymLinks\n\
         AllowOverride All\n\
         Require all granted\n\
     </Directory>\n\
     ErrorLog ${APACHE_LOG_DIR}/error.log\n\
     CustomLog ${APACHE_LOG_DIR}/access.log combined\n\
-</VirtualHost>' > /etc/apache2/sites-available/000-default.conf
-
-# Configure Apache to allow .htaccess
-RUN a2enconf laravel
+</VirtualHost>' > /etc/apache2/sites-available/000-default.conf \
+    && echo 'Listen 80' > /etc/apache2/ports.conf
 
 # Enable error logging
 RUN echo "display_errors = On" >> /usr/local/etc/php/conf.d/error-reporting.ini \

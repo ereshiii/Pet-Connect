@@ -50,10 +50,11 @@ chmod -R 775 /var/www/html/database
 echo "Deployment complete!"
 echo "Demo User: demo@petconnect.com / password123"
 
-# Configure Apache to listen on Railway's PORT (defaults to 80 if not set)
+# Configure Apache to listen on Railway's PORT
 export APACHE_PORT=${PORT:-80}
-echo "Listen $APACHE_PORT" > /etc/apache2/ports.conf
-echo "Apache will listen on port: $APACHE_PORT"
+sed -i "s/Listen 80/Listen $APACHE_PORT/" /etc/apache2/ports.conf
+sed -i "s/<VirtualHost \*:80>/<VirtualHost *:$APACHE_PORT>/" /etc/apache2/sites-available/000-default.conf
+echo "Apache configured to listen on port: $APACHE_PORT"
 
 # Execute the main container command
 exec "$@"
