@@ -49,6 +49,7 @@ chmod -R 775 /var/www/html/database
 
 echo "Deployment complete!"
 echo "Demo User: demo@petconnect.com / password123"
+echo "Starting Apache on port ${PORT:-80}..."
 
 # Execute the main container command
 exec "$@"
