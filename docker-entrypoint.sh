@@ -41,12 +41,17 @@ php artisan db:seed --class=ProductionSeeder --force || {
     echo "Seeding failed, but continuing..."
 }
 
-# Clear and cache config
-echo "Caching configuration..."
+# Clear all caches (don't cache config in Railway since it uses env vars)
+echo "Clearing caches..."
 php artisan config:clear || echo "Config clear failed"
-php artisan config:cache || echo "Config cache failed"
-php artisan route:cache || echo "Route cache failed"
+php artisan cache:clear || echo "Cache clear failed"
+php artisan view:clear || echo "View clear failed"
+php artisan route:clear || echo "Route clear failed"
+
+# Only cache views and routes (not config since Railway uses environment variables)
+echo "Caching views and routes..."
 php artisan view:cache || echo "View cache failed"
+php artisan route:cache || echo "Route cache failed"
 
 # Test if Laravel is working
 echo "Testing Laravel..."
