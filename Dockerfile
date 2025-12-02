@@ -32,16 +32,17 @@ RUN mkdir -p storage/framework/{sessions,views,cache} \
     && mkdir -p storage/logs \
     && mkdir -p bootstrap/cache \
     && mkdir -p database \
-    && touch database/database.sqlite
+    && touch database/database.sqlite \
+    && chmod -R 775 storage bootstrap/cache database
 
 # Install dependencies
-RUN composer install --optimize-autoloader --no-dev
+RUN composer install --optimize-autoloader --no-dev --no-interaction
 
 # Create .env file from example (Railway will override with environment variables)
-RUN cp .env.example .env || echo "APP_KEY=" > .env
+RUN cp .env.example .env 2>/dev/null || echo "APP_KEY=" > .env
 
 # Generate APP_KEY for build process
-RUN php artisan key:generate --force
+RUN php artisan key:generate --force || echo "Key generation skipped"
 
 # Note: Assets are pre-built locally and committed to public/build
 # No need to run npm install or npm run build on Railway

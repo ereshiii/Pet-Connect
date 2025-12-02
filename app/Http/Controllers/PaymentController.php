@@ -129,6 +129,22 @@ class PaymentController extends Controller
                 'amount' => $amount,
             ]);
             
+            // Get all mock cards for debugging
+            $allCards = DB::table('mock_payment_cards')
+                ->select('card_id', 'card_number', 'card_holder', 'balance')
+                ->get();
+            
+            Log::info('All mock cards in database', [
+                'cards' => $allCards->map(function($card) {
+                    return [
+                        'card_id' => $card->card_id,
+                        'card_number' => $card->card_number,
+                        'card_number_clean' => str_replace(' ', '', $card->card_number),
+                        'balance' => $card->balance,
+                    ];
+                })->toArray(),
+            ]);
+            
             // Check if this is a mock payment card - try multiple matching strategies
             $mockCard = DB::table('mock_payment_cards')
                 ->where(function($query) use ($cleanInput, $paymentMethodId) {
@@ -147,6 +163,8 @@ class PaymentController extends Controller
                 'found' => $mockCard ? 'yes' : 'no',
                 'card_id' => $mockCard->card_id ?? null,
                 'card_number' => $mockCard->card_number ?? null,
+                'balance' => $mockCard->balance ?? null,
+                'search_input' => $cleanInput,
             ]);
 
             if ($mockCard) {
@@ -223,11 +241,24 @@ class PaymentController extends Controller
             }
 
             // If no mock card found, this is considered an invalid card
-            Log::warning('No mock card found', ['input' => $cleanInput]);
+            Log::warning('No mock card found', [
+                'input' => $cleanInput,
+                'all_cards_count' => DB::table('mock_payment_cards')->count(),
+            ]);
+            
+            // Get available cards for error message
+            $availableCards = DB::table('mock_payment_cards')
+                ->where('card_id', '!=', 'MERCH-PETCONNECT-001')
+                ->select('card_number', 'balance')
+                ->get();
+            
+            $cardsList = $availableCards->map(function($card) {
+                return $card->card_number . ' (Balance: ₱' . number_format($card->balance, 2) . ')';
+            })->implode(', ');
             
             DB::rollBack();
             return redirect()->route('subscription.failed', [
-                'error' => 'Card not found. Please use a card registered in the Mock Payment Banking System.',
+                'error' => 'Card not found. Available test cards: ' . ($cardsList ?: 'None. Please create test cards in Admin > Testing Tools > Mock Payment.'),
                 'planName' => $plan->name,
                 'amount' => $amount,
             ]);

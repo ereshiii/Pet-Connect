@@ -38,6 +38,6 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-Write-Host "`n✅ Deployment initiated!" -ForegroundColor Green
-Write-Host "🔗 Check Railway dashboard: https://railway.app" -ForegroundColor Cyan
-Write-Host "`n✨ Done!`n" -ForegroundColor Green
+Write-Host "`n[SUCCESS] Deployment initiated!" -ForegroundColor Green
+Write-Host "[INFO] Check Railway dashboard: https://railway.app" -ForegroundColor Cyan
+Write-Host "`nDone!`n" -ForegroundColor Green

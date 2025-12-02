@@ -311,7 +311,7 @@
     "src": "node_modules/leaflet/dist/images/marker-shadow.png"
   },
   "resources/js/app.ts": {
-    "file": "assets/app-692i1coy.js",
+    "file": "assets/app-CEy4kPIi.js",
     "name": "app",
     "src": "resources/js/app.ts",
     "isEntry": true,
@@ -419,7 +419,7 @@
       "resources/js/pages/settings/TwoFactor.vue"
     ],
     "css": [
-      "assets/app-DTdrxAsC.css"
+      "assets/app-BfjGKXIA.css"
     ]
   },
   "resources/js/pages/2clinicPages/clinicDashboard.vue": {
@@ -1143,7 +1143,7 @@
     ]
   },
   "resources/js/pages/Scheduling/AppointmentForm.vue": {
-    "file": "assets/AppointmentForm-Di6zUzRh.js",
+    "file": "assets/AppointmentForm-D13HcHeO.js",
     "name": "AppointmentForm",
     "src": "resources/js/pages/Scheduling/AppointmentForm.vue",
     "isDynamicEntry": true,

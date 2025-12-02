@@ -16,8 +16,32 @@ class TestingToolsController extends Controller
 {
     public function mockPayment(): Response
     {
-        // Get test cards from database or use defaults
+        // Ensure merchant account exists first
+        $merchantCard = DB::table('mock_payment_cards')
+            ->where('card_id', 'MERCH-PETCONNECT-001')
+            ->first();
+        
+        if (!$merchantCard) {
+            DB::table('mock_payment_cards')->insert([
+                'card_id' => 'MERCH-PETCONNECT-001',
+                'card_number' => 'MERCHANT-ACCOUNT',
+                'card_holder' => 'PetConnect Merchant',
+                'expiry' => '12/99',
+                'cvv' => '000',
+                'balance' => 0.00,
+                'bank' => 'PetConnect Payment Gateway',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            
+            $merchantCard = DB::table('mock_payment_cards')
+                ->where('card_id', 'MERCH-PETCONNECT-001')
+                ->first();
+        }
+        
+        // Get test cards from database (exclude merchant account)
         $testCards = DB::table('mock_payment_cards')
+            ->where('card_id', '!=', 'MERCH-PETCONNECT-001')
             ->orderBy('created_at', 'asc')
             ->get()
             ->map(function ($card) {
@@ -33,7 +57,7 @@ class TestingToolsController extends Controller
             })
             ->toArray();
         
-        // If no cards exist, create defaults
+        // If no test cards exist, create defaults
         if (empty($testCards)) {
             $defaultCards = [
                 [
@@ -75,11 +99,6 @@ class TestingToolsController extends Controller
                 ];
             }, $defaultCards);
         }
-
-        // Merchant Account from database
-        $merchantCard = DB::table('mock_payment_cards')
-            ->where('card_id', 'MERCH-PETCONNECT-001')
-            ->first();
         
         // Get transaction count from billing history
         $transactionCount = DB::table('subscription_billing_history')

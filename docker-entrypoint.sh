@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Exit on error
-set -e
-
 echo "Starting PetConnect deployment..."
 
 # Decode Firebase credentials if base64 encoded
@@ -14,18 +11,26 @@ if [ ! -z "$FIREBASE_CREDENTIALS_BASE64" ]; then
 fi
 
 # Run migrations
-php artisan migrate --force
+echo "Running migrations..."
+php artisan migrate --force || {
+    echo "Migration failed, but continuing..."
+}
 
-# Create storage symlink for public file access
-php artisan storage:link
+# Create storage symlink for public file access (ignore error if exists)
+echo "Creating storage symlink..."
+php artisan storage:link 2>/dev/null || echo "Storage link already exists"
 
 # Seed production data (creates admin, clinics, demo user with pets, appointments, medical records, and reviews)
-php artisan db:seed --class=ProductionSeeder --force
+echo "Seeding production data..."
+php artisan db:seed --class=ProductionSeeder --force || {
+    echo "Seeding failed, but continuing..."
+}
 
 # Clear and cache config
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
+echo "Caching configuration..."
+php artisan config:cache || echo "Config cache failed"
+php artisan route:cache || echo "Route cache failed"
+php artisan view:cache || echo "View cache failed"
 
 # Set proper permissions
 chown -R www-data:www-data /var/www/html/storage
