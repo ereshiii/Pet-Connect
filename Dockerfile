@@ -63,21 +63,13 @@ ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
-# Configure Apache to allow .htaccess and set proper permissions
+# Configure Apache to allow .htaccess
 RUN echo '<Directory /var/www/html/public>\n\
     Options Indexes FollowSymLinks\n\
     AllowOverride All\n\
     Require all granted\n\
-</Directory>\n\
-<Directory /var/www/html>\n\
-    Options Indexes FollowSymLinks\n\
-    AllowOverride None\n\
-    Require all granted\n\
 </Directory>' > /etc/apache2/conf-available/laravel.conf \
     && a2enconf laravel
-
-# Set ServerName to suppress warning
-RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
 
 # Enable error logging
 RUN echo "display_errors = On" >> /usr/local/etc/php/conf.d/error-reporting.ini \

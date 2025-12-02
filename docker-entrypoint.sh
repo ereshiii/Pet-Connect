@@ -3,14 +3,6 @@
 echo "Starting PetConnect deployment..."
 echo "PHP Version: $(php -v | head -n 1)"
 
-# Check if APP_KEY is set, if not generate one
-if [ -z "$APP_KEY" ] || [ "$APP_KEY" = "base64:placeholder" ]; then
-    echo "WARNING: APP_KEY not set or is placeholder, generating new key..."
-    php artisan key:generate --force --show > /tmp/appkey.txt
-    export APP_KEY=$(cat /tmp/appkey.txt)
-    echo "Generated APP_KEY: $APP_KEY"
-fi
-
 # Decode Firebase credentials if base64 encoded
 if [ ! -z "$FIREBASE_CREDENTIALS_BASE64" ]; then
     echo "Decoding Firebase credentials from base64..."
@@ -41,21 +33,11 @@ php artisan db:seed --class=ProductionSeeder --force || {
     echo "Seeding failed, but continuing..."
 }
 
-# Clear all caches (don't cache config in Railway since it uses env vars)
-echo "Clearing caches..."
-php artisan config:clear || echo "Config clear failed"
-php artisan cache:clear || echo "Cache clear failed"
-php artisan view:clear || echo "View clear failed"
-php artisan route:clear || echo "Route clear failed"
-
-# Only cache views and routes (not config since Railway uses environment variables)
-echo "Caching views and routes..."
-php artisan view:cache || echo "View cache failed"
+# Clear and cache config
+echo "Caching configuration..."
+php artisan config:cache || echo "Config cache failed"
 php artisan route:cache || echo "Route cache failed"
-
-# Test if Laravel is working
-echo "Testing Laravel..."
-php artisan --version || echo "Laravel check failed"
+php artisan view:cache || echo "View cache failed"
 
 # Set proper permissions
 chown -R www-data:www-data /var/www/html/storage

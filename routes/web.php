@@ -16,16 +16,6 @@ use App\Http\Controllers\ClinicVetController;
 use App\Http\Controllers\ClinicReportsController;
 use App\Http\Controllers\UserProfileSetupController;
 
-// Simple health check for Railway
-Route::get('/health', function () {
-    return response()->json([
-        'status' => 'ok',
-        'timestamp' => now()->toISOString(),
-        'php_version' => phpversion(),
-        'laravel_version' => app()->version(),
-    ]);
-});
-
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canRegister' => Features::enabled(Features::registration()),
