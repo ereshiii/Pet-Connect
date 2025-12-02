@@ -52,9 +52,29 @@ echo "Demo User: demo@petconnect.com / password123"
 
 # Configure Apache to listen on Railway's PORT
 export APACHE_PORT=${PORT:-80}
-sed -i "s/Listen 80/Listen $APACHE_PORT/" /etc/apache2/ports.conf
-sed -i "s/<VirtualHost \*:80>/<VirtualHost *:$APACHE_PORT>/" /etc/apache2/sites-available/000-default.conf
+
+# Update ports.conf
+echo "Listen $APACHE_PORT" > /etc/apache2/ports.conf
+
+# Update VirtualHost to use the correct port AND ensure DocumentRoot is correct
+cat > /etc/apache2/sites-available/000-default.conf <<EOF
+<VirtualHost *:$APACHE_PORT>
+    ServerName petconnect.up.railway.app
+    DocumentRoot /var/www/html/public
+    
+    <Directory /var/www/html/public>
+        AllowOverride All
+        Require all granted
+        DirectoryIndex index.php index.html
+    </Directory>
+    
+    ErrorLog \${APACHE_LOG_DIR}/error.log
+    CustomLog \${APACHE_LOG_DIR}/access.log combined
+</VirtualHost>
+EOF
+
 echo "Apache configured to listen on port: $APACHE_PORT"
+cat /etc/apache2/sites-available/000-default.conf
 
 # Execute the main container command
 exec "$@"
