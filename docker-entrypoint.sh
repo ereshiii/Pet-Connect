@@ -63,10 +63,20 @@ cat > /etc/apache2/sites-available/000-default.conf <<EOF
     DocumentRoot /var/www/html/public
     
     <Directory /var/www/html/public>
+        Options -Indexes +FollowSymLinks
         AllowOverride All
         Require all granted
         DirectoryIndex index.php index.html
+        
+        <IfModule mod_rewrite.c>
+            RewriteEngine On
+            RewriteBase /
+        </IfModule>
     </Directory>
+    
+    <FilesMatch \.php$>
+        SetHandler application/x-httpd-php
+    </FilesMatch>
     
     ErrorLog \${APACHE_LOG_DIR}/error.log
     CustomLog \${APACHE_LOG_DIR}/access.log combined
@@ -74,7 +84,14 @@ cat > /etc/apache2/sites-available/000-default.conf <<EOF
 EOF
 
 echo "Apache configured to listen on port: $APACHE_PORT"
-cat /etc/apache2/sites-available/000-default.conf
+
+# Test if index.php exists
+if [ -f /var/www/html/public/index.php ]; then
+    echo "✓ index.php found"
+else
+    echo "✗ ERROR: index.php not found!"
+    ls -la /var/www/html/public/
+fi
 
 # Execute the main container command
 exec "$@"
