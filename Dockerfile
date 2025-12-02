@@ -76,10 +76,7 @@ RUN echo "display_errors = On" >> /usr/local/etc/php/conf.d/error-reporting.ini 
     && echo "display_startup_errors = On" >> /usr/local/etc/php/conf.d/error-reporting.ini \
     && echo "error_reporting = E_ALL" >> /usr/local/etc/php/conf.d/error-reporting.ini
 
-# Configure Apache to use PORT environment variable from Railway
-RUN echo "Listen \${PORT:-80}" > /etc/apache2/ports.conf
-
-# Expose port 80 (Railway will map to their PORT)
+# Expose port 80 (Railway will set PORT env var)
 EXPOSE 80
 
 # Start script
