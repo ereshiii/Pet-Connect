@@ -23,11 +23,11 @@ export function useNotificationPolling(intervalMs: number = 30000) {
      */
     const fetchNotifications = async () => {
         try {
-            const response = await axios.get('/api/notifications/unread-count');
+            const response = await axios.get('/notifications/recent');
             
             if (response.data) {
                 unreadCount.value = response.data.unread_count || 0;
-                latestNotifications.value = response.data.latest || [];
+                latestNotifications.value = response.data.notifications || [];
             }
         } catch (error) {
             console.error('Error fetching notifications:', error);

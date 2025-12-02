@@ -29,20 +29,13 @@ interface Notification {
 // Use the polling composable (checks every 30 seconds)
 const { unreadCount, latestNotifications, refresh } = useNotificationPolling();
 
-const notifications = ref<Notification[]>([]);
+// Use latestNotifications from polling composable as the main source
+const notifications = latestNotifications;
 const isOpen = ref(false);
 
 const fetchNotifications = async () => {
-    try {
-        const response = await axios.get('/notifications/recent');
-        notifications.value = response.data.notifications;
-        // Don't override unreadCount from polling, just update full list
-        if (response.data.unread_count !== undefined && !latestNotifications.value.length) {
-            unreadCount.value = response.data.unread_count;
-        }
-    } catch (error) {
-        console.error('Failed to fetch notifications:', error);
-    }
+    // Just refresh the polling data - single source of truth
+    await refresh();
 };
 
 const markAsRead = async (notification: Notification) => {

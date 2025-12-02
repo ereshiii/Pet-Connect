@@ -41,6 +41,25 @@ class Pet extends Model
     ];
 
     /**
+     * Get the profile image URL.
+     */
+    public function getProfileImageUrlAttribute(): ?string
+    {
+        return $this->profile_image ? asset('storage/' . $this->profile_image) : null;
+    }
+
+    /**
+     * Get the images URLs.
+     */
+    public function getImagesUrlAttribute(): array
+    {
+        if (!$this->images || !is_array($this->images)) {
+            return [];
+        }
+        return array_map(fn($image) => asset('storage/' . $image), $this->images);
+    }
+
+    /**
      * Get the owner of the pet.
      */
     public function owner(): BelongsTo

@@ -72,7 +72,23 @@ MONITOR_QUERIES=false
 
 LOG_CHANNEL=stack
 LOG_LEVEL=error
+
+# Firebase Push Notifications (REQUIRED)
+FIREBASE_CREDENTIALS=/var/www/html/storage/app/firebase-credentials.json
+VITE_FIREBASE_API_KEY=AIzaSyAtAbLHeEzih0Jd7zOTAlWNIbtQbOfJV0o
+VITE_FIREBASE_AUTH_DOMAIN=petconnect-d88c7.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=petconnect-d88c7
+VITE_FIREBASE_STORAGE_BUCKET=petconnect-d88c7.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=137614395456
+VITE_FIREBASE_APP_ID=1:137614395456:web:f94d99eb0d2e9da65cf7a5
+VITE_FIREBASE_MEASUREMENT_ID=G-B2ZEGE7JGF
+VITE_FIREBASE_VAPID_KEY=BCM3LConxlI3YvpgZtg6yrOSafqoXnrVmN6_cSQ_8GOCpBzCOpNJsqNXZqjQWoPmX1CYiO1fBLJdXmAhwULrmbY
 ```
+
+**Important Notes:**
+- `APP_URL` will be your Railway deployment URL (update after first deploy)
+- Firebase credentials file needs to be uploaded separately (see Firebase setup below)
+- Storage symlink is automatically created during deployment
 
 ### D. Generate APP_KEY
 Run locally:
@@ -80,6 +96,38 @@ Run locally:
 php artisan key:generate --show
 ```
 Copy the output (starts with `base64:`) and paste it as `APP_KEY` in Railway.
+
+### E. Setup Firebase Credentials (For Push Notifications)
+
+Since Railway doesn't support direct file uploads, encode your Firebase credentials as base64:
+
+**Quick Method (Windows PowerShell):**
+```bash
+# Run the included helper script
+.\encode-firebase-credentials.ps1
+```
+
+This will:
+- ✓ Read your `storage/app/firebase-credentials.json`
+- ✓ Encode it to base64
+- ✓ Copy to clipboard automatically
+
+**Manual Method:**
+```powershell
+# Windows PowerShell
+$bytes = [System.IO.File]::ReadAllBytes("storage\app\firebase-credentials.json")
+[Convert]::ToBase64String($bytes) | Set-Clipboard
+
+# Linux/Mac
+base64 -w 0 storage/app/firebase-credentials.json | pbcopy
+```
+
+**Then in Railway:**
+1. Add environment variable: `FIREBASE_CREDENTIALS_BASE64`
+2. Paste the base64 string from your clipboard
+3. The deployment script will automatically decode it on startup
+
+**Note:** The `docker-entrypoint.sh` automatically handles decoding and creating the credentials file during deployment.
 
 ---
 
@@ -89,6 +137,21 @@ Copy the output (starts with `base64:`) and paste it as `APP_KEY` in Railway.
 2. Watch the build logs in Railway dashboard
 3. Build takes ~3-5 minutes
 4. Once deployed, Railway gives you a public URL: `https://your-app.up.railway.app`
+
+### What Happens Automatically During Deployment:
+
+The `docker-entrypoint.sh` script runs these commands on every deployment:
+
+1. ✓ Decodes Firebase credentials (if `FIREBASE_CREDENTIALS_BASE64` is set)
+2. ✓ Runs database migrations: `php artisan migrate --force`
+3. ✓ Creates storage symlink: `php artisan storage:link` **(images will work!)**
+4. ✓ Seeds production data: `php artisan db:seed --class=ProductionSeeder`
+5. ✓ Caches config: `php artisan config:cache`
+6. ✓ Caches routes: `php artisan route:cache`
+7. ✓ Caches views: `php artisan view:cache`
+8. ✓ Sets proper file permissions for storage and cache directories
+
+**No manual intervention needed** - everything is automated!
 
 ---
 

@@ -22,6 +22,11 @@ Route::get('/', function () {
     ]);
 })->name('home');
 
+// Firebase Test Page (development only - remove auth for testing)
+Route::get('/test-firebase', function () {
+    return Inertia::render('TestFirebase');
+})->name('test.firebase');
+
 // User Profile Setup Routes (must be before auth middleware to allow access during setup)
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('user/profile-setup', [UserProfileSetupController::class, 'index'])->name('userProfileSetup');

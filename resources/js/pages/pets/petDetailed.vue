@@ -433,7 +433,7 @@ const deleteDocument = (docId: number) => {
                              class="w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 rounded-xl flex items-center justify-center cursor-pointer overflow-hidden ring-4 ring-white/20 shadow-xl hover:ring-white/40 transition-all"
                              :class="pet.profile_image ? '' : 'bg-white/20 backdrop-blur-sm'">
                             <img v-if="pet.profile_image" 
-                                 :src="`/storage/${pet.profile_image}`" 
+                                 :src="pet.profile_image" 
                                  :alt="pet.name"
                                  class="w-full h-full object-cover">
                             <span v-else class="text-white text-lg sm:text-xl font-bold">{{ pet.name.charAt(0) }}</span>

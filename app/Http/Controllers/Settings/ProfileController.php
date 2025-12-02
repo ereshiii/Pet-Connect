@@ -26,6 +26,13 @@ class ProfileController extends Controller
             ? '2clinicPages/settings/Profile' 
             : 'settings/Profile';
         
+        $profileData = null;
+        if ($user->profile) {
+            $profileData = $user->profile->toArray();
+            // Add profile_image_url for display
+            $profileData['profile_image_url'] = $user->profile->profile_image_url;
+        }
+
         return Inertia::render($page, [
             'mustVerifyEmail' => $user instanceof MustVerifyEmail,
             'status' => $request->session()->get('status'),
@@ -33,7 +40,7 @@ class ProfileController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-                'profile' => $user->profile ? $user->profile->toArray() : null,
+                'profile' => $profileData,
             ],
         ]);
     }

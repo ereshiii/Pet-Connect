@@ -19,8 +19,15 @@ class FirebaseServiceProvider extends ServiceProvider
             $factory = new Factory();
 
             // Configure credentials
-            if (config('firebase.credentials.path') && file_exists(config('firebase.credentials.path'))) {
-                $factory = $factory->withServiceAccount(config('firebase.credentials.path'));
+            $credentialsPath = config('firebase.credentials.path');
+            
+            // Convert relative path to absolute if needed
+            if ($credentialsPath && !file_exists($credentialsPath)) {
+                $credentialsPath = storage_path($credentialsPath);
+            }
+            
+            if ($credentialsPath && file_exists($credentialsPath)) {
+                $factory = $factory->withServiceAccount($credentialsPath);
             } elseif (config('firebase.credentials.array.project_id')) {
                 $factory = $factory->withServiceAccount(config('firebase.credentials.array'));
             }

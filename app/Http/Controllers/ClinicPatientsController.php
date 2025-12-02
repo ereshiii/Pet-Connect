@@ -396,7 +396,7 @@ class ClinicPatientsController extends Controller
                 'special_needs' => $pet->special_needs,
                 'birth_date' => $pet->birth_date?->format('Y-m-d'),
                 'formatted_birth_date' => $pet->birth_date?->format('M j, Y'),
-                'profile_image' => $pet->profile_image,
+                'profile_image' => $pet->profile_image_url,
                 'owner_name' => $pet->owner ? $pet->owner->name : 'Unknown',
                 'owner_phone' => $pet->owner && $pet->owner->profile ? $pet->owner->profile->phone : 'Not provided',
                 'owner_email' => $pet->owner ? $pet->owner->email : 'Not provided',

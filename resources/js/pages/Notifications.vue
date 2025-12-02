@@ -10,9 +10,28 @@ import { router } from '@inertiajs/vue3';
 import axios from 'axios';
 import { useToast } from '@/composables/useToast';
 import { usePushNotifications } from '@/composables/usePushNotifications';
+import { useFirebaseNotifications } from '@/composables/useFirebaseNotifications';
 
 const toast = useToast();
 const pushNotifications = usePushNotifications();
+const { isSupported, permission, enableNotifications, disableNotifications, fcmToken } = useFirebaseNotifications();
+
+// Firebase notification state
+const isFirebaseEnabled = computed(() => permission.value === 'granted' && fcmToken.value);
+const isTogglingFirebase = ref(false);
+
+const toggleFirebaseNotifications = async (enabled: boolean) => {
+    isTogglingFirebase.value = true;
+    try {
+        if (enabled) {
+            await enableNotifications();
+        } else {
+            await disableNotifications();
+        }
+    } finally {
+        isTogglingFirebase.value = false;
+    }
+};
 
 interface Notification {
     id: number;
@@ -207,6 +226,34 @@ const enablePushNotifications = async () => {
 const dismissPushPrompt = () => {
     showPushPrompt.value = false;
 };
+
+// Test notification function
+const isSendingTest = ref(false);
+const sendTestNotification = async () => {
+    isSendingTest.value = true;
+    try {
+        const response = await axios.post('/api/notifications/send', {
+            title: 'Test Notification',
+            body: 'This is a test push notification from PetConnect! 🐾',
+            data: {
+                type: 'test',
+                timestamp: new Date().toISOString()
+            },
+            priority: 'high'
+        });
+
+        if (response.data.success) {
+            toast.success('Test notification sent successfully! Check your device.');
+        } else {
+            toast.error(response.data.message || 'Failed to send test notification');
+        }
+    } catch (error: any) {
+        console.error('Failed to send test notification:', error);
+        toast.error(error.response?.data?.message || 'Failed to send test notification');
+    } finally {
+        isSendingTest.value = false;
+    }
+};
 </script>
 
 <template>
@@ -215,8 +262,87 @@ const dismissPushPrompt = () => {
     <AppLayout>
         <div class="py-6 sm:py-8 md:py-12">
             <div class="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
+                <!-- Firebase Push Notification Settings -->
+                <!-- <div class="mb-4 sm:mb-6">
+                    <Card>
+                        <CardHeader class="p-4 sm:p-6">
+                            <div class="flex items-center justify-between gap-4">
+                                <div class="flex items-center gap-2">
+                                    <BellRing class="h-5 w-5 text-primary" />
+                                    <div>
+                                        <CardTitle class="text-base sm:text-lg">Push Notification Settings</CardTitle>
+                                        <CardDescription class="text-xs sm:text-sm mt-0.5">
+                                            Manage your notification preferences
+                                        </CardDescription>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-center gap-2">
+                                    <Badge 
+                                        v-if="isFirebaseEnabled" 
+                                        variant="default" 
+                                        class="text-xs"
+                                    >
+                                        Active
+                                    </Badge>
+                                    <Badge 
+                                        v-else-if="permission === 'denied'" 
+                                        variant="destructive" 
+                                        class="text-xs"
+                                    >
+                                        Blocked
+                                    </Badge>
+                                    <button
+                                        @click="toggleFirebaseNotifications(!isFirebaseEnabled)"
+                                        :disabled="!isSupported || permission === 'denied' || isTogglingFirebase"
+                                        :class="[
+                                            'relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors',
+                                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                                            'disabled:cursor-not-allowed disabled:opacity-50',
+                                            isFirebaseEnabled ? 'bg-primary' : 'bg-input'
+                                        ]"
+                                    >
+                                        <span
+                                            :class="[
+                                                'pointer-events-none block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform',
+                                                isFirebaseEnabled ? 'translate-x-5' : 'translate-x-0'
+                                            ]"
+                                        />
+                                    </button>
+                                </div>
+                            </div>
+                        </CardHeader>
+                        <CardContent v-if="permission === 'denied' || !isSupported || isFirebaseEnabled" class="p-4 sm:p-6 pt-0 space-y-4">
+                            <div v-if="isFirebaseEnabled" class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                                <Button
+                                    @click="sendTestNotification"
+                                    :disabled="isSendingTest"
+                                    variant="outline"
+                                    size="sm"
+                                    class="w-full sm:w-auto text-xs sm:text-sm"
+                                >
+                                    <BellRing class="h-4 w-4 mr-2" />
+                                    {{ isSendingTest ? 'Sending...' : 'Send Test Notification' }}
+                                </Button>
+                                <p class="text-xs text-muted-foreground">
+                                    Click to send a test push notification to this device
+                                </p>
+                            </div>
+                            
+                            <div v-if="permission === 'denied'" class="text-xs text-destructive p-3 bg-destructive/10 rounded-lg border border-destructive/20">
+                                ⚠️ Please enable notifications in your browser settings
+                            </div>
+                            <div v-else-if="!isSupported" class="p-3 bg-muted/50 rounded-lg border border-dashed">
+                                <p class="text-xs text-muted-foreground">
+                                    ⚠️ Push notifications are not supported in your current browser. Try Chrome, Firefox, or Edge.
+                                </p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div> -->
+
                 <!-- Push Notification Prompt -->
-                <div v-if="showPushPrompt" class="mb-4 sm:mb-6">
+                <!-- <div v-if="showPushPrompt" class="mb-4 sm:mb-6">
                     <Card class="border-primary/50 bg-primary/5">
                         <CardContent class="p-4 sm:p-6">
                             <div class="flex items-start gap-3 sm:gap-4">
@@ -238,30 +364,59 @@ const dismissPushPrompt = () => {
                             </div>
                         </CardContent>
                     </Card>
-                </div>
+                </div> -->
 
                 <div class="flex flex-col lg:flex-row gap-4 sm:gap-6">
                     <!-- Sidebar Categories -->
                     <div class="w-full lg:w-64 flex-shrink-0">
                         <Card>
-                            <CardHeader class="p-3 sm:p-4 md:p-6">
+                            <CardHeader class="p-4 sm:p-6 lg:block hidden">
                                 <CardTitle class="text-base sm:text-lg">Categories</CardTitle>
                             </CardHeader>
                             <CardContent class="p-0">
-                                <nav class="space-y-0.5 sm:space-y-1">
+                                <!-- Mobile: Horizontal Scroll -->
+                                <nav class="lg:hidden flex overflow-x-auto gap-2 p-3 scrollbar-hide">
                                     <button
                                         v-for="category in categories"
                                         :key="category.id"
                                         @click="selectedCategory = category.id"
-                                        class="w-full flex items-center justify-between px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-medium transition-colors hover:bg-accent/50"
+                                        class="relative flex-shrink-0 flex flex-col items-center justify-center p-3 rounded-lg transition-colors hover:bg-accent/50"
+                                        :class="selectedCategory === category.id 
+                                            ? 'bg-accent text-accent-foreground border-2 border-primary' 
+                                            : 'text-muted-foreground hover:text-foreground border-2 border-transparent'"
+                                    >
+                                        <div class="relative">
+                                            <component
+                                                :is="category.icon"
+                                                class="h-6 w-6"
+                                                :class="selectedCategory === category.id ? 'text-primary' : ''"
+                                            />
+                                            <Badge 
+                                                v-if="getCategoryCount(category.id) > 0"
+                                                variant="destructive"
+                                                class="absolute -top-2 -right-2 h-5 min-w-5 px-1 flex items-center justify-center text-xs rounded-full"
+                                            >
+                                                {{ getCategoryCount(category.id) }}
+                                            </Badge>
+                                        </div>
+                                    </button>
+                                </nav>
+                                
+                                <!-- Desktop: Vertical List -->
+                                <nav class="hidden lg:block">
+                                    <button
+                                        v-for="category in categories"
+                                        :key="category.id"
+                                        @click="selectedCategory = category.id"
+                                        class="w-full flex items-center justify-between px-4 py-3 text-sm font-medium transition-colors hover:bg-accent/50"
                                         :class="selectedCategory === category.id 
                                             ? 'bg-accent text-accent-foreground border-l-4 border-primary' 
                                             : 'text-muted-foreground hover:text-foreground'"
                                     >
-                                        <div class="flex items-center gap-2 sm:gap-3">
+                                        <div class="flex items-center gap-3">
                                             <component
                                                 :is="category.icon"
-                                                class="h-4 w-4 sm:h-5 sm:w-5"
+                                                class="h-4 w-4"
                                                 :class="selectedCategory === category.id ? 'text-primary' : ''"
                                             />
                                             <span>{{ category.label }}</span>
@@ -269,7 +424,7 @@ const dismissPushPrompt = () => {
                                         <Badge 
                                             v-if="getCategoryCount(category.id) > 0"
                                             variant="default"
-                                            class="ml-auto"
+                                            class="ml-auto text-xs"
                                         >
                                             {{ getCategoryCount(category.id) }}
                                         </Badge>

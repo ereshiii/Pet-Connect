@@ -34,7 +34,7 @@ const user = page.props.auth.user;
 
 // Photo upload form and preview
 const photoForm = useForm({ photo: null, remove: false });
-const photoPreview = ref(user.profile?.profile_image ? `/storage/${user.profile.profile_image}?v=${Date.now()}` : null);
+const photoPreview = ref(user.profile?.profile_image_url ? `${user.profile.profile_image_url}?v=${Date.now()}` : null);
 
 const onPhotoChange = (e: Event) => {
     const input = e.target as HTMLInputElement;
@@ -78,8 +78,8 @@ const submitPhoto = () => {
             toast.success('Profile photo uploaded successfully!');
             photoForm.reset();
             // Update preview with timestamp to bypass cache
-            if (page.props.auth?.user?.profile?.profile_image) {
-                photoPreview.value = `/storage/${page.props.auth.user.profile.profile_image}?v=${Date.now()}`;
+            if (page.props.auth?.user?.profile?.profile_image_url) {
+                photoPreview.value = `${page.props.auth.user.profile.profile_image_url}?v=${Date.now()}`;
             }
         },
         onError: (errors) => {

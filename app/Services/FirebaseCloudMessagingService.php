@@ -93,7 +93,94 @@ class FirebaseCloudMessagingService
             ];
         }
 
-        // Real implementation will go here when Firebase is set up
-        return ['success' => false, 'error' => 'Implementation pending'];
+        try {
+            // Create notification
+            $notification = Notification::create(
+                $notificationData['title'],
+                $notificationData['body']
+            );
+
+            // Prepare data payload
+            $data = $notificationData['data'] ?? [];
+            
+            // Add metadata
+            $data['notification_id'] = (string) Str::uuid();
+            $data['timestamp'] = now()->toIso8601String();
+            if ($user) {
+                $data['user_id'] = (string) $user->id;
+            }
+
+            // Send to multiple tokens
+            $successCount = 0;
+            $failureCount = 0;
+            $errors = [];
+
+            foreach ($tokens as $token) {
+                try {
+                    // Build message
+                    $message = CloudMessage::withTarget('token', $token)
+                        ->withNotification($notification)
+                        ->withData($data);
+
+                    // Add web push config for browsers
+                    $message = $message->withWebPushConfig(
+                        WebPushConfig::fromArray([
+                            'notification' => [
+                                'title' => $notificationData['title'],
+                                'body' => $notificationData['body'],
+                                'icon' => url('/favicon.ico'),
+                                'vibrate' => [200, 100, 200],
+                                'requireInteraction' => false,
+                                'tag' => $data['notification_id'],
+                            ],
+                            'fcm_options' => [
+                                'link' => url('/notifications'),
+                            ],
+                        ])
+                    );
+
+                    // Send the message
+                    $this->messaging->send($message);
+                    $successCount++;
+
+                    Log::info('Push notification sent successfully', [
+                        'token' => substr($token, 0, 20) . '...',
+                        'title' => $notificationData['title']
+                    ]);
+
+                } catch (\Exception $e) {
+                    $failureCount++;
+                    $errors[] = [
+                        'token' => substr($token, 0, 20) . '...',
+                        'error' => $e->getMessage()
+                    ];
+
+                    Log::error('Failed to send push notification', [
+                        'token' => substr($token, 0, 20) . '...',
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+
+            return [
+                'success' => $successCount > 0,
+                'success_count' => $successCount,
+                'failure_count' => $failureCount,
+                'total_tokens' => count($tokens),
+                'errors' => $errors,
+                'message' => "Sent to {$successCount}/" . count($tokens) . " devices"
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Error sending push notification', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $e->getMessage()
+            ];
+        }
     }
 }

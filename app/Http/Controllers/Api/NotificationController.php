@@ -61,10 +61,16 @@ class NotificationController extends Controller
             return response()->json([
                 'success' => $result['success'],
                 'message' => $result['success'] ? 'Notification sent successfully' : 'Failed to send notification',
-                'data' => $result
+                'sent_count' => $result['success_count'] ?? 0,
+                'failed_count' => $result['failure_count'] ?? 0,
             ]);
 
         } catch (\Exception $e) {
+            \Log::error('Failed to send notification', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to send notification',

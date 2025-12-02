@@ -236,7 +236,7 @@ const clearFilters = () => {
                             
                             <!-- Pet Image -->
                             <div class="w-full h-28 sm:h-32 rounded-lg mb-3 sm:mb-4 flex items-center justify-center bg-cover bg-center"
-                                 :style="petItem.profile_image ? `background-image: url('/storage/${petItem.profile_image}')` : ''"
+                                 :style="petItem.profile_image ? `background-image: url('${petItem.profile_image}')` : ''"
                                  :class="!petItem.profile_image ? getRandomPetColor(petItem.id).bg : ''">
                                 <span v-if="!petItem.profile_image" 
                                       :class="['text-sm font-medium', getRandomPetColor(petItem.id).text]">

@@ -36,7 +36,7 @@ const user = page.props.auth.user;
 
 // Photo upload form and preview
 const photoForm = useForm({ photo: null, remove: false });
-const photoPreview = ref(user.profile?.profile_image ? `/storage/${user.profile.profile_image}?v=${Date.now()}` : null);
+const photoPreview = ref(user.profile?.profile_image_url ? `${user.profile.profile_image_url}?v=${Date.now()}` : null);
 
 const onPhotoChange = (e: Event) => {
     const input = e.target as HTMLInputElement;
@@ -80,8 +80,8 @@ const submitPhoto = () => {
             toast.success('Profile photo uploaded successfully!');
             photoForm.reset();
             // Update preview with timestamp to bypass cache
-            if (page.props.auth?.user?.profile?.profile_image) {
-                photoPreview.value = `/storage/${page.props.auth.user.profile.profile_image}?v=${Date.now()}`;
+            if (page.props.auth?.user?.profile?.profile_image_url) {
+                photoPreview.value = `${page.props.auth.user.profile.profile_image_url}?v=${Date.now()}`;
             }
         },
         onError: (errors) => {
@@ -140,8 +140,8 @@ const removePhoto = () => {
                 <div class="flex items-center gap-4">
                     <label class="relative w-24 h-24 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center cursor-pointer group hover:opacity-80 transition-opacity">
                         <input type="file" name="photo" class="hidden" accept="image/*" @change="onPhotoChange" />
-                        <img v-if="photoPreview || user.profile?.profile_image" 
-                             :src="photoPreview || `/storage/${user.profile?.profile_image}?v=${Date.now()}`" 
+                        <img v-if="photoPreview || user.profile?.profile_image_url" 
+                             :src="photoPreview || `${user.profile?.profile_image_url}?v=${Date.now()}`" 
                              alt="Profile" 
                              class="w-full h-full object-cover" />
                         <div v-else class="text-xl text-gray-500">{{ user.profile?.initials || user.name[0] }}</div>

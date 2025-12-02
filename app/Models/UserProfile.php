@@ -45,6 +45,14 @@ class UserProfile extends Model
     ];
 
     /**
+     * Get the profile image URL.
+     */
+    public function getProfileImageUrlAttribute(): ?string
+    {
+        return $this->profile_image ? asset('storage/' . $this->profile_image) : null;
+    }
+
+    /**
      * Get the user that owns the profile.
      */
     public function user(): BelongsTo

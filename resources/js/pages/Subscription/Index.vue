@@ -4,7 +4,6 @@ import { Head, router } from '@inertiajs/vue3';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
 import { Check, Sparkles, Zap } from 'lucide-vue-next';
 import PaymentModal from '@/components/PaymentModal.vue';
 
@@ -132,7 +131,6 @@ const getFeatureLabel = (feature: string) => {
                     >
                         Monthly
                     </button>
-                    <Switch v-model:checked="isAnnual" />
                     <button 
                         @click="isAnnual = true"
                         :class="[

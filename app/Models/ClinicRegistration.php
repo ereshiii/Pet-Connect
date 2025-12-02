@@ -65,6 +65,25 @@ class ClinicRegistration extends Model
     ];
 
     /**
+     * Get the clinic photo URL.
+     */
+    public function getClinicPhotoUrlAttribute(): ?string
+    {
+        return $this->clinic_photo ? asset('storage/' . $this->clinic_photo) : null;
+    }
+
+    /**
+     * Get the gallery images URLs.
+     */
+    public function getGalleryUrlAttribute(): array
+    {
+        if (!$this->gallery || !is_array($this->gallery)) {
+            return [];
+        }
+        return array_map(fn($image) => asset('storage/' . $image), $this->gallery);
+    }
+
+    /**
      * Get the user that owns the clinic registration.
      */
     public function user(): BelongsTo

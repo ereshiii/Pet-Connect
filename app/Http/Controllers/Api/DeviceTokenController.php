@@ -4,19 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\DeviceToken;
-use App\Services\FirebaseCloudMessagingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
 class DeviceTokenController extends Controller
 {
-    protected FirebaseCloudMessagingService $fcmService;
-
-    public function __construct(FirebaseCloudMessagingService $fcmService)
-    {
-        $this->fcmService = $fcmService;
-    }
-
     /**
      * Store a new device token for the authenticated user.
      */
@@ -39,10 +31,37 @@ class DeviceTokenController extends Controller
         }
 
         try {
-            $deviceToken = $this->fcmService->registerDeviceToken(
-                $request->user(),
-                $request->validated()
-            );
+            // Check if token already exists for this user
+            $existing = DeviceToken::where('user_id', $request->user()->id)
+                ->where('token', $request->token)
+                ->first();
+
+            if ($existing) {
+                // Update existing token
+                $existing->update([
+                    'device_name' => $request->device_name ?? $existing->device_name,
+                    'browser' => $request->browser ?? $existing->browser,
+                    'platform' => $request->platform ?? $existing->platform,
+                    'capabilities' => $request->capabilities ?? $existing->capabilities,
+                    'is_active' => true,
+                    'last_used_at' => now(),
+                ]);
+
+                $deviceToken = $existing;
+            } else {
+                // Create new token
+                $deviceToken = DeviceToken::create([
+                    'user_id' => $request->user()->id,
+                    'token' => $request->token,
+                    'device_type' => $request->device_type,
+                    'device_name' => $request->device_name,
+                    'browser' => $request->browser,
+                    'platform' => $request->platform,
+                    'capabilities' => $request->capabilities,
+                    'is_active' => true,
+                    'last_used_at' => now(),
+                ]);
+            }
 
             return response()->json([
                 'success' => true,
@@ -57,6 +76,7 @@ class DeviceTokenController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            \Log::error('Failed to register device token: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to register device token',
@@ -107,7 +127,7 @@ class DeviceTokenController extends Controller
             ], 422);
         }
 
-        $token->update($request->validated());
+        $token->update($request->only(['device_name', 'is_active']));
 
         return response()->json([
             'success' => true,
