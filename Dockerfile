@@ -26,18 +26,30 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy existing application directory contents
+# Copy package files first for better caching
+COPY package*.json ./
+
+# Install Node dependencies (this layer will be cached if package.json doesn't change)
+RUN npm ci --prefer-offline --no-audit
+
+# Copy composer files
+COPY composer.json composer.lock ./
+
+# Install PHP dependencies (cached if composer files don't change)
+RUN composer install --optimize-autoloader --no-dev --no-scripts --no-interaction
+
+# Copy the rest of the application
 COPY . /var/www/html
 
-# Create storage directories first
+# Create storage directories
 RUN mkdir -p storage/framework/{sessions,views,cache} \
     && mkdir -p storage/logs \
     && mkdir -p bootstrap/cache \
     && mkdir -p database \
     && touch database/database.sqlite
 
-# Install dependencies
-RUN composer install --optimize-autoloader --no-dev
+# Run composer scripts
+RUN composer dump-autoload --optimize
 
 # Create .env file from example (Railway will override with environment variables)
 RUN cp .env.example .env || echo "APP_KEY=" > .env
@@ -45,8 +57,9 @@ RUN cp .env.example .env || echo "APP_KEY=" > .env
 # Generate APP_KEY for build process
 RUN php artisan key:generate --force
 
-# Install Node dependencies and build assets
-RUN npm install && npm run build
+# Build assets with increased memory and timeout
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+RUN npm run build
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html \
