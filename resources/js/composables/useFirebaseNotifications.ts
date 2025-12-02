@@ -176,45 +176,15 @@ export function useFirebaseNotifications() {
     };
 
     /**
-     * Check if user has an active FCM token
-     */
-    const checkActiveToken = async () => {
-        try {
-            const response = await axios.get('/api/device-tokens');
-            
-            if (response.data && response.data.data) {
-                const activeToken = response.data.data.find((t: any) => t.is_active);
-                
-                if (activeToken) {
-                    fcmToken.value = activeToken.token;
-                    permission.value = 'granted';
-                    console.log('✅ Found active FCM token');
-                    return true;
-                }
-            }
-            
-            fcmToken.value = null;
-            return false;
-        } catch (error) {
-            console.error('Failed to check active token:', error);
-            return false;
-        }
-    };
-
-    /**
      * Auto-initialize on mount if configured
      */
-    onMounted(async () => {
+    onMounted(() => {
         // Auto-initialize Firebase (but don't request permission yet)
         initialize();
 
-        // Check if user has an active token in database
-        await checkActiveToken();
-
-        // Auto-request permission if it was previously granted but no token found
-        if (permission.value === 'granted' && !fcmToken.value) {
-            console.log('Permission granted but no token found, requesting new token...');
-            await requestNotificationPermission();
+        // Auto-request permission if it was previously granted
+        if (permission.value === 'granted') {
+            requestNotificationPermission();
         }
     });
 
@@ -230,6 +200,5 @@ export function useFirebaseNotifications() {
         enableNotifications,
         disableNotifications,
         areNotificationsEnabled,
-        checkActiveToken,
     };
 }

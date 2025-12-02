@@ -263,7 +263,7 @@ const sendTestNotification = async () => {
         <div class="py-6 sm:py-8 md:py-12">
             <div class="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
                 <!-- Firebase Push Notification Settings -->
-                <!-- <div class="mb-4 sm:mb-6">
+                <div class="mb-4 sm:mb-6">
                     <Card>
                         <CardHeader class="p-4 sm:p-6">
                             <div class="flex items-center justify-between gap-4">
@@ -277,6 +277,7 @@ const sendTestNotification = async () => {
                                     </div>
                                 </div>
                                 
+                                <!-- Toggle Switch in Header -->
                                 <div class="flex items-center gap-2">
                                     <Badge 
                                         v-if="isFirebaseEnabled" 
@@ -313,6 +314,7 @@ const sendTestNotification = async () => {
                             </div>
                         </CardHeader>
                         <CardContent v-if="permission === 'denied' || !isSupported || isFirebaseEnabled" class="p-4 sm:p-6 pt-0 space-y-4">
+                            <!-- Test Notification Button -->
                             <div v-if="isFirebaseEnabled" class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                                 <Button
                                     @click="sendTestNotification"
@@ -329,6 +331,7 @@ const sendTestNotification = async () => {
                                 </p>
                             </div>
                             
+                            <!-- Status Messages -->
                             <div v-if="permission === 'denied'" class="text-xs text-destructive p-3 bg-destructive/10 rounded-lg border border-destructive/20">
                                 ⚠️ Please enable notifications in your browser settings
                             </div>
@@ -339,10 +342,10 @@ const sendTestNotification = async () => {
                             </div>
                         </CardContent>
                     </Card>
-                </div> -->
+                </div>
 
                 <!-- Push Notification Prompt -->
-                <!-- <div v-if="showPushPrompt" class="mb-4 sm:mb-6">
+                <div v-if="showPushPrompt" class="mb-4 sm:mb-6">
                     <Card class="border-primary/50 bg-primary/5">
                         <CardContent class="p-4 sm:p-6">
                             <div class="flex items-start gap-3 sm:gap-4">
@@ -364,7 +367,7 @@ const sendTestNotification = async () => {
                             </div>
                         </CardContent>
                     </Card>
-                </div> -->
+                </div>
 
                 <div class="flex flex-col lg:flex-row gap-4 sm:gap-6">
                     <!-- Sidebar Categories -->
